@@ -34,6 +34,12 @@ const CACHE_KEY = 'nbrb_rates'
 /** НБ РБ updates rates once per business day; cache for 12 hours */
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const DEFAULT_AMOUNT = 100
+/** Upper bound for input — keeps `value * rate` away from Number.MAX_SAFE_INTEGER. */
+const MAX_AMOUNT = 1e12
+/** Visual feedback duration after copy / copy error. */
+const COPY_FEEDBACK_MS = 1500
+/** Formula factor: (X − 20%) × 20% ≡ X × 0.8 × 0.2 ≡ X × 0.16. Spec'd by the page owner. */
+const FORMULA_FACTOR = 0.16
 
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
@@ -50,7 +56,7 @@ const loading = ref(true)
 const refreshing = ref(false)
 const fetchError = ref('')
 const activeCurrency = ref('BYN')
-const copied = ref(false)
+const copyState = ref<'idle' | 'ok' | 'err'>('idle')
 
 const numberFormatOptions: Intl.NumberFormatOptions = {
   minimumFractionDigits: 2,
@@ -69,9 +75,13 @@ const activeBynAmount = computed(() => {
 
 const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
 
-/** (X − 20%) × 20% = X × 0.16 — always computed in BYN. */
+/**
+ * Result of the page-owner-specified formula (X − 20%) × 20%, always in BYN.
+ * X is `activeBynAmount` — the BYN equivalent of whatever row the user is
+ * currently editing. Rounded to kopecks for display.
+ */
 const formulaResult = computed(() => {
-  return Math.round(activeBynAmount.value * 0.16 * 100) / 100
+  return Math.round(activeBynAmount.value * FORMULA_FACTOR * 100) / 100
 })
 
 const formattedBynX = computed(() => bynFormatter.format(activeBynAmount.value))
@@ -189,18 +199,27 @@ function onRowClick(code: string) {
 
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
 
+function flashCopyState(state: 'ok' | 'err') {
+  copyState.value = state
+  if (copyResetTimer) clearTimeout(copyResetTimer)
+  copyResetTimer = setTimeout(() => {
+    copyState.value = 'idle'
+  }, COPY_FEEDBACK_MS)
+}
+
 async function copyWords() {
   const text = amountInWords.value
-  if (!text || typeof navigator === 'undefined' || !navigator.clipboard) return
+  if (!text) return
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    flashCopyState('err')
+    return
+  }
   try {
     await navigator.clipboard.writeText(text)
-    copied.value = true
-    if (copyResetTimer) clearTimeout(copyResetTimer)
-    copyResetTimer = setTimeout(() => {
-      copied.value = false
-    }, 1500)
+    flashCopyState('ok')
   } catch {
-    // clipboard may be unavailable (insecure context, permissions)
+    // insecure context, permission denied, etc. — surface it instead of swallowing.
+    flashCopyState('err')
   }
 }
 
@@ -212,13 +231,14 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex justify-center px-3 py-3 sm:py-6">
     <div class="w-full max-w-sm">
-      <p class="mb-3 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
+      <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
           href="https://www.nbrb.by/"
           target="_blank"
           rel="noopener noreferrer"
           class="hover:underline"
-        >По курсу НБ РБ</a><span
+        >По курсу НБ РБ</a>
+        <span
           v-if="ratesDate"
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
@@ -229,10 +249,10 @@ onBeforeUnmount(() => {
           :icon="RefreshIcon"
           :loading="refreshing"
           :disabled="loading"
-          class="ml-1 align-middle"
+          class="ml-auto"
           @click="refresh"
         />
-      </p>
+      </div>
 
       <!-- Loading skeleton -->
       <div
@@ -279,7 +299,7 @@ onBeforeUnmount(() => {
             :model-modifiers="{ optional: true }"
             :step="stepFor(currency.value)"
             :min="0"
-            :max="1e12"
+            :max="MAX_AMOUNT"
             :highlight="currency.code === activeCurrency"
             :format-options="numberFormatOptions"
             size="xl"
@@ -296,13 +316,13 @@ onBeforeUnmount(() => {
             Сумма прописью (BYN)
           </div>
           <div class="flex items-start gap-2">
-            <p class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
+            <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
               {{ amountInWords }}
-            </p>
+            </div>
             <B24Button
               type="button"
-              :aria-label="copied ? 'Скопировано' : 'Скопировать сумму прописью'"
-              :color="copied ? 'air-primary-success' : 'air-tertiary-no-accent'"
+              :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
+              :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
               size="sm"
               :icon="CopyIcon"
               class="shrink-0"
@@ -314,14 +334,14 @@ onBeforeUnmount(() => {
         <!-- Calculation formula -->
         <div class="rounded border border-gray-200 p-3 text-sm dark:border-gray-700">
           <div class="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Расчёт (BYN)
+            Расчёт: (X − 20%) × 20% (BYN)
           </div>
-          <p class="font-mono text-gray-700 dark:text-gray-200">
+          <div class="font-mono text-gray-700 dark:text-gray-200">
             (X − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
-          </p>
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          </div>
+          <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
             где X = {{ formattedBynX }} BYN
-          </p>
+          </div>
         </div>
       </div>
     </div>

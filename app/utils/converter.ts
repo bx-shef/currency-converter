@@ -25,9 +25,12 @@ export function convert(amount: number, fromBynRate: number, toBynRate: number):
 }
 
 /**
- * Adaptive step for the +/- buttons:
- *   < 200 → 10 (works for both fine-grained changes around the typical 100 BYN range)
- *   >= 200 → 100 (coarser jumps for larger sums)
+ * Adaptive step for the +/- buttons based on the current value.
+ * Note: both directions use the same threshold — at value=200, both `−` and `+`
+ * use step 100 (so 200 → 100 going down). Spec'd, not a bug.
+ *
+ * @param value current input value; `undefined` / non-finite → step 10.
+ * @returns 100 when `|value| >= 200`, else 10.
  */
 export function stepFor(value: number | undefined): number {
   if (typeof value !== 'number' || !isFinite(value)) return 10

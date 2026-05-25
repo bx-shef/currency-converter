@@ -2,6 +2,11 @@
  * Russian "amount in words" for Belarusian Roubles (BYN).
  * Capitalised first letter so the result reads like a formal cheque line:
  *   123.45 → "Сто двадцать три рубля 45 копеек"
+ *     1.01 → "Один рубль 01 копейка"          (singular kopeck inflection)
+ *   1234.00 → "Одна тысяча двести тридцать четыре рубля 00 копеек"
+ *
+ * Returns '' for NaN / ±Infinity so the caller can safely render the result
+ * directly via {{ }} interpolation without an extra guard.
  */
 
 const UNITS_M = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять']
@@ -16,6 +21,7 @@ const THOUSAND_FORMS: [string, string, string] = ['тысяча', 'тысячи'
 const MILLION_FORMS: [string, string, string] = ['миллион', 'миллиона', 'миллионов']
 const BILLION_FORMS: [string, string, string] = ['миллиард', 'миллиарда', 'миллиардов']
 
+/** Converts 0..999 to Russian words. `feminine` toggles "одна/две" for тысяча. */
 function threeDigit(n: number, feminine: boolean): string {
   if (n === 0) return ''
   const h = Math.floor(n / 100)
@@ -42,6 +48,7 @@ export function pluralize(n: number, forms: [string, string, string]): string {
   return forms[2]
 }
 
+/** Converts a non-negative integer up to a few billions to Russian words; `0` → `'ноль'`. */
 function integerToWords(n: number): string {
   if (n === 0) return 'ноль'
   const parts: string[] = []
@@ -56,13 +63,18 @@ function integerToWords(n: number): string {
   return parts.join(' ')
 }
 
-/** Formats a BYN amount as a Russian "sum in words" string. */
+/**
+ * Formats a BYN amount as a Russian "sum in words" string.
+ * @returns '' for NaN / ±Infinity; capitalised string otherwise.
+ */
 export function bynAmountInWords(amount: number): string {
   if (!isFinite(amount)) return ''
   const sign = amount < 0 ? 'минус ' : ''
-  const abs = Math.abs(amount)
-  const rubles = Math.floor(abs)
-  const kopecks = Math.round((abs - rubles) * 100) % 100
+  // Round the whole amount to kopecks first so floating-point noise (e.g. 1.999)
+  // doesn't end up as "1 rouble 100 kopecks" — round propagates into roubles.
+  const totalKopecks = Math.round(Math.abs(amount) * 100)
+  const rubles = Math.floor(totalKopecks / 100)
+  const kopecks = totalKopecks % 100
   const rubWords = integerToWords(rubles)
   const rubInfl = pluralize(rubles, RUBLE_FORMS)
   const kopStr = String(kopecks).padStart(2, '0')
