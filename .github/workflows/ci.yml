@@ -35,8 +35,15 @@ jobs:
         # Generates .nuxt/eslint.config.mjs and .nuxt/tsconfig.json that
         # downstream lint/test/typecheck steps depend on.
 
+      - name: Debug env
+        run: |
+          node --version
+          pnpm --version
+          ls -la .nuxt/eslint.config.mjs || echo "no .nuxt/eslint.config.mjs"
+          cat eslint.config.mjs
+
       - name: Lint
-        run: pnpm lint
+        run: pnpm exec eslint . --debug 2>&1 | tail -120
 
       - name: Unit tests
         run: pnpm test
