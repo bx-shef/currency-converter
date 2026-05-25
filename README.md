@@ -42,7 +42,7 @@ curl -fsSL https://get.docker.com | sh
 
 **2. Скопировать файлы на сервер**
 ```bash
-mkdir /opt/currency-converter && cd /opt/currency-converter
+mkdir -p /home/bitrix/currency-converter && cd /home/bitrix/currency-converter
 # Скопировать: docker-compose.prod.yml, docker-compose.nginxproxy.yml, Makefile
 cp .env.prod.example .env.prod
 nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
@@ -65,7 +65,7 @@ make prod-up           # запустить приложение + Watchtower
 
 ### Ручное обновление (без Watchtower)
 ```bash
-cd /opt/currency-converter
+cd /home/bitrix/currency-converter
 make prod-redeploy
 ```
 
