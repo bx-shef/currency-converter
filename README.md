@@ -6,33 +6,80 @@
 
 - Актуальные курсы НБ РБ (USD, EUR, BYN, RUB, CNY, TRY)
 - Конвертация в любую из поддерживаемых валют
+- Кэш курсов в sessionStorage (12 ч) — НБ РБ обновляет раз в день
 - Статическое приложение (без серверной части)
 - Mobile-first дизайн
-- Деплой через Docker
 
 ## Технологии
 
-- [Nuxt 4](https://nuxt.com/)
+- [Nuxt 4](https://nuxt.com/) + статическая генерация
 - [Bitrix24 UI](https://bitrix24.github.io/b24ui/)
 - [Tailwind CSS v4](https://tailwindcss.com/)
 
-## Разработка
+## Локальная разработка
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-## Сборка
+## Деплой на сервер
 
+### Схема
+
+Push в `main` → GitHub Actions билдит образ → пушит в **GHCR** (`ghcr.io/bx-shef/currency-converter`) → **Watchtower** на сервере автоматически обновляет контейнер (~5 мин).
+
+На сервере **не нужен** `git clone` — только три файла и `.env.prod`.
+
+### Первоначальная настройка сервера
+
+**1. Установить Docker**
 ```bash
-pnpm generate
+curl -fsSL https://get.docker.com | sh
 ```
 
-## Деплой через Docker
+**2. Авторизоваться в GHCR** (GitHub PAT с правом `read:packages`)
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+> Создать токен: GitHub → Settings → Developer settings → Personal access tokens → `read:packages`
+
+**3. Скопировать файлы на сервер**
+```bash
+mkdir /opt/currency-converter && cd /opt/currency-converter
+# Скопировать: docker-compose.prod.yml, docker-compose.nginxproxy.yml
+cp .env.prod.example .env.prod
+nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
+```
+
+**4. Запустить**
+```bash
+make init-network      # создать docker-сеть nginx-proxy
+make init-nginxproxy   # запустить reverse-proxy + Let's Encrypt
+make prod-up           # запустить приложение + Watchtower
+```
+
+### Переменные окружения (`.env.prod`)
+
+| Переменная | Где задаётся | Описание |
+|---|---|---|
+| `DOMAIN` | `.env.prod` на сервере | Домен сайта (DNS → IP сервера) |
+| `LETSENCRYPT_EMAIL` | `.env.prod` на сервере | Email для SSL-сертификата |
+| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | GitHub Secrets | Запекается в образ при сборке CI |
+
+### Ручное обновление (без Watchtower)
+```bash
+cd /opt/currency-converter
+make prod-redeploy
+```
+
+### Команды
 
 ```bash
-docker compose up -d
+make prod-up        # запустить
+make prod-down      # остановить
+make prod-redeploy  # принудительно обновить
+make logs           # логи приложения
 ```
 
 ## Документация
