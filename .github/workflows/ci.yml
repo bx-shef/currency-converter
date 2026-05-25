@@ -23,7 +23,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          # Node 22 LTS — eslint-flat-config-utils uses Object.groupBy (Node 21+)
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
