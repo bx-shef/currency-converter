@@ -1,0 +1,32 @@
+name: Deploy
+
+# Triggers on push to main (after merge)
+on:
+  push:
+    branches: [main]
+
+# Required secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST     — IP или домен сервера (example: 1.2.3.4)
+#   DEPLOY_USER     — SSH-пользователь (example: ubuntu)
+#   DEPLOY_SSH_KEY  — Приватный SSH-ключ (cat ~/.ssh/id_rsa)
+#   DEPLOY_PATH     — Путь к проекту на сервере (example: /var/www/currency-converter)
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull origin main
+            NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }} \
+              docker compose up --build -d
+            docker image prune -f
