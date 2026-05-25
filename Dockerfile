@@ -15,9 +15,10 @@ WORKDIR /app
 COPY . .
 ARG NUXT_PUBLIC_YANDEX_COUNTER_ID
 ENV NUXT_PUBLIC_YANDEX_COUNTER_ID=$NUXT_PUBLIC_YANDEX_COUNTER_ID
-# Generate OG image from SVG (DejaVu supports Cyrillic)
-RUN apk add --no-cache librsvg font-dejavu fontconfig && fc-cache -f && \
-    rsvg-convert scripts/og.svg -o public/og.png
+# Generate OG image from SVG (DejaVu supports Cyrillic).
+# inkscape 1.x replaces rsvg-convert which was removed in librsvg 2.57+
+RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \
+    inkscape -o public/og.png scripts/og.svg
 RUN pnpm generate
 
 FROM nginx:1.27-alpine AS runner
