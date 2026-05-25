@@ -36,7 +36,19 @@ jobs:
         # downstream lint/test/typecheck steps depend on.
 
       - name: Lint
-        run: pnpm lint
+        run: |
+          set +e
+          pnpm lint > /tmp/lint.out 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::group::lint output"
+            cat /tmp/lint.out
+            echo "::endgroup::"
+            while IFS= read -r line; do
+              echo "::error::$line"
+            done < <(head -40 /tmp/lint.out)
+          fi
+          exit $code
 
       - name: Unit tests
         run: pnpm test
