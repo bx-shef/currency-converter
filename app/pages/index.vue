@@ -1,170 +1,47 @@
 <script setup lang="ts">
+import type { B24Frame } from '@bitrix24/b24jssdk'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
-import { convert } from '~/utils/converter'
+import { useCurrencyConverter, STEP } from '~/composables/useCurrencyConverter'
+import { useB24 } from '~/composables/useB24'
 
-interface NbrbRate {
-  Cur_ID: number
-  Date: string
-  Cur_Abbreviation: string
-  Cur_Scale: number
-  Cur_Name: string
-  Cur_OfficialRate: number
-}
+const { t } = useI18n()
+const b24Instance = useB24()
+const isB24 = computed(() => b24Instance.isInit())
 
-/** Currency row shown in the converter UI */
-interface CurrencyRow {
-  code: string
-  name: string
-  /** BYN per 1 unit of this currency; always 1 for BYN itself */
-  bynRate: number
-  /** Current amount entered or calculated for this currency */
-  value: number | undefined
-  removable: boolean
-}
+const {
+  currencies,
+  ratesDate,
+  loading,
+  refreshing,
+  fetchError,
+  activeCurrency,
+  bootstrap,
+  refresh,
+  onValueUpdate,
+  removeCurrency
+} = useCurrencyConverter()
 
-interface CachedRates {
-  date: string
-  rates: Array<{ code: string, bynRate: number }>
-  timestamp: number
-}
-
-const CACHE_KEY = 'nbrb_rates'
-/** НБ РБ updates rates once per business day; cache for 12 hours */
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const STEP = 100
-
-const DEFAULT_CURRENCIES: CurrencyRow[] = [
-  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
-  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false },
-  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: STEP, removable: false },
-  { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined, removable: false },
-  { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined, removable: false },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false }
-]
-
-const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
-const ratesDate = ref('')
-const loading = ref(true)
-const refreshing = ref(false)
-const fetchError = ref('')
-const activeCurrency = ref('BYN')
-
-/** Recalculates all currency values based on `amount` units of `code`. */
-function recalcFrom(code: string, amount: number) {
-  const source = currencies.value.find(c => c.code === code)
-  if (!source) return
-  for (const c of currencies.value) {
-    if (c.code !== code) {
-      c.value = convert(amount, source.bynRate, c.bynRate)
-    }
-  }
-}
-
-function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: string) {
-  for (const { code, bynRate } of rateMap) {
-    const c = currencies.value.find(r => r.code === code)
-    if (c) c.bynRate = bynRate
-  }
-  ratesDate.value = date
-  // Recalc from the active row if it has a typed value; otherwise fall back to BYN=STEP
-  // so newly-loaded rates produce visible numbers instead of leaving fields empty.
-  const active = currencies.value.find(c => c.code === activeCurrency.value)
-  if (active && typeof active.value === 'number' && active.bynRate > 0) {
-    recalcFrom(active.code, active.value)
-  } else {
-    activeCurrency.value = 'BYN'
-    const byn = currencies.value.find(c => c.code === 'BYN')
-    if (byn) byn.value = byn.value ?? STEP
-    recalcFrom('BYN', byn?.value ?? STEP)
-  }
-}
-
-function loadFromCache(): CachedRates | null {
-  if (typeof sessionStorage === 'undefined') return null
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY)
-    if (!raw) return null
-    const cached = JSON.parse(raw) as CachedRates
-    if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
-    return cached
-  } catch {
-    return null
-  }
-}
-
-function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
-  if (typeof sessionStorage === 'undefined') return
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
-  } catch {
-    // sessionStorage may be unavailable (private browsing, quota exceeded)
-  }
-}
-
-async function fetchRates() {
-  fetchError.value = ''
-  try {
-    const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0')
-    const date = data[0]?.Date
-      ? new Date(data[0].Date).toLocaleDateString('ru-RU')
-      : ''
-    const rateMap = data
-      .filter(r => r.Cur_Scale > 0)
-      .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
-    applyRates(rateMap, date)
-    saveToCache(date, rateMap)
-  } catch {
-    fetchError.value = 'Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.'
-  }
-}
-
-async function refresh() {
-  if (loading.value || refreshing.value) return
-  refreshing.value = true
-  if (typeof sessionStorage !== 'undefined') {
-    try {
-      sessionStorage.removeItem(CACHE_KEY)
-    } catch {
-      // sessionStorage may be unavailable
-    }
-  }
-  await fetchRates()
-  refreshing.value = false
-}
-
-onMounted(async () => {
-  fetchError.value = ''
-  const cached = loadFromCache()
-  if (cached) {
-    applyRates(cached.rates, cached.date)
-    loading.value = false
-    return
-  }
-  await fetchRates()
-  loading.value = false
+useSeoMeta({
+  title: t('page.index.seo.title'),
+  description: t('page.index.seo.description'),
+  ogTitle: t('page.index.seo.title'),
+  ogDescription: t('page.index.seo.description'),
+  ogImage: '/og.png',
+  ogType: 'website',
+  twitterCard: 'summary_large_image'
 })
 
-function onValueUpdate(code: string, value: number | null | undefined) {
-  const c = currencies.value.find(r => r.code === code)
-  if (!c) return
-  // reka-ui emits null when the field is cleared (no .optional modifier path);
-  // normalize to undefined so downstream guards stay consistent.
-  const normalized = value == null || (typeof value === 'number' && isNaN(value))
-    ? undefined
-    : value
-  c.value = normalized
-  activeCurrency.value = code
-  if (typeof normalized === 'number') {
-    recalcFrom(code, normalized)
+onMounted(async () => {
+  await bootstrap()
+  if (isB24.value) {
+    try {
+      const $b24 = b24Instance.get() as B24Frame
+      await $b24.parent.setTitle(t('page.index.seo.title'))
+    } catch {
+      // setTitle is best-effort — failure inside the frame is non-fatal
+    }
   }
-}
-
-function removeCurrency(code: string) {
-  currencies.value = currencies.value.filter(c => c.code !== code)
-  if (activeCurrency.value === code) {
-    activeCurrency.value = currencies.value.find(c => !c.removable)?.code ?? ''
-  }
-}
+})
 </script>
 
 <template>
@@ -173,24 +50,32 @@ function removeCurrency(code: string) {
       <div class="mb-2 flex items-start justify-between gap-2">
         <div class="min-w-0">
           <h1 class="text-lg font-bold leading-tight text-gray-900 dark:text-white sm:text-2xl">
-            Конвертер валют
+            {{ t('app.title') }}
           </h1>
           <p class="text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
-            По курсу НБ РБ<span
+            {{ t('app.subtitle') }}<span
               v-if="ratesDate"
               class="text-gray-500 dark:text-gray-400"
-            > · на {{ ratesDate }}</span>
+            > · {{ t('app.ratesOn', { date: ratesDate }) }}</span>
           </p>
         </div>
-        <B24Button
-          aria-label="Обновить курсы"
-          color="air-tertiary-no-accent"
-          size="sm"
-          :icon="RefreshIcon"
-          :loading="refreshing"
-          :disabled="loading"
-          @click="refresh"
-        />
+        <div class="flex items-center gap-2">
+          <B24Badge
+            :label="isB24 ? t('mode.b24') : t('mode.standalone')"
+            :color="isB24 ? 'air-primary-success' : 'air-primary-warning'"
+            variant="soft"
+            size="sm"
+          />
+          <B24Button
+            :aria-label="t('app.refresh')"
+            color="air-tertiary-no-accent"
+            size="sm"
+            :icon="RefreshIcon"
+            :loading="refreshing"
+            :disabled="loading"
+            @click="refresh"
+          />
+        </div>
       </div>
 
       <!-- Loading skeleton -->
@@ -247,7 +132,7 @@ function removeCurrency(code: string) {
           <B24Button
             v-if="currency.removable"
             type="button"
-            :aria-label="`Убрать ${currency.name}`"
+            :aria-label="t('app.remove', { name: currency.name })"
             color="air-tertiary-no-accent"
             size="sm"
             @click="removeCurrency(currency.code)"
