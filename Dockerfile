@@ -15,8 +15,9 @@ WORKDIR /app
 COPY . .
 ARG NUXT_PUBLIC_YANDEX_COUNTER_ID
 ENV NUXT_PUBLIC_YANDEX_COUNTER_ID=$NUXT_PUBLIC_YANDEX_COUNTER_ID
-ARG NUXT_SITE_URL
-ENV NUXT_SITE_URL=$NUXT_SITE_URL
+# Generate OG image from SVG (DejaVu supports Cyrillic)
+RUN apk add --no-cache librsvg font-dejavu fontconfig && fc-cache -f && \
+    rsvg-convert scripts/og.svg -o public/og.png
 RUN pnpm generate
 
 FROM nginx:1.27-alpine AS runner

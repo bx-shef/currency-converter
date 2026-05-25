@@ -62,7 +62,6 @@ make prod-up           # запустить приложение + Watchtower
 | `DOMAIN` | `.env.prod` на сервере | Домен сайта (DNS → IP сервера) |
 | `LETSENCRYPT_EMAIL` | `.env.prod` на сервере | Email для SSL-сертификата |
 | `NUXT_PUBLIC_YANDEX_COUNTER_ID` | GitHub Secrets | ID счётчика Яндекс.Метрики (только цифры) |
-| `NUXT_SITE_URL` | GitHub Secrets | Полный URL сайта (`https://domain.com`) — нужен для og:image |
 
 ### Ручное обновление (без Watchtower)
 ```bash

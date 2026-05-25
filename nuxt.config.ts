@@ -3,12 +3,7 @@ const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   : []
 
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', '@bitrix24/b24ui-nuxt', 'nuxt-og-image'],
-
-  site: {
-    url: process.env.NUXT_SITE_URL || '',
-    name: 'Конвертер валют НБ РБ'
-  },
+  modules: ['@nuxt/eslint', '@bitrix24/b24ui-nuxt'],
 
   devtools: { enabled: false },
 

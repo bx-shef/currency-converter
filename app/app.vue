@@ -7,7 +7,9 @@ const config = useRuntimeConfig()
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-    { name: 'theme-color', content: '#ffffff' }
+    { name: 'theme-color', content: '#ffffff' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' }
   ],
   link: [
     { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
@@ -27,6 +29,7 @@ useSeoMeta({
   description,
   ogTitle: title,
   ogDescription: description,
+  ogImage: '/og.png',
   ogType: 'website',
   twitterCard: 'summary_large_image'
 })

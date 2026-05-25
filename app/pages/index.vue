@@ -1,6 +1,4 @@
 <script setup lang="ts">
-defineOgImage({ component: 'CurrencyConverter', width: 1200, height: 630 })
-
 interface NbrbRate {
   Cur_ID: number
   Date: string
