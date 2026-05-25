@@ -1,13 +1,33 @@
 <script setup lang="ts">
 import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
+import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
+import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
+import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
+import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
+import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
 
 const config = useRuntimeConfig()
+
+const navItems = [
+  [
+    {
+      label: 'Документация',
+      icon: OpenBookIcon,
+      children: [
+        { label: 'b24ui', icon: ThemeIcon, to: 'https://bitrix24.github.io/b24ui/', target: '_blank' },
+        { label: 'b24jssdk', icon: CodeIcon, to: 'https://bitrix24.github.io/b24jssdk/', target: '_blank' },
+        { label: 'b24icons', icon: AppsIcon, to: 'https://bitrix24.github.io/b24icons/', target: '_blank' },
+        { label: 'REST API', icon: DeveloperResourcesIcon, to: 'https://apidocs.bitrix24.ru/', target: '_blank' }
+      ]
+    }
+  ]
+]
 
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-    { name: 'theme-color', content: '#ffffff' },
+    { name: 'theme-color', content: '#030022' },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' }
   ],
@@ -17,7 +37,7 @@ useHead({
   ],
   htmlAttrs: {
     lang: 'ru',
-    class: 'light'
+    class: 'dark'
   }
 })
 
@@ -73,6 +93,8 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
         </NuxtLink>
       </template>
 
+      <B24NavigationMenu :items="navItems" />
+
       <template #right>
         <B24ColorModeButton :content="{ align: 'end', side: 'bottom' }" />
         <B24Button
@@ -82,6 +104,13 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
           color="air-tertiary-no-accent"
           :icon="GitHubIcon"
           size="sm"
+        />
+      </template>
+
+      <template #body>
+        <B24NavigationMenu
+          :items="navItems"
+          orientation="vertical"
         />
       </template>
     </B24Header>
@@ -99,38 +128,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
 
     <B24Footer>
       <template #left>
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <a
-            href="https://github.com/bx-shef/currency-converter"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-500 hover:underline"
-          >GitHub</a>
-          <a
-            href="https://bitrix24.github.io/b24ui/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-500 hover:underline"
-          >B24UI</a>
-          <a
-            href="https://bitrix24.github.io/b24jssdk/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-500 hover:underline"
-          >B24 JS SDK</a>
-          <a
-            href="https://bitrix24.github.io/b24icons/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-500 hover:underline"
-          >B24 Icons</a>
-          <a
-            href="https://apidocs.bitrix24.ru/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-gray-500 hover:underline"
-          >REST API</a>
-        </div>
+        <SiteFooter />
       </template>
     </B24Footer>
   </B24App>
