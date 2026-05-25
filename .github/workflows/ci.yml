@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: ci
@@ -25,6 +28,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
 
       - name: Build (nuxt generate)
         run: pnpm generate

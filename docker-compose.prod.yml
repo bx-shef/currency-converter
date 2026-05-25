@@ -18,10 +18,16 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
   watchtower:
-    image: containrrr/watchtower
+    # Pinned tag: floating `latest` would let a compromised upstream image
+    # self-upgrade via the docker.sock mount and root the host.
+    image: containrrr/watchtower:1.7.1
+    container_name: watchtower
     environment:
       - DOCKER_API_VERSION=1.47
     volumes:
+      # docker.sock is intentionally read-write — Watchtower has to stop/start
+      # containers to update them. Mitigation: image pinned above; only
+      # containers carrying the label below are touched (--label-enable).
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 300 --cleanup --label-enable
     restart: unless-stopped

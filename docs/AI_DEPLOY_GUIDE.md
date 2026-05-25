@@ -27,9 +27,11 @@ push в main
    запекаются в бандл.
 2. **`.dockerignore`** — минимум `node_modules`, `.git`, `.env*`, `.nuxt`, `dist`.
 3. **`.github/workflows/ci.yml`** — на каждый PR: install → build → typecheck.
-4. **`.github/workflows/deploy.yml`** — на `push: main`:
-   `docker/login-action@v3` (GHCR), `docker/build-push-action@v6`,
-   теги `latest` + `sha-<sha>`, cache `type=gha`, `permissions: packages: write`.
+4. **`.github/workflows/deploy.yml`** — на `push: main`. Шаги:
+   `actions/checkout@v5`, `docker/login-action@v3` (GHCR),
+   `docker/setup-buildx-action@v3`, `docker/metadata-action@v5`,
+   `docker/build-push-action@v6`. Теги `latest` + `sha-<sha>` (даёт
+   откат), cache `type=gha`. В job: `permissions: { contents: read, packages: write }`.
 5. **`docker-compose.prod.yml`** — приложение (`image: ghcr.io/...`) + Watchtower,
    сеть как `external: true`, label-enable.
 6. **`docker-compose.nginxproxy.yml`** — `nginxproxy/nginx-proxy` + `acme-companion`.
@@ -57,10 +59,10 @@ push в main
 ```bash
 mkdir -p /home/<user>/<project> && cd $_
 BASE="https://raw.githubusercontent.com/<owner>/<repo>/main"
-for f in docker-compose.prod.yml Makefile .env.prod.example; do
-  curl -fsSLO "$BASE/$f"
-done
-# (nginxproxy.yml — только если ставите proxy впервые)
+files=(docker-compose.prod.yml Makefile .env.prod.example)
+# docker-compose.nginxproxy.yml — добавить, только если nginx-proxy ещё не стоит
+# files+=(docker-compose.nginxproxy.yml)
+for f in "${files[@]}"; do curl -fsSLO "$BASE/$f"; done
 cp .env.prod.example .env.prod && nano .env.prod
 ```
 
@@ -84,13 +86,20 @@ cp .env.prod.example .env.prod && nano .env.prod
    сервиса Compose создаст `<project>_default` — контейнер окажется в двух сетях.
    Явно указывать только сеть proxy.
 
-4. **`container_name` задавать.** Watchtower и удобство `docker logs` его требуют.
+4. **`container_name` задавать для каждого сервиса**, включая `watchtower`,
+   `nginx-proxy`, `acme-companion`. Иначе `docker logs <name>` в чеклисте
+   и Watchtower'у труднее распознать соседей.
 
 5. **Watchtower → `DOCKER_API_VERSION=1.47`.** `containrrr/watchtower:latest`
    по умолчанию говорит на Docker API 1.25, daemon 24+ требует ≥1.44.
    Без переменной Watchtower молча не работает.
 
-6. **Watchtower по умолчанию обновляет ВСЕ контейнеры на хосте.**
+6. **Watchtower image пиновать на конкретный тег**, не `latest`.
+   `latest` + mount `/var/run/docker.sock` = supply-chain attack vector:
+   скомпрометированный upstream-образ обновит сам себя и получит root на хосте.
+   Использовать `containrrr/watchtower:1.7.1` (или актуальный stable).
+
+7. **Watchtower по умолчанию обновляет ВСЕ контейнеры на хосте.**
    Команда: `--interval 300 --cleanup --label-enable`.
    На приложении: `labels: ["com.centurylinklabs.watchtower.enable=true"]`.
 
@@ -114,13 +123,25 @@ cp .env.prod.example .env.prod && nano .env.prod
     OG через библиотеку (Satori), без системного бинаря.
 
 11. **Публичный репозиторий → публичный GHCR-образ → `docker login` на сервере
-    не нужен.** Приватный → нужен PAT с `read:packages`.
+    не нужен.** Приватный → нужен PAT с `read:packages`:
+    - на сервере один раз `echo $PAT | docker login ghcr.io -u <user> --password-stdin`,
+    - либо `WATCHTOWER_REGISTRY_AUTH_FILE=/root/.docker/config.json` env у Watchtower.
 
-12. **`docker compose up` без `--env-file .env.prod`** не подхватит переменные.
-    В Makefile прописывать `--env-file .env.prod` для каждого compose-вызова.
+12. **`docker compose up` / `pull` без `--env-file .env.prod`** не подхватит
+    переменные. В Makefile прописывать `--env-file .env.prod` для `up`/`pull`/
+    `config` вызовов (для `down` не нужен).
 
 13. **DNS должен быть готов ДО первого запуска acme-companion** — иначе
     Let's Encrypt не сможет валидировать и закеширует rate-limit на час.
+
+14. **CI permissions явно**: даже на чисто read-only CI добавлять
+    `permissions: { contents: read }` на уровне workflow или job.
+    Дефолтные permissions репозитория могут быть шире — supply-chain hardening.
+
+15. **HSTS и security-заголовки** ставить в nginx внутри образа, а не только
+    на nginx-proxy — на случай мисконфигурации внешнего слоя.
+    Минимум: `Strict-Transport-Security`, `X-Content-Type-Options`,
+    `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP`.
 
 ---
 

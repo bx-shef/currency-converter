@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
+import { convert } from '~/utils/converter'
 
 interface NbrbRate {
   Cur_ID: number
@@ -23,7 +24,7 @@ interface CurrencyRow {
 
 interface CachedRates {
   date: string
-  rates: Array<{ code: string; bynRate: number }>
+  rates: Array<{ code: string, bynRate: number }>
   timestamp: number
 }
 
@@ -48,32 +49,34 @@ const refreshing = ref(false)
 const fetchError = ref('')
 const activeCurrency = ref('BYN')
 
-/** Rounds to 4 decimal places and removes floating-point noise. */
-function roundValue(num: number): number | undefined {
-  if (!isFinite(num) || isNaN(num)) return undefined
-  return Math.round(num * 10000) / 10000
-}
-
-/** Recalculates all currency values based on `amount` units of `code`, using BYN as intermediary. */
+/** Recalculates all currency values based on `amount` units of `code`. */
 function recalcFrom(code: string, amount: number) {
   const source = currencies.value.find(c => c.code === code)
-  if (!source || source.bynRate === 0) return
-  const bynAmount = amount * source.bynRate
+  if (!source) return
   for (const c of currencies.value) {
-    if (c.code !== code && c.bynRate > 0) {
-      c.value = roundValue(bynAmount / c.bynRate)
+    if (c.code !== code) {
+      c.value = convert(amount, source.bynRate, c.bynRate)
     }
   }
 }
 
-function applyRates(rateMap: Array<{ code: string; bynRate: number }>, date: string) {
+function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: string) {
   for (const { code, bynRate } of rateMap) {
     const c = currencies.value.find(r => r.code === code)
     if (c) c.bynRate = bynRate
   }
   ratesDate.value = date
+  // Recalc from the active row if it has a typed value; otherwise fall back to BYN=STEP
+  // so newly-loaded rates produce visible numbers instead of leaving fields empty.
   const active = currencies.value.find(c => c.code === activeCurrency.value)
-  recalcFrom(active?.code ?? 'BYN', active?.value ?? STEP)
+  if (active && typeof active.value === 'number' && active.bynRate > 0) {
+    recalcFrom(active.code, active.value)
+  } else {
+    activeCurrency.value = 'BYN'
+    const byn = currencies.value.find(c => c.code === 'BYN')
+    if (byn) byn.value = byn.value ?? STEP
+    recalcFrom('BYN', byn?.value ?? STEP)
+  }
 }
 
 function loadFromCache(): CachedRates | null {
@@ -89,7 +92,7 @@ function loadFromCache(): CachedRates | null {
   }
 }
 
-function saveToCache(date: string, rates: Array<{ code: string; bynRate: number }>) {
+function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
   if (typeof sessionStorage === 'undefined') return
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
@@ -116,7 +119,7 @@ async function fetchRates() {
 }
 
 async function refresh() {
-  if (refreshing.value) return
+  if (loading.value || refreshing.value) return
   refreshing.value = true
   if (typeof sessionStorage !== 'undefined') {
     try {
@@ -130,6 +133,7 @@ async function refresh() {
 }
 
 onMounted(async () => {
+  fetchError.value = ''
   const cached = loadFromCache()
   if (cached) {
     applyRates(cached.rates, cached.date)
@@ -140,13 +144,18 @@ onMounted(async () => {
   loading.value = false
 })
 
-function onValueUpdate(code: string, value: number | undefined) {
+function onValueUpdate(code: string, value: number | null | undefined) {
   const c = currencies.value.find(r => r.code === code)
   if (!c) return
-  c.value = value
+  // reka-ui emits null when the field is cleared (no .optional modifier path);
+  // normalize to undefined so downstream guards stay consistent.
+  const normalized = value == null || (typeof value === 'number' && isNaN(value))
+    ? undefined
+    : value
+  c.value = normalized
   activeCurrency.value = code
-  if (typeof value === 'number' && !isNaN(value)) {
-    recalcFrom(code, value)
+  if (typeof normalized === 'number') {
+    recalcFrom(code, normalized)
   }
 }
 
@@ -224,12 +233,14 @@ function removeCurrency(code: string) {
           </div>
           <B24InputNumber
             :model-value="currency.value"
+            :model-modifiers="{ optional: true }"
             :step="STEP"
             :min="0"
+            :max="1e12"
             :highlight="currency.code === activeCurrency"
             size="sm"
             class="min-w-0 flex-1"
-            :ui="{ base: 'text-right' }"
+            :b24ui="{ base: 'text-right' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
           />
