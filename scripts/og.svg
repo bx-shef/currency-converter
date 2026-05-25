@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#3a65ff"/>
+      <stop offset="100%" stop-color="#1a3fc4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="80" cy="80" r="220" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1120" cy="550" r="200" fill="rgba(255,255,255,0.05)"/>
+
+  <!-- Main title -->
+  <text x="600" y="248"
+    text-anchor="middle"
+    font-family="DejaVu Sans, sans-serif"
+    font-size="84"
+    font-weight="bold"
+    fill="white">&#x41A;&#x43E;&#x43D;&#x432;&#x435;&#x440;&#x442;&#x435;&#x440; &#x432;&#x430;&#x43B;&#x44E;&#x442;</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="334"
+    text-anchor="middle"
+    font-family="DejaVu Sans, sans-serif"
+    font-size="40"
+    fill="rgba(255,255,255,0.78)">&#x41D;&#x430;&#x446;&#x438;&#x43E;&#x43D;&#x430;&#x43B;&#x44C;&#x43D;&#x44B;&#x439; &#x411;&#x430;&#x43D;&#x43A; &#x420;&#x435;&#x441;&#x43F;&#x443;&#x431;&#x43B;&#x438;&#x43A;&#x438; &#x411;&#x435;&#x43B;&#x430;&#x440;&#x443;&#x441;&#x44C;</text>
+
+  <!-- Separator -->
+  <line x1="340" y1="382" x2="860" y2="382" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>
+
+  <!-- Currency badges: 6 × 150px + 5 × 18px gap = 990px; start x = 105 -->
+  <rect x="105" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.20)"/>
+  <text x="180" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">USD</text>
+
+  <rect x="273" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.20)"/>
+  <text x="348" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">EUR</text>
+
+  <rect x="441" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.28)"/>
+  <text x="516" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">BYN</text>
+
+  <rect x="609" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.20)"/>
+  <text x="684" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">RUB</text>
+
+  <rect x="777" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.20)"/>
+  <text x="852" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">CNY</text>
+
+  <rect x="945" y="415" width="150" height="66" rx="12" fill="rgba(255,255,255,0.20)"/>
+  <text x="1020" y="460" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="34" font-weight="bold" fill="white">TRY</text>
+</svg>

@@ -12,7 +12,7 @@ useHead({
     { property: 'og:image:height', content: '630' }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' },
+    { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
