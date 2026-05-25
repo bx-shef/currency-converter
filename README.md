@@ -38,21 +38,17 @@ Push в `main` → GitHub Actions билдит образ → пушит в **GH
 curl -fsSL https://get.docker.com | sh
 ```
 
-**2. Авторизоваться в GHCR** (GitHub PAT с правом `read:packages`)
-```bash
-echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-```
-> Создать токен: GitHub → Settings → Developer settings → Personal access tokens → `read:packages`
+> Docker-образ публичный (репозиторий публичный) — `docker login ghcr.io` **не нужен**.
 
-**3. Скопировать файлы на сервер**
+**2. Скопировать файлы на сервер**
 ```bash
 mkdir /opt/currency-converter && cd /opt/currency-converter
-# Скопировать: docker-compose.prod.yml, docker-compose.nginxproxy.yml
+# Скопировать: docker-compose.prod.yml, docker-compose.nginxproxy.yml, Makefile
 cp .env.prod.example .env.prod
 nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
 ```
 
-**4. Запустить**
+**3. Запустить**
 ```bash
 make init-network      # создать docker-сеть nginx-proxy
 make init-nginxproxy   # запустить reverse-proxy + Let's Encrypt
