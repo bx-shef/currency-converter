@@ -23,3 +23,13 @@ export function convert(amount: number, fromBynRate: number, toBynRate: number):
   if (!isFinite(amount)) return undefined
   return roundValue((amount * fromBynRate) / toBynRate)
 }
+
+/**
+ * Adaptive step for the +/- buttons:
+ *   < 200 → 10 (works for both fine-grained changes around the typical 100 BYN range)
+ *   >= 200 → 100 (coarser jumps for larger sums)
+ */
+export function stepFor(value: number | undefined): number {
+  if (typeof value !== 'number' || !isFinite(value)) return 10
+  return Math.abs(value) >= 200 ? 100 : 10
+}
