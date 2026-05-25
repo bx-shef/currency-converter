@@ -7,6 +7,7 @@
 - Актуальные курсы НБ РБ (USD, EUR, BYN, RUB, CNY, TRY)
 - Конвертация в любую из поддерживаемых валют
 - Кэш курсов в sessionStorage (12 ч) — НБ РБ обновляет раз в день
+- Тёмная/светлая тема (dark по умолчанию)
 - Статическое приложение (без серверной части)
 - Mobile-first дизайн
 
@@ -40,41 +41,56 @@ curl -fsSL https://get.docker.com | sh
 
 > Docker-образ публичный (репозиторий публичный) — `docker login ghcr.io` **не нужен**.
 
-**2. Скопировать файлы на сервер**
+**2. Скачать файлы на сервер**
 ```bash
 mkdir -p /home/bitrix/currency-converter && cd /home/bitrix/currency-converter
-# Скопировать: docker-compose.prod.yml, docker-compose.nginxproxy.yml, Makefile
-cp .env.prod.example .env.prod
+
+curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
+curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.nginxproxy.yml
+curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/Makefile
+curl -o .env.prod https://raw.githubusercontent.com/bx-shef/currency-converter/main/.env.prod.example
+
 nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
 ```
 
-**3. Запустить**
+**3. Создать сеть и запустить**
 ```bash
-make init-network      # создать docker-сеть nginx-proxy
-make init-nginxproxy   # запустить reverse-proxy + Let's Encrypt
-make prod-up           # запустить приложение + Watchtower
+docker network create proxy-net 2>/dev/null || true
+make init-nginxproxy   # nginx-proxy + Let's Encrypt
+make prod-up           # приложение + Watchtower
 ```
 
-### Переменные окружения (`.env.prod`)
+### Обновление конфига на сервере
 
-| Переменная | Где задаётся | Описание |
-|---|---|---|
-| `DOMAIN` | `.env.prod` на сервере | Домен сайта (DNS → IP сервера) |
-| `LETSENCRYPT_EMAIL` | `.env.prod` на сервере | Email для SSL-сертификата |
-| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | GitHub Secrets | ID счётчика Яндекс.Метрики (только цифры) |
+Если `docker-compose.prod.yml` изменился в репозитории, обнови файл через curl:
 
-### Ручное обновление (без Watchtower)
 ```bash
 cd /home/bitrix/currency-converter
-make prod-redeploy
+curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
+make prod-up
 ```
+
+### Переменные окружения
+
+#### `.env.prod` на сервере
+
+| Переменная | Описание |
+|---|---|
+| `DOMAIN` | Домен сайта (DNS → IP сервера) |
+| `LETSENCRYPT_EMAIL` | Email для SSL-сертификата |
+
+#### GitHub Secrets (Settings → Secrets and variables → Actions)
+
+| Secret | Описание |
+|---|---|
+| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (необязательно) |
 
 ### Команды
 
 ```bash
-make prod-up        # запустить
+make prod-up        # запустить / перезапустить
 make prod-down      # остановить
-make prod-redeploy  # принудительно обновить
+make prod-redeploy  # принудительно обновить без ожидания Watchtower
 make logs           # логи приложения
 ```
 
