@@ -47,5 +47,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }}
+            NUXT_SITE_URL=${{ secrets.NUXT_SITE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

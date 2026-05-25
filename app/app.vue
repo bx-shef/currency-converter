@@ -7,12 +7,10 @@ const config = useRuntimeConfig()
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-    { name: 'theme-color', content: '#ffffff' },
-    { property: 'og:image:width', content: '1200' },
-    { property: 'og:image:height', content: '630' }
+    { name: 'theme-color', content: '#ffffff' }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' },
+    { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
@@ -29,7 +27,6 @@ useSeoMeta({
   description,
   ogTitle: title,
   ogDescription: description,
-  ogImage: '/og.png',
   ogType: 'website',
   twitterCard: 'summary_large_image'
 })
