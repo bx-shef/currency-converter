@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        NUXT_PUBLIC_YANDEX_COUNTER_ID: ${NUXT_PUBLIC_YANDEX_COUNTER_ID:-}
+    ports:
+      - "80:80"
+    restart: unless-stopped
