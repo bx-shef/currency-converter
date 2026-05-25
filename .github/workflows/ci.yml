@@ -29,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Prepare Nuxt
+        run: pnpm exec nuxi prepare
+        # Generates .nuxt/eslint.config.mjs and .nuxt/tsconfig.json that
+        # downstream lint/test/typecheck steps depend on.
+
       - name: Lint
         run: pnpm lint
 
@@ -40,4 +45,3 @@ jobs:
 
       - name: Type check
         run: pnpm typecheck
-        # Requires .nuxt/tsconfig.json generated in previous step
