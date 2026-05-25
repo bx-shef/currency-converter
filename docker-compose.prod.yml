@@ -1,0 +1,20 @@
+# Production compose — разместить на сервере в /opt/currency-converter/
+# Авто-обновление через Watchtower: pull раз в 5 минут
+
+services:
+  app:
+    image: ghcr.io/bx-shef/currency-converter:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # GHCR auth: run 'docker login ghcr.io' on server first
+      - /root/.docker/config.json:/config.json:ro
+    command: --interval 300 --cleanup --label-enable
+    restart: unless-stopped

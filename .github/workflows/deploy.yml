@@ -1,32 +1,51 @@
 name: Deploy
 
-# Triggers on push to main (after merge)
+# Push in main → build Docker image → push to GHCR
+# Watchtower on server picks up new image automatically (~5 min)
 on:
   push:
     branches: [main]
 
-# Required secrets (Settings → Secrets and variables → Actions):
-#   DEPLOY_HOST     — IP или домен сервера (example: 1.2.3.4)
-#   DEPLOY_USER     — SSH-пользователь (example: ubuntu)
-#   DEPLOY_SSH_KEY  — Приватный SSH-ключ (cat ~/.ssh/id_rsa)
-#   DEPLOY_PATH     — Путь к проекту на сервере (example: /var/www/currency-converter)
-
 jobs:
   deploy:
-    name: Deploy via SSH
+    name: Build & Push to GHCR
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    permissions:
+      contents: read
+      packages: write  # required to push to ghcr.io
+
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull origin main
-            NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }} \
-              docker compose up --build -d
-            docker image prune -f
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # built-in, no extra secret needed
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
