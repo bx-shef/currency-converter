@@ -35,7 +35,7 @@ const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: '1', removable: false },
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: '', removable: false },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: '', removable: false },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: '', removable: true }
+  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: '', removable: false }
 ]
 
 const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
