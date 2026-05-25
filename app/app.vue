@@ -6,10 +6,14 @@ const config = useRuntimeConfig()
 
 useHead({
   meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' }
+    { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+    { name: 'theme-color', content: '#ffffff' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' }
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' }
+    { rel: 'icon', href: '/favicon.ico' },
+    { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
     lang: 'ru',
@@ -30,7 +34,9 @@ useSeoMeta({
   twitterCard: 'summary_large_image'
 })
 
-const yandexCounterId = config.public.yandexCounterId as string
+const rawCounterId = config.public.yandexCounterId as string
+// Accept only numeric IDs to prevent XSS through inline script interpolation
+const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
 
 if (yandexCounterId) {
   useHead({
@@ -81,6 +87,11 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
     </B24Header>
 
     <B24Main>
+      <noscript>
+        <p class="p-4 text-center text-sm text-gray-500">
+          Для работы конвертера необходимо включить JavaScript.
+        </p>
+      </noscript>
       <NuxtPage />
     </B24Main>
 
@@ -92,31 +103,31 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
           <a
             href="https://github.com/bx-shef/currency-converter"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="text-xs text-gray-500 hover:underline"
           >GitHub</a>
           <a
             href="https://bitrix24.github.io/b24ui/"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="text-xs text-gray-500 hover:underline"
           >B24UI</a>
           <a
             href="https://bitrix24.github.io/b24jssdk/"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="text-xs text-gray-500 hover:underline"
           >B24 JS SDK</a>
           <a
             href="https://bitrix24.github.io/b24icons/"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="text-xs text-gray-500 hover:underline"
           >B24 Icons</a>
           <a
             href="https://apidocs.bitrix24.ru/"
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="text-xs text-gray-500 hover:underline"
           >REST API</a>
         </div>

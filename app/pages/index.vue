@@ -8,13 +8,26 @@ interface NbrbRate {
   Cur_OfficialRate: number
 }
 
+/** Currency row shown in the converter UI */
 interface CurrencyRow {
   code: string
   name: string
+  /** BYN per 1 unit of this currency; always 1 for BYN itself */
   bynRate: number
+  /** Raw user input string, kept as-is to preserve typing experience */
   value: string
   removable: boolean
 }
+
+interface CachedRates {
+  date: string
+  rates: Array<{ code: string; bynRate: number }>
+  timestamp: number
+}
+
+const CACHE_KEY = 'nbrb_rates'
+/** НБ РБ updates rates once per business day; cache for 12 hours */
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'USD', name: 'доллар США', bynRate: 0, value: '', removable: false },
@@ -31,11 +44,14 @@ const loading = ref(true)
 const fetchError = ref('')
 const activeCurrency = ref('BYN')
 
+/** Formats a number to up to 4 decimal places, trimming trailing zeros. Returns '0' for zero. */
 function formatValue(num: number): string {
   if (!isFinite(num) || isNaN(num)) return ''
+  if (num === 0) return '0'
   return num.toFixed(4).replace(/\.?0+$/, '')
 }
 
+/** Recalculates all currency values based on `amount` units of `code`, using BYN as intermediary. */
 function recalcFrom(code: string, amount: number) {
   const source = currencies.value.find(c => c.code === code)
   if (!source || source.bynRate === 0) return
@@ -47,19 +63,55 @@ function recalcFrom(code: string, amount: number) {
   }
 }
 
+function applyRates(rateMap: Array<{ code: string; bynRate: number }>, date: string) {
+  for (const { code, bynRate } of rateMap) {
+    const c = currencies.value.find(r => r.code === code)
+    if (c) c.bynRate = bynRate
+  }
+  ratesDate.value = date
+  recalcFrom('BYN', 1)
+}
+
+function loadFromCache(): CachedRates | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const cached = JSON.parse(raw) as CachedRates
+    if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
+    return cached
+  } catch {
+    return null
+  }
+}
+
+function saveToCache(date: string, rates: Array<{ code: string; bynRate: number }>) {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
+  } catch {
+    // sessionStorage may be unavailable (private browsing, quota exceeded)
+  }
+}
+
 onMounted(async () => {
+  const cached = loadFromCache()
+  if (cached) {
+    applyRates(cached.rates, cached.date)
+    loading.value = false
+    return
+  }
+
   try {
     const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0')
-    for (const rate of data) {
-      const c = currencies.value.find(r => r.code === rate.Cur_Abbreviation)
-      if (c) {
-        c.bynRate = rate.Cur_OfficialRate / rate.Cur_Scale
-        if (!ratesDate.value) {
-          ratesDate.value = new Date(rate.Date).toLocaleDateString('ru-RU')
-        }
-      }
-    }
-    recalcFrom('BYN', 1)
+    const date = data[0]?.Date
+      ? new Date(data[0].Date).toLocaleDateString('ru-RU')
+      : ''
+    const rateMap = data
+      .filter(r => r.Cur_Scale > 0)
+      .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
+    applyRates(rateMap, date)
+    saveToCache(date, rateMap)
   } catch {
     fetchError.value = 'Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.'
   } finally {
@@ -69,17 +121,29 @@ onMounted(async () => {
 
 function onInput(code: string, event: Event) {
   const input = event.target as HTMLInputElement
-  const raw = input.value.replace(',', '.')
-  const num = parseFloat(raw)
+  const raw = input.value
+
+  if (raw.startsWith('-')) {
+    input.value = ''
+    const c = currencies.value.find(r => r.code === code)
+    if (c) c.value = ''
+    return
+  }
+
+  const normalized = raw.replace(',', '.')
+  const num = parseFloat(normalized)
   activeCurrency.value = code
   const c = currencies.value.find(r => r.code === code)
-  if (c) c.value = input.value
-  if (!raw || isNaN(num) || num < 0) return
+  if (c) c.value = raw
+  if (!normalized || isNaN(num)) return
   recalcFrom(code, num)
 }
 
 function removeCurrency(code: string) {
   currencies.value = currencies.value.filter(c => c.code !== code)
+  if (activeCurrency.value === code) {
+    activeCurrency.value = currencies.value.find(c => !c.removable)?.code ?? ''
+  }
 }
 </script>
 
@@ -157,6 +221,7 @@ function removeCurrency(code: string) {
             <button
               v-if="currency.removable"
               type="button"
+              :aria-label="`Убрать ${currency.name}`"
               class="shrink-0 px-1 text-xl leading-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               @click="removeCurrency(currency.code)"
             >

@@ -6,7 +6,9 @@ RUN corepack enable
 FROM base AS deps
 WORKDIR /app
 COPY package.json ./
-RUN pnpm install
+# Copy lock file when available for reproducible installs
+COPY pnpm-lock.yaml* ./
+RUN pnpm install --ignore-scripts
 
 FROM deps AS builder
 WORKDIR /app
@@ -15,7 +17,7 @@ ARG NUXT_PUBLIC_YANDEX_COUNTER_ID
 ENV NUXT_PUBLIC_YANDEX_COUNTER_ID=$NUXT_PUBLIC_YANDEX_COUNTER_ID
 RUN pnpm generate
 
-FROM nginx:alpine AS runner
+FROM nginx:1.27-alpine AS runner
 COPY --from=builder /app/.output/public /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
