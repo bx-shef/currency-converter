@@ -288,16 +288,6 @@ onBeforeUnmount(() => {
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
           />
-          <B24Button
-            v-if="currency.removable"
-            type="button"
-            :aria-label="`Убрать ${currency.name}`"
-            color="air-tertiary-no-accent"
-            size="sm"
-            @click.stop="onRowClick(currency.code)"
-          >
-            &times;
-          </B24Button>
         </div>
 
         <!-- Sum in words + copy -->
