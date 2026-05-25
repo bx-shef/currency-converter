@@ -118,7 +118,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
     <B24Main>
       <noscript>
         <p class="p-4 text-center text-sm text-gray-500">
-          Для работы конвертера необходимо включить JavaScript.
+        Для работы конвертера необходимо включить JavaScript.
         </p>
       </noscript>
       <NuxtPage />

@@ -1,10 +1,16 @@
 # Reverse-proxy с автоматическим TLS (Let's Encrypt)
 # Запустить один раз: make init-nginxproxy
-# Обслуживает все сайты на этом сервере
+# Обслуживает все сайты на этом сервере.
+#
+# ВАЖНО: docker.sock у acme-companion смонтирован read-write (acme-companion
+# делает `docker exec` на nginx-proxy чтобы перечитать конфиг). Это известный
+# архитектурный риск upstream-проекта; mitigation — пин image-тегов и сетевая
+# изоляция. nginx-proxy сам читает сокет read-only.
 
 services:
   nginx-proxy:
     image: nginxproxy/nginx-proxy:alpine
+    container_name: nginx-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -15,14 +21,15 @@ services:
       - nginx-html:/usr/share/nginx/html
     restart: unless-stopped
     networks:
-      - proxy
+      - proxy-net
 
   acme-companion:
     image: nginxproxy/acme-companion
+    container_name: acme-companion
     volumes_from:
       - nginx-proxy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
       - nginx-acme:/etc/acme.sh
     environment:
       DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
@@ -30,7 +37,7 @@ services:
       - nginx-proxy
     restart: unless-stopped
     networks:
-      - proxy
+      - proxy-net
 
 volumes:
   nginx-certs:
@@ -39,6 +46,5 @@ volumes:
   nginx-acme:
 
 networks:
-  proxy:
+  proxy-net:
     external: true
-    name: nginx-proxy

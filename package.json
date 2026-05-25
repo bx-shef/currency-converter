@@ -8,19 +8,22 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "lint": "eslint .",
+    "test": "vitest run",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "nuxt": "^4.4.2",
-    "@bitrix24/b24ui-nuxt": "^2.6.0",
     "@bitrix24/b24icons-vue": "^2.0.7",
+    "@bitrix24/b24ui-nuxt": "^2.6.0",
+    "nuxt": "^4.4.2",
     "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
+    "@types/node": "^25.6.0",
+    "eslint": "^10.4.0",
     "typescript": "^6.0.3",
-    "vue-tsc": "^3.2.7",
-    "@types/node": "^25.6.0"
+    "vitest": "^4.1.7",
+    "vue-tsc": "^3.2.7"
   },
   "packageManager": "pnpm@10.33.0"
 }

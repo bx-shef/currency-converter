@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: ci
@@ -13,22 +16,33 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         # Version is read from "packageManager" field in package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          # Node 22 LTS — eslint-flat-config-utils uses Object.groupBy (Node 21+)
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Prepare Nuxt
+        run: pnpm exec nuxi prepare
+        # Generates .nuxt/eslint.config.mjs and .nuxt/tsconfig.json that
+        # downstream lint/test/typecheck steps depend on.
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
 
       - name: Build (nuxt generate)
         run: pnpm generate
 
       - name: Type check
         run: pnpm typecheck
-        # Requires .nuxt/tsconfig.json generated in previous step
