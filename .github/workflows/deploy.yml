@@ -47,5 +47,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }}
+            NUXT_PUBLIC_SITE_URL=${{ vars.NUXT_PUBLIC_SITE_URL }}
+            NUXT_PUBLIC_AUTHOR_NAME=${{ vars.NUXT_PUBLIC_AUTHOR_NAME }}
+            NUXT_PUBLIC_AUTHOR_URL=${{ vars.NUXT_PUBLIC_AUTHOR_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

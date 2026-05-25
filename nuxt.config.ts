@@ -29,8 +29,10 @@ export default defineNuxtConfig({
     }
   },
 
-  // `/` is dynamic now (i18n + B24 detection), so the previous prerender hint
-  // is removed — Nitro renders it at request time.
+  // The previous `routeRules: { '/': { prerender: true } }` is removed: `nuxt
+  // generate` (the deploy mode) prerenders every crawlable route by default, so
+  // the hint is redundant. Client-side B24 detection + i18n still happen at
+  // hydration time on top of the prerendered HTML.
 
   compatibilityDate: '2025-01-15',
 

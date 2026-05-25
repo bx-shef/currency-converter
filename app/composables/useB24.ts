@@ -69,10 +69,6 @@ export const useB24 = () => {
     return new Result()
   }
 
-  function isFrame() {
-    return get() instanceof B24Frame
-  }
-
   function isInit() {
     return type.value !== 'undefined'
   }
@@ -93,7 +89,6 @@ export const useB24 = () => {
     init,
     get,
     set,
-    isFrame,
     isInit,
     targetOrigin,
     getRequiredRights

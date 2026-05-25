@@ -141,6 +141,16 @@ async function makePlacement(): Promise<void> {
   if (!isUseB24.value) return
   const $b24 = b24Instance.get() as B24Frame
 
+  // In prod, `appUrl` comes from `NUXT_PUBLIC_SITE_URL`. If the deploy didn't
+  // pass that build-arg the HANDLER becomes relative, and B24 will store a
+  // broken placement that fails to load in the chat. Refuse to bind in that
+  // case — better to surface the misconfig than ship a dead button.
+  if (!appUrl || !/^https?:\/\//i.test(handlerUrl.value)) {
+    const msg = `Refusing placement.bind: handler URL is not absolute (${handlerUrl.value || 'empty'}). Set NUXT_PUBLIC_SITE_URL at build time.`
+    console.error('[install]', msg)
+    throw new Error(msg)
+  }
+
   const placementList = initData.value.placementList ?? []
   // Remove every existing IM_TEXTAREA binding from this app (any handler) — old
   // bindings may point at a previous deploy domain. Clear all of ours before
@@ -182,7 +192,7 @@ async function makePlacement(): Promise<void> {
 
   // Refresh placement list so the diagnostic panel reflects the new state.
   const after = await $b24.callMethod('placement.get', {})
-  initData.value.placementList = after.getData() as never
+  initData.value.placementList = after.getData() as InitData['placementList']
 }
 
 async function makeFinish(): Promise<void> {

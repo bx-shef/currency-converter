@@ -31,17 +31,32 @@ useHead({ title: t('page.widget.seo.title') })
 
 const isBusy = ref(false)
 
+// Strip anything that isn't an http(s) URL — these come from env vars an operator
+// controls, but we render them as `:href` and don't want a `javascript:...` value
+// to slip through if the deploy config is ever misconfigured/tampered with.
+function safeHttpUrl(raw: string, fallback: string): string {
+  if (!raw) return fallback
+  return /^https?:\/\//i.test(raw) ? raw : fallback
+}
+
 const authorName = (config.public.authorName as string) || 'bx-shef'
-const authorUrl = (config.public.authorUrl as string) || 'https://bx-shef.by'
-const siteUrl = (config.public.siteUrl as string) || 'https://github.com/bx-shef/currency-converter'
+const authorUrl = safeHttpUrl(config.public.authorUrl as string, 'https://bx-shef.by')
+const siteUrl = safeHttpUrl(config.public.siteUrl as string, 'https://github.com/bx-shef/currency-converter')
 
 onMounted(async () => {
   await b24Instance.init()
   await bootstrap()
 })
 
-/** Builds "100 USD = 287.50 BYN" lines for every currency with a value, anchored
- *  on the currently active row. Kept compact so a chat insert reads cleanly. */
+// Converter rounds to 4 decimals, which leaks float noise into chat lines like
+// "287.4999" — format to 2 decimals for the message body since this is a chat
+// insert (final destination), not the in-form value the user is still editing.
+function formatAmount(n: number): string {
+  return n.toFixed(2)
+}
+
+/** Builds "100.00 USD = 287.50 BYN" lines for every currency with a value,
+ *  anchored on the currently active row. Kept compact for a chat insert. */
 function buildMessage(): string {
   const active = currencies.value.find(c => c.code === activeCurrency.value)
   if (!active || typeof active.value !== 'number') return ''
@@ -50,7 +65,7 @@ function buildMessage(): string {
   for (const c of currencies.value) {
     if (c.code === active.code) continue
     if (typeof c.value !== 'number') continue
-    lines.push(`${active.value} ${active.code} = ${c.value} ${c.code}`)
+    lines.push(`${formatAmount(active.value)} ${active.code} = ${formatAmount(c.value)} ${c.code}`)
   }
   if (lines.length === 0) return ''
   const header = ratesDate.value ? `${t('app.subtitle')} · ${t('app.ratesOn', { date: ratesDate.value })}` : t('app.subtitle')
