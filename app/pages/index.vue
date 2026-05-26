@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
             :highlight="currency.code === activeCurrency"
             :format-options="currencyFormatOptions[currency.code]"
             size="xl"
-            class="w-[268px] shrink-0"
+            class="min-w-0 flex-1"
             :b24ui="{ base: 'text-right text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
