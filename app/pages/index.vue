@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { B24Frame } from '@bitrix24/b24jssdk'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import { convert, stepFor } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
+import { useB24 } from '~/composables/useB24'
 
 interface NbrbRate {
   Cur_ID: number
@@ -49,6 +51,10 @@ const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
   { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false }
 ]
+
+const { t } = useI18n()
+const b24Instance = useB24()
+const isB24 = computed(() => b24Instance.isInit())
 
 const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
 const ratesDate = ref('')
@@ -190,10 +196,19 @@ onMounted(async () => {
   if (cached) {
     applyRates(cached.rates, cached.date)
     loading.value = false
-    return
+  } else {
+    await fetchRates()
+    loading.value = false
   }
-  await fetchRates()
-  loading.value = false
+
+  if (isB24.value) {
+    try {
+      const $b24 = b24Instance.get() as B24Frame
+      await $b24.parent.setTitle(t('page.index.seo.title'))
+    } catch {
+      // setTitle is best-effort — failure inside the frame is non-fatal
+    }
+  }
 })
 
 function onValueUpdate(code: string, value: number | null | undefined) {
@@ -283,13 +298,20 @@ onBeforeUnmount(() => {
           v-if="ratesDate"
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
+        <B24Badge
+          :label="isB24 ? t('mode.b24') : t('mode.standalone')"
+          :color="isB24 ? 'air-primary-success' : 'air-primary-warning'"
+          variant="soft"
+          size="sm"
+          class="ml-auto"
+        />
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
           :disabled="loading"
-          :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
+          :class="[refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
