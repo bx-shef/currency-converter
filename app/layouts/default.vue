@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ru } from '@bitrix24/b24ui-nuxt/locale'
 import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
@@ -24,7 +25,7 @@ const navItems = [
 </script>
 
 <template>
-  <B24App>
+  <B24App :locale="ru">
     <B24Header>
       <template #left>
         <NuxtLink
@@ -38,7 +39,6 @@ const navItems = [
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
-        <B24ColorModeButton :content="{ align: 'end', side: 'bottom' }" />
         <B24Button
           to="https://github.com/bx-shef/currency-converter"
           target="_blank"

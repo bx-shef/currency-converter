@@ -18,6 +18,19 @@ useHead({
   }
 })
 
+const title = 'Конвертер валют НБ РБ'
+const description = 'Официальный курс Национального банка Республики Беларусь. Конвертируйте USD, EUR, RUB, CNY, TRY и другие валюты.'
+
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+  ogImage: '/og.png',
+  ogType: 'website',
+  twitterCard: 'summary_large_image'
+})
+
 const rawCounterId = config.public.yandexCounterId as string
 // Accept only numeric IDs to prevent XSS through inline script interpolation
 const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
