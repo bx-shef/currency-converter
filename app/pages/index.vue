@@ -57,34 +57,50 @@ const refreshing = ref(false)
 const fetchError = ref('')
 const activeCurrency = ref('BYN')
 const copyState = ref<'idle' | 'ok' | 'err'>('idle')
+const copyStateRub = ref<'idle' | 'ok' | 'err'>('idle')
 
-const numberFormatOptions: Intl.NumberFormatOptions = {
+const bynFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   useGrouping: true
-}
+})
 
-const bynFormatter = new Intl.NumberFormat('ru-RU', numberFormatOptions)
+/** Per-currency Intl.NumberFormatOptions — cached to avoid new objects on every render. */
+const currencyFormatOptions = computed<Record<string, Intl.NumberFormatOptions>>(() =>
+  Object.fromEntries(
+    currencies.value
+      .filter(c => /^[A-Z]{3}$/.test(c.code))
+      .map(c => [c.code, {
+        style: 'currency' as const,
+        currency: c.code,
+        currencyDisplay: 'code' as const,
+        currencySign: 'accounting' as const
+      }])
+  )
+)
 
-/** Returns BYN amount equivalent to the currently active row's value. */
 const activeBynAmount = computed(() => {
-  const active = currencies.value.find(c => c.code === activeCurrency.value)
-  if (!active || typeof active.value !== 'number' || active.bynRate <= 0) return 0
-  return active.value * active.bynRate
+  const byn = currencies.value.find(c => c.code === 'BYN')
+  if (!byn || typeof byn.value !== 'number') return 0
+  return byn.value
 })
 
 const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
 
 /**
- * Result of the page-owner-specified formula (X − 20%) × 20%, always in BYN.
- * X is `activeBynAmount` — the BYN equivalent of whatever row the user is
- * currently editing. Rounded to kopecks for display.
+ * RUB amount in words. Uses the same ruble/kopeck word forms as BYN —
+ * both share "рубль / копейка" denominations.
  */
+const amountInWordsRub = computed(() => {
+  const rub = currencies.value.find(c => c.code === 'RUB')
+  if (!rub || typeof rub.value !== 'number') return ''
+  return bynAmountInWords(rub.value)
+})
+
 const formulaResult = computed(() => {
   return Math.round(activeBynAmount.value * FORMULA_FACTOR * 100) / 100
 })
 
-const formattedBynX = computed(() => bynFormatter.format(activeBynAmount.value))
 const formattedFormulaY = computed(() => bynFormatter.format(formulaResult.value))
 
 /** Recalculates all currency values based on `amount` units of `code`. */
@@ -198,12 +214,21 @@ function onRowClick(code: string) {
 }
 
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
+let copyResetTimerRub: ReturnType<typeof setTimeout> | null = null
 
 function flashCopyState(state: 'ok' | 'err') {
   copyState.value = state
   if (copyResetTimer) clearTimeout(copyResetTimer)
   copyResetTimer = setTimeout(() => {
     copyState.value = 'idle'
+  }, COPY_FEEDBACK_MS)
+}
+
+function flashCopyStateRub(state: 'ok' | 'err') {
+  copyStateRub.value = state
+  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
+  copyResetTimerRub = setTimeout(() => {
+    copyStateRub.value = 'idle'
   }, COPY_FEEDBACK_MS)
 }
 
@@ -223,8 +248,24 @@ async function copyWords() {
   }
 }
 
+async function copyWordsRub() {
+  const text = amountInWordsRub.value
+  if (!text) return
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    flashCopyStateRub('err')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    flashCopyStateRub('ok')
+  } catch {
+    flashCopyStateRub('err')
+  }
+}
+
 onBeforeUnmount(() => {
   if (copyResetTimer) clearTimeout(copyResetTimer)
+  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
 })
 </script>
 
@@ -286,7 +327,7 @@ onBeforeUnmount(() => {
           :class="currency.code === activeCurrency ? 'bg-gray-100 dark:bg-gray-900' : ''"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-14 shrink-0 flex-col leading-tight">
+          <div class="flex w-[5.25rem] shrink-0 flex-col leading-tight">
             <span class="text-base font-semibold text-gray-700 dark:text-gray-200">
               {{ currency.code }}
             </span>
@@ -301,7 +342,7 @@ onBeforeUnmount(() => {
             :min="0"
             :max="MAX_AMOUNT"
             :highlight="currency.code === activeCurrency"
-            :format-options="numberFormatOptions"
+            :format-options="currencyFormatOptions[currency.code]"
             size="xl"
             class="w-40 shrink-0"
             :b24ui="{ base: 'text-right text-lg' }"
@@ -312,35 +353,47 @@ onBeforeUnmount(() => {
 
         <!-- Sum in words + copy -->
         <div class="mt-3 rounded border border-gray-200 p-3 dark:border-gray-700">
-          <div class="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Сумма прописью (BYN)
+          <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            Сумма прописью
           </div>
-          <div class="flex items-start gap-2">
-            <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-              {{ amountInWords }}
+          <div class="flex flex-col gap-2">
+            <div class="flex items-start gap-2">
+              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">BYN</span>
+              <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
+                {{ amountInWords }}
+              </div>
+              <B24Button
+                type="button"
+                :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
+                :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+                size="sm"
+                :icon="CopyIcon"
+                class="shrink-0"
+                @click="copyWords"
+              />
             </div>
-            <B24Button
-              type="button"
-              :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
-              :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-              size="sm"
-              :icon="CopyIcon"
-              class="shrink-0"
-              @click="copyWords"
-            />
+            <div class="flex items-start gap-2">
+              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">RUB</span>
+              <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
+                {{ amountInWordsRub }}
+              </div>
+              <B24Button
+                type="button"
+                :aria-label="copyStateRub === 'ok' ? 'Скопировано' : copyStateRub === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью RUB'"
+                :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+                size="sm"
+                :icon="CopyIcon"
+                class="shrink-0"
+                @click="copyWordsRub"
+              />
+            </div>
           </div>
         </div>
 
         <!-- Calculation formula -->
         <div class="rounded border border-gray-200 p-3 text-sm dark:border-gray-700">
-          <div class="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Расчёт: (X − 20%) × 20% (BYN)
-          </div>
           <div class="font-mono text-gray-700 dark:text-gray-200">
-            (X − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
-          </div>
-          <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            где X = {{ formattedBynX }} BYN
+            (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>
         </div>
       </div>
