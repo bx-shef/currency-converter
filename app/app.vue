@@ -97,7 +97,6 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
-        <B24ColorModeButton :content="{ align: 'end', side: 'bottom' }" />
         <B24Button
           to="https://github.com/bx-shef/currency-converter"
           target="_blank"

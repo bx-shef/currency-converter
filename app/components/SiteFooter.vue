@@ -11,30 +11,6 @@
     </div>
     <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
       <a
-        href="https://github.com/bx-shef/currency-converter"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:underline dark:hover:text-white"
-      >GitHub</a>
-      <a
-        href="https://bitrix24.github.io/b24ui/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:underline dark:hover:text-white"
-      >B24UI</a>
-      <a
-        href="https://bitrix24.github.io/b24jssdk/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:underline dark:hover:text-white"
-      >B24 JS SDK</a>
-      <a
-        href="https://bitrix24.github.io/b24icons/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hover:underline dark:hover:text-white"
-      >B24 Icons</a>
-      <a
         href="https://offer.bx-shef.by/"
         target="_blank"
         rel="noopener noreferrer"

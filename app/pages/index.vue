@@ -81,16 +81,16 @@ const activeBynAmount = computed(() => {
 
 const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
 
-/**
- * Result of the page-owner-specified formula (X − 20%) × 20%, always in BYN.
- * X is `activeBynAmount` — the BYN equivalent of whatever row the user is
- * currently editing. Rounded to kopecks for display.
- */
+const amountInWordsRub = computed(() => {
+  const rub = currencies.value.find(c => c.code === 'RUB')
+  if (!rub || typeof rub.value !== 'number') return ''
+  return bynAmountInWords(rub.value)
+})
+
 const formulaResult = computed(() => {
   return Math.round(activeBynAmount.value * FORMULA_FACTOR * 100) / 100
 })
 
-const formattedBynX = computed(() => bynFormatter.format(activeBynAmount.value))
 const formattedFormulaY = computed(() => bynFormatter.format(formulaResult.value))
 
 /** Recalculates all currency values based on `amount` units of `code`. */
@@ -318,35 +318,38 @@ onBeforeUnmount(() => {
 
         <!-- Sum in words + copy -->
         <div class="mt-3 rounded border border-gray-200 p-3 dark:border-gray-700">
-          <div class="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Сумма прописью (BYN)
+          <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            Сумма прописью
           </div>
-          <div class="flex items-start gap-2">
-            <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-              {{ amountInWords }}
+          <div class="flex flex-col gap-2">
+            <div class="flex items-start gap-2">
+              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">BYN</span>
+              <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
+                {{ amountInWords }}
+              </div>
+              <B24Button
+                type="button"
+                :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
+                :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+                size="sm"
+                :icon="CopyIcon"
+                class="shrink-0"
+                @click="copyWords"
+              />
             </div>
-            <B24Button
-              type="button"
-              :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
-              :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-              size="sm"
-              :icon="CopyIcon"
-              class="shrink-0"
-              @click="copyWords"
-            />
+            <div class="flex items-start gap-2">
+              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">RUB</span>
+              <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
+                {{ amountInWordsRub }}
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Calculation formula -->
         <div class="rounded border border-gray-200 p-3 text-sm dark:border-gray-700">
-          <div class="mb-1 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Расчёт: (X − 20%) × 20% (BYN)
-          </div>
           <div class="font-mono text-gray-700 dark:text-gray-200">
-            (X − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
-          </div>
-          <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            где X = {{ formattedBynX }} BYN
+            (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>
         </div>
       </div>
