@@ -42,12 +42,12 @@ const COPY_FEEDBACK_MS = 1500
 const FORMULA_FACTOR = 0.16
 
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
-  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
-  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false },
-  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT, removable: false },
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined, removable: false },
+  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT, removable: false },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined, removable: false },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false }
+  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false },
+  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
+  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false }
 ]
 
 const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
