@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ru } from '@bitrix24/b24ui-nuxt/locale'
 import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
@@ -82,7 +83,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
 </script>
 
 <template>
-  <B24App>
+  <B24App :locale="ru">
     <B24Header>
       <template #left>
         <NuxtLink
