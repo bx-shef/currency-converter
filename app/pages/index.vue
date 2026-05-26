@@ -58,13 +58,20 @@ const fetchError = ref('')
 const activeCurrency = ref('BYN')
 const copyState = ref<'idle' | 'ok' | 'err'>('idle')
 
-const numberFormatOptions: Intl.NumberFormatOptions = {
+const bynFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
   useGrouping: true
-}
+})
 
-const bynFormatter = new Intl.NumberFormat('ru-RU', numberFormatOptions)
+function formatOptionsFor(code: string): Intl.NumberFormatOptions {
+  return {
+    style: 'currency',
+    currency: code,
+    currencyDisplay: 'code',
+    currencySign: 'accounting'
+  }
+}
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -300,7 +307,7 @@ onBeforeUnmount(() => {
             :min="0"
             :max="MAX_AMOUNT"
             :highlight="currency.code === activeCurrency"
-            :format-options="numberFormatOptions"
+            :format-options="formatOptionsFor(currency.code)"
             size="xl"
             class="w-40 shrink-0"
             :b24ui="{ base: 'text-right text-lg' }"
