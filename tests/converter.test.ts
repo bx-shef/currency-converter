@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { convert, roundValue } from '../app/utils/converter'
+import { convert, roundValue, stepFor } from '../app/utils/converter'
 
 describe('roundValue', () => {
   it('rounds to 4 decimal places', () => {
@@ -64,5 +64,28 @@ describe('convert', () => {
   it('handles negative amount without crashing', () => {
     // Negative amounts are not blocked here — UI enforces min=0; the function is pure math.
     expect(convert(-100, 3.2, 3.6)).toBe(-88.8889)
+  })
+})
+
+describe('stepFor', () => {
+  it('uses 10 for values below 200', () => {
+    expect(stepFor(0)).toBe(10)
+    expect(stepFor(50)).toBe(10)
+    expect(stepFor(100)).toBe(10)
+    expect(stepFor(199.99)).toBe(10)
+  })
+  it('uses 100 for values 200 and above', () => {
+    expect(stepFor(200)).toBe(100)
+    expect(stepFor(500)).toBe(100)
+    expect(stepFor(10_000)).toBe(100)
+  })
+  it('falls back to 10 for undefined or non-finite', () => {
+    expect(stepFor(undefined)).toBe(10)
+    expect(stepFor(NaN)).toBe(10)
+    expect(stepFor(Infinity)).toBe(10)
+  })
+  it('treats absolute value (negatives same as positives)', () => {
+    expect(stepFor(-50)).toBe(10)
+    expect(stepFor(-300)).toBe(100)
   })
 })

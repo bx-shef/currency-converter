@@ -5,7 +5,8 @@ import { computed, onMounted } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import SendIcon from '@bitrix24/b24icons-vue/outline/SendIcon'
 import { useB24 } from '~/composables/useB24'
-import { useCurrencyConverter, STEP } from '~/composables/useCurrencyConverter'
+import { useCurrencyConverter } from '~/composables/useCurrencyConverter'
+import { stepFor } from '~/utils/converter'
 
 definePageMeta({ layout: 'clear' })
 
@@ -156,7 +157,7 @@ async function insertIntoChat() {
         <B24InputNumber
           :model-value="currency.value"
           :model-modifiers="{ optional: true }"
-          :step="STEP"
+          :step="stepFor(currency.value)"
           :min="0"
           :max="1e12"
           :highlight="currency.code === activeCurrency"
