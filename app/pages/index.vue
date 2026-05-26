@@ -42,12 +42,12 @@ const COPY_FEEDBACK_MS = 1500
 const FORMULA_FACTOR = 0.16
 
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
-  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
-  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false },
-  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT, removable: false },
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined, removable: false },
+  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT, removable: false },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined, removable: false },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false }
+  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false },
+  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
+  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false }
 ]
 
 const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
@@ -288,9 +288,8 @@ onBeforeUnmount(() => {
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
-          :loading="refreshing"
           :disabled="loading"
-          class="ml-auto"
+          :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
@@ -327,7 +326,7 @@ onBeforeUnmount(() => {
           :class="currency.code === activeCurrency ? 'bg-gray-100 dark:bg-gray-900' : ''"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-[5.25rem] shrink-0 flex-col leading-tight">
+          <div class="flex w-[6.25rem] shrink-0 flex-col leading-tight">
             <span class="text-base font-semibold text-gray-700 dark:text-gray-200">
               {{ currency.code }}
             </span>
@@ -344,7 +343,7 @@ onBeforeUnmount(() => {
             :highlight="currency.code === activeCurrency"
             :format-options="currencyFormatOptions[currency.code]"
             size="xl"
-            class="w-40 shrink-0"
+            class="min-w-0 flex-1"
             :b24ui="{ base: 'text-right text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"

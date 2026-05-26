@@ -79,6 +79,5 @@ export function bynAmountInWords(amount: number): string {
   const rubInfl = pluralize(rubles, RUBLE_FORMS)
   const kopStr = String(kopecks).padStart(2, '0')
   const kopInfl = pluralize(kopecks, KOPECK_FORMS)
-  const result = `${sign}${rubWords} ${rubInfl} ${kopStr} ${kopInfl}`
-  return result.charAt(0).toUpperCase() + result.slice(1)
+  return `${sign}${rubWords} ${rubInfl} ${kopStr} ${kopInfl}`
 }
