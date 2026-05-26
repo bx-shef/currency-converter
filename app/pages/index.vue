@@ -288,9 +288,8 @@ onBeforeUnmount(() => {
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
-          :loading="refreshing"
           :disabled="loading"
-          class="ml-auto"
+          :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
