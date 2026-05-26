@@ -66,11 +66,10 @@ const numberFormatOptions: Intl.NumberFormatOptions = {
 
 const bynFormatter = new Intl.NumberFormat('ru-RU', numberFormatOptions)
 
-/** Returns BYN amount equivalent to the currently active row's value. */
 const activeBynAmount = computed(() => {
-  const active = currencies.value.find(c => c.code === activeCurrency.value)
-  if (!active || typeof active.value !== 'number' || active.bynRate <= 0) return 0
-  return active.value * active.bynRate
+  const byn = currencies.value.find(c => c.code === 'BYN')
+  if (!byn || typeof byn.value !== 'number') return 0
+  return byn.value
 })
 
 const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
