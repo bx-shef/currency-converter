@@ -76,5 +76,6 @@ describe('bynAmountInWords', () => {
   it('empty for non-finite', () => {
     expect(bynAmountInWords(NaN)).toBe('')
     expect(bynAmountInWords(Infinity)).toBe('')
+    expect(bynAmountInWords(-Infinity)).toBe('')
   })
 })

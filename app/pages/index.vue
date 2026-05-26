@@ -57,6 +57,7 @@ const refreshing = ref(false)
 const fetchError = ref('')
 const activeCurrency = ref('BYN')
 const copyState = ref<'idle' | 'ok' | 'err'>('idle')
+const copyStateRub = ref<'idle' | 'ok' | 'err'>('idle')
 
 const bynFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 2,
@@ -64,14 +65,19 @@ const bynFormatter = new Intl.NumberFormat('ru-RU', {
   useGrouping: true
 })
 
-function formatOptionsFor(code: string): Intl.NumberFormatOptions {
-  return {
-    style: 'currency',
-    currency: code,
-    currencyDisplay: 'code',
-    currencySign: 'accounting'
-  }
-}
+/** Per-currency Intl.NumberFormatOptions — cached to avoid new objects on every render. */
+const currencyFormatOptions = computed<Record<string, Intl.NumberFormatOptions>>(() =>
+  Object.fromEntries(
+    currencies.value
+      .filter(c => /^[A-Z]{3}$/.test(c.code))
+      .map(c => [c.code, {
+        style: 'currency' as const,
+        currency: c.code,
+        currencyDisplay: 'code' as const,
+        currencySign: 'accounting' as const
+      }])
+  )
+)
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -81,6 +87,10 @@ const activeBynAmount = computed(() => {
 
 const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
 
+/**
+ * RUB amount in words. Uses the same ruble/kopeck word forms as BYN —
+ * both share "рубль / копейка" denominations.
+ */
 const amountInWordsRub = computed(() => {
   const rub = currencies.value.find(c => c.code === 'RUB')
   if (!rub || typeof rub.value !== 'number') return ''
@@ -204,12 +214,21 @@ function onRowClick(code: string) {
 }
 
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
+let copyResetTimerRub: ReturnType<typeof setTimeout> | null = null
 
 function flashCopyState(state: 'ok' | 'err') {
   copyState.value = state
   if (copyResetTimer) clearTimeout(copyResetTimer)
   copyResetTimer = setTimeout(() => {
     copyState.value = 'idle'
+  }, COPY_FEEDBACK_MS)
+}
+
+function flashCopyStateRub(state: 'ok' | 'err') {
+  copyStateRub.value = state
+  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
+  copyResetTimerRub = setTimeout(() => {
+    copyStateRub.value = 'idle'
   }, COPY_FEEDBACK_MS)
 }
 
@@ -229,8 +248,24 @@ async function copyWords() {
   }
 }
 
+async function copyWordsRub() {
+  const text = amountInWordsRub.value
+  if (!text) return
+  if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    flashCopyStateRub('err')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    flashCopyStateRub('ok')
+  } catch {
+    flashCopyStateRub('err')
+  }
+}
+
 onBeforeUnmount(() => {
   if (copyResetTimer) clearTimeout(copyResetTimer)
+  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
 })
 </script>
 
@@ -307,7 +342,7 @@ onBeforeUnmount(() => {
             :min="0"
             :max="MAX_AMOUNT"
             :highlight="currency.code === activeCurrency"
-            :format-options="formatOptionsFor(currency.code)"
+            :format-options="currencyFormatOptions[currency.code]"
             size="xl"
             class="w-40 shrink-0"
             :b24ui="{ base: 'text-right text-lg' }"
@@ -342,6 +377,15 @@ onBeforeUnmount(() => {
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
                 {{ amountInWordsRub }}
               </div>
+              <B24Button
+                type="button"
+                :aria-label="copyStateRub === 'ok' ? 'Скопировано' : copyStateRub === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью RUB'"
+                :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+                size="sm"
+                :icon="CopyIcon"
+                class="shrink-0"
+                @click="copyWordsRub"
+              />
             </div>
           </div>
         </div>
