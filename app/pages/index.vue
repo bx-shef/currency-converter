@@ -327,7 +327,7 @@ onBeforeUnmount(() => {
           :class="currency.code === activeCurrency ? 'bg-gray-100 dark:bg-gray-900' : ''"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-[5.25rem] shrink-0 flex-col leading-tight">
+          <div class="flex w-[6.25rem] shrink-0 flex-col leading-tight">
             <span class="text-base font-semibold text-gray-700 dark:text-gray-200">
               {{ currency.code }}
             </span>
@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
             :highlight="currency.code === activeCurrency"
             :format-options="currencyFormatOptions[currency.code]"
             size="xl"
-            class="w-40 shrink-0"
+            class="w-[268px] shrink-0"
             :b24ui="{ base: 'text-right text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
