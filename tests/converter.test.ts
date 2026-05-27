@@ -68,8 +68,14 @@ describe('convert', () => {
 })
 
 describe('stepFor', () => {
-  it('uses 10 for values below 200', () => {
-    expect(stepFor(0)).toBe(10)
+  it('uses 1 for values below 10', () => {
+    expect(stepFor(0)).toBe(1)
+    expect(stepFor(1)).toBe(1)
+    expect(stepFor(5)).toBe(1)
+    expect(stepFor(9.99)).toBe(1)
+  })
+  it('uses 10 for values from 10 to below 200', () => {
+    expect(stepFor(10)).toBe(10)
     expect(stepFor(50)).toBe(10)
     expect(stepFor(100)).toBe(10)
     expect(stepFor(199.99)).toBe(10)
@@ -79,12 +85,13 @@ describe('stepFor', () => {
     expect(stepFor(500)).toBe(100)
     expect(stepFor(10_000)).toBe(100)
   })
-  it('falls back to 10 for undefined or non-finite', () => {
-    expect(stepFor(undefined)).toBe(10)
-    expect(stepFor(NaN)).toBe(10)
-    expect(stepFor(Infinity)).toBe(10)
+  it('falls back to 1 for undefined or non-finite', () => {
+    expect(stepFor(undefined)).toBe(1)
+    expect(stepFor(NaN)).toBe(1)
+    expect(stepFor(Infinity)).toBe(1)
   })
   it('treats absolute value (negatives same as positives)', () => {
+    expect(stepFor(-5)).toBe(1)
     expect(stepFor(-50)).toBe(10)
     expect(stepFor(-300)).toBe(100)
   })
