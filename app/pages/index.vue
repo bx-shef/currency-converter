@@ -3,7 +3,7 @@ import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
-import { convert, stepFor } from '~/utils/converter'
+import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
 
 interface NbrbRate {
@@ -215,19 +215,18 @@ function onRowClick(code: string) {
   activeCurrency.value = code
 }
 
+/** Increments the given currency by one adaptive step, clamped to MAX_AMOUNT. */
 function incrementCurrency(code: string) {
   const c = currencies.value.find(r => r.code === code)
   if (!c) return
-  const current = typeof c.value === 'number' && isFinite(c.value) ? c.value : 0
-  const newValue = Math.min(Math.round((current + stepFor(current)) * 10000) / 10000, MAX_AMOUNT)
-  onValueUpdate(code, newValue)
+  onValueUpdate(code, Math.min(applyStep(c.value, 1), MAX_AMOUNT))
 }
 
+/** Decrements the given currency by one adaptive step, clamped to 0. */
 function decrementCurrency(code: string) {
   const c = currencies.value.find(r => r.code === code)
-  if (!c || typeof c.value !== 'number') return
-  const newValue = Math.max(Math.round((c.value - stepFor(c.value)) * 10000) / 10000, 0)
-  onValueUpdate(code, newValue)
+  if (!c) return
+  onValueUpdate(code, Math.max(applyStep(c.value, -1), 0))
 }
 
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
@@ -373,7 +372,7 @@ onBeforeUnmount(() => {
               color="air-tertiary-no-accent"
               size="xl"
               :aria-label="`Уменьшить ${currency.code}`"
-              :disabled="!currency.value"
+              :disabled="typeof currency.value !== 'number' || currency.value <= 0"
               @click.stop="decrementCurrency(currency.code)"
             />
             <B24Button

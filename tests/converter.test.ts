@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { convert, roundValue, stepFor } from '../app/utils/converter'
+import { applyStep, convert, roundValue, stepFor } from '../app/utils/converter'
 
 describe('roundValue', () => {
   it('rounds to 4 decimal places', () => {
@@ -89,10 +89,57 @@ describe('stepFor', () => {
     expect(stepFor(undefined)).toBe(1)
     expect(stepFor(NaN)).toBe(1)
     expect(stepFor(Infinity)).toBe(1)
+    expect(stepFor(-Infinity)).toBe(1)
   })
   it('treats absolute value (negatives same as positives)', () => {
     expect(stepFor(-5)).toBe(1)
+    expect(stepFor(-10)).toBe(10)
     expect(stepFor(-50)).toBe(10)
+    expect(stepFor(-200)).toBe(100)
     expect(stepFor(-300)).toBe(100)
+  })
+})
+
+describe('applyStep', () => {
+  it('increments by 1 below 10', () => {
+    expect(applyStep(0, 1)).toBe(1)
+    expect(applyStep(5, 1)).toBe(6)
+    expect(applyStep(9, 1)).toBe(10)
+  })
+  it('increments by 10 in the 10–199 range', () => {
+    expect(applyStep(10, 1)).toBe(20)
+    expect(applyStep(100, 1)).toBe(110)
+    expect(applyStep(199, 1)).toBe(209)
+  })
+  it('increments by 100 at 200+', () => {
+    expect(applyStep(200, 1)).toBe(300)
+    expect(applyStep(500, 1)).toBe(600)
+  })
+  it('decrements by 1 below 10', () => {
+    expect(applyStep(5, -1)).toBe(4)
+    expect(applyStep(1, -1)).toBe(0)
+  })
+  it('decrements by 10 in the 10–199 range', () => {
+    expect(applyStep(20, -1)).toBe(10)
+    expect(applyStep(10, -1)).toBe(0)
+  })
+  it('decrements by 100 at 200+', () => {
+    expect(applyStep(300, -1)).toBe(200)
+    expect(applyStep(200, -1)).toBe(100)
+  })
+  it('treats undefined and non-finite as 0', () => {
+    expect(applyStep(undefined, 1)).toBe(1)
+    expect(applyStep(undefined, -1)).toBe(-1)
+    expect(applyStep(NaN, 1)).toBe(1)
+    expect(applyStep(Infinity, 1)).toBe(1)
+  })
+  it('threshold crossing: step is based on current value, not result', () => {
+    // At 9, step=1 → lands on 10 (next call will use step 10)
+    expect(applyStep(9, 1)).toBe(10)
+    // At 199, step=10 → lands on 209 (skips 200–208)
+    expect(applyStep(199, 1)).toBe(209)
+  })
+  it('eliminates IEEE-754 noise in result', () => {
+    expect(applyStep(0.1, 1)).toBe(1.1)
   })
 })

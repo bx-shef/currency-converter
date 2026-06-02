@@ -24,6 +24,11 @@ export function convert(amount: number, fromBynRate: number, toBynRate: number):
   return roundValue((amount * fromBynRate) / toBynRate)
 }
 
+/** Values below this threshold use step 1 for +/− buttons. */
+const STEP_THRESHOLD_FINE = 10
+/** Values at or above this threshold use step 100 for +/− buttons. */
+const STEP_THRESHOLD_COARSE = 200
+
 /**
  * Adaptive step for the +/- buttons based on the current value.
  *
@@ -33,7 +38,20 @@ export function convert(amount: number, fromBynRate: number, toBynRate: number):
 export function stepFor(value: number | undefined): number {
   if (typeof value !== 'number' || !isFinite(value)) return 1
   const abs = Math.abs(value)
-  if (abs >= 200) return 100
-  if (abs >= 10) return 10
+  if (abs >= STEP_THRESHOLD_COARSE) return 100
+  if (abs >= STEP_THRESHOLD_FINE) return 10
   return 1
+}
+
+/**
+ * Applies one adaptive step to `value` in the given direction.
+ * Treats `undefined` / non-finite input as 0.
+ * Does NOT clamp to [min, max] — clamping is the caller's responsibility.
+ *
+ * @param value current amount; `undefined` / non-finite treated as 0.
+ * @param direction +1 to increment, -1 to decrement.
+ */
+export function applyStep(value: number | undefined, direction: 1 | -1): number {
+  const current = typeof value === 'number' && isFinite(value) ? value : 0
+  return roundValue(current + direction * stepFor(current)) ?? current
 }
