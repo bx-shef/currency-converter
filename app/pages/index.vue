@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
-import { convert, stepFor } from '~/utils/converter'
+import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
+import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
+import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
 
 interface NbrbRate {
@@ -213,6 +215,20 @@ function onRowClick(code: string) {
   activeCurrency.value = code
 }
 
+/** Increments the given currency by one adaptive step, clamped to MAX_AMOUNT. */
+function incrementCurrency(code: string) {
+  const c = currencies.value.find(r => r.code === code)
+  if (!c) return
+  onValueUpdate(code, Math.min(applyStep(c.value, 1), MAX_AMOUNT))
+}
+
+/** Decrements the given currency by one adaptive step, clamped to 0. */
+function decrementCurrency(code: string) {
+  const c = currencies.value.find(r => r.code === code)
+  if (!c) return
+  onValueUpdate(code, Math.max(applyStep(c.value, -1), 0))
+}
+
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
 let copyResetTimerRub: ReturnType<typeof setTimeout> | null = null
 
@@ -337,9 +353,11 @@ onBeforeUnmount(() => {
           <B24InputNumber
             :model-value="currency.value"
             :model-modifiers="{ optional: true }"
-            :step="stepFor(currency.value)"
+            :step="0.01"
             :min="0"
             :max="MAX_AMOUNT"
+            :increment="false"
+            :decrement="false"
             :highlight="currency.code === activeCurrency"
             :format-options="currencyFormatOptions[currency.code]"
             size="xl"
@@ -348,6 +366,23 @@ onBeforeUnmount(() => {
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
           />
+          <div class="flex shrink-0 gap-1">
+            <B24Button
+              :icon="MinusIcon"
+              color="air-tertiary-no-accent"
+              size="xl"
+              :aria-label="`Уменьшить ${currency.code}`"
+              :disabled="typeof currency.value !== 'number' || currency.value <= 0"
+              @click.stop="decrementCurrency(currency.code)"
+            />
+            <B24Button
+              :icon="PlusIcon"
+              color="air-tertiary-no-accent"
+              size="xl"
+              :aria-label="`Увеличить ${currency.code}`"
+              @click.stop="incrementCurrency(currency.code)"
+            />
+          </div>
         </div>
 
         <!-- Sum in words + copy -->
