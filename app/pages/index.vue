@@ -5,7 +5,7 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
-import { vHoldRepeat } from '~/utils/holdRepeat'
+import { vHoldRepeat } from '~/directives/holdRepeat'
 
 interface NbrbRate {
   Cur_ID: number
@@ -383,6 +383,7 @@ onBeforeUnmount(() => {
               color="air-tertiary-no-accent"
               size="xl"
               :aria-label="`Увеличить ${currency.code}`"
+              :disabled="typeof currency.value === 'number' && currency.value >= MAX_AMOUNT"
               @click.stop="incrementCurrency(currency.code)"
             />
           </div>

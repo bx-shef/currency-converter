@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Directive, DirectiveBinding } from 'vue'
-import { DEFAULT_HOLD_TIMING, nextHoldInterval, vHoldRepeat } from '../app/utils/holdRepeat'
+import { DEFAULT_HOLD_TIMING, nextHoldInterval, vHoldRepeat } from '../app/directives/holdRepeat'
 
 describe('nextHoldInterval', () => {
   const timing = { initialDelay: 400, interval: 120, minInterval: 25, acceleration: 0.5 }
@@ -64,6 +64,7 @@ function mount(el: MockElement, cb: () => void) {
   const binding = { value: cb } as DirectiveBinding<(() => void) | undefined>
   const directive = vHoldRepeat as Directive<HTMLElement, (() => void) | undefined> & {
     mounted: NonNullable<Directive['mounted']>
+    updated: NonNullable<Directive['updated']>
     beforeUnmount: NonNullable<Directive['beforeUnmount']>
   }
   // The directive only touches the EventTarget / attribute surface of the element.
@@ -174,7 +175,7 @@ describe('vHoldRepeat directive', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('cleans up listeners and timers on unmount', () => {
+  it('cleans up all pointer listeners and timers on unmount', () => {
     const el = new MockElement()
     const cb = vi.fn()
     const directive = mount(el, cb)
@@ -182,11 +183,95 @@ describe('vHoldRepeat directive', () => {
     el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
     directive.beforeUnmount(el as unknown as HTMLElement, null as never, null as never, null as never)
 
-    expect(el.listenerCount('pointerdown')).toBe(0)
-    expect(el.listenerCount('pointerup')).toBe(0)
+    for (const type of ['pointerdown', 'pointerup', 'pointerleave', 'pointercancel']) {
+      expect(el.listenerCount(type)).toBe(0)
+    }
 
     cb.mockClear()
     vi.advanceTimersByTime(5000)
     expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('unmounting mid-repeat stops further ticks', () => {
+    const el = new MockElement()
+    const cb = vi.fn()
+    const directive = mount(el, cb)
+
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.initialDelay + DEFAULT_HOLD_TIMING.interval * 3)
+    expect(cb.mock.calls.length).toBeGreaterThan(0)
+
+    directive.beforeUnmount(el as unknown as HTMLElement, null as never, null as never, null as never)
+    cb.mockClear()
+    vi.advanceTimersByTime(5000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('treats aria-disabled="true" as disabled (start and mid-hold)', () => {
+    const el = new MockElement()
+    const cb = vi.fn()
+    mount(el, cb)
+
+    el.setAttribute('aria-disabled', 'true')
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(5000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('ignores a missing callback without throwing', () => {
+    const el = new MockElement()
+    mount(el, undefined as unknown as () => void)
+
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    expect(() => vi.advanceTimersByTime(2000)).not.toThrow()
+  })
+
+  it('refreshes the callback via the updated hook', () => {
+    const el = new MockElement()
+    const first = vi.fn()
+    const second = vi.fn()
+    const directive = mount(el, first)
+
+    directive.updated!(
+      el as unknown as HTMLElement,
+      { value: second } as DirectiveBinding<(() => void) | undefined>,
+      null as never,
+      null as never
+    )
+
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.initialDelay)
+    expect(first).not.toHaveBeenCalled()
+    expect(second).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses the trailing click after an auto-repeating hold', () => {
+    const el = new MockElement()
+    const cb = vi.fn()
+    mount(el, cb)
+
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.initialDelay) // one tick → didRepeat
+    el.dispatch('pointerup')
+
+    const clickEvent = { preventDefault: vi.fn(), stopImmediatePropagation: vi.fn() }
+    el.dispatch('click', clickEvent)
+    expect(clickEvent.preventDefault).toHaveBeenCalledTimes(1)
+    expect(clickEvent.stopImmediatePropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not suppress the click of a quick tap (no repeat happened)', () => {
+    const el = new MockElement()
+    const cb = vi.fn()
+    mount(el, cb)
+
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.initialDelay - 1) // released before first tick
+    el.dispatch('pointerup')
+
+    const clickEvent = { preventDefault: vi.fn(), stopImmediatePropagation: vi.fn() }
+    el.dispatch('click', clickEvent)
+    expect(clickEvent.preventDefault).not.toHaveBeenCalled()
+    expect(el.listenerCount('click')).toBe(0)
   })
 })
