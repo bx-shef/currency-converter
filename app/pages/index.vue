@@ -5,6 +5,7 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
+import { vHoldRepeat } from '~/utils/holdRepeat'
 
 interface NbrbRate {
   Cur_ID: number
@@ -368,6 +369,7 @@ onBeforeUnmount(() => {
           />
           <div class="flex shrink-0 gap-1">
             <B24Button
+              v-hold-repeat="() => decrementCurrency(currency.code)"
               :icon="MinusIcon"
               color="air-tertiary-no-accent"
               size="xl"
@@ -376,6 +378,7 @@ onBeforeUnmount(() => {
               @click.stop="decrementCurrency(currency.code)"
             />
             <B24Button
+              v-hold-repeat="() => incrementCurrency(currency.code)"
               :icon="PlusIcon"
               color="air-tertiary-no-accent"
               size="xl"
