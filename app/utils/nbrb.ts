@@ -13,26 +13,45 @@ export interface NbrbRate {
   Cur_OfficialRate: number
 }
 
-/** A currency code paired with its BYN-per-unit rate. */
+/** A currency code paired with its already-normalised BYN rate. */
 export interface RateEntry {
   code: string
+  /** BYN per ONE unit of the currency, i.e. `Cur_OfficialRate / Cur_Scale`. */
   bynRate: number
 }
 
 /**
- * Maps a raw НБ РБ API response into `{ code, bynRate }` entries.
+ * Type guard for a rate record usable in the converter: a string code plus a
+ * finite, strictly-positive scale and official rate.
  *
- * Records with a non-positive `Cur_Scale` *or* `Cur_OfficialRate` are skipped:
- * a zero/negative rate would otherwise land in state as `bynRate <= 0`, which
- * `convert()` treats as "not loaded" and renders the currency blank. Filtering
- * here keeps such records out entirely instead of relying on that downstream guard.
+ * `Number.isFinite` (not the global `isFinite`) is intentional — it does NOT
+ * coerce, so string numbers like `"1"` and non-finite `Infinity`/`NaN` are
+ * rejected rather than silently producing a `0` / `Infinity` rate downstream.
+ */
+function isUsableRate(record: unknown): record is NbrbRate {
+  if (typeof record !== 'object' || record === null) return false
+  const r = record as Record<string, unknown>
+  return typeof r.Cur_Abbreviation === 'string'
+    && typeof r.Cur_Scale === 'number' && Number.isFinite(r.Cur_Scale) && r.Cur_Scale > 0
+    && typeof r.Cur_OfficialRate === 'number' && Number.isFinite(r.Cur_OfficialRate) && r.Cur_OfficialRate > 0
+}
+
+/**
+ * Maps a raw НБ РБ API response into normalised `{ code, bynRate }` entries.
  *
- * @param data raw API payload; a non-array (e.g. an error body) yields `[]`.
+ * Records that are not usable (non-positive / non-finite scale or rate, missing
+ * or non-string code) are dropped here, at the source — otherwise a bad rate
+ * would enter state as `bynRate <= 0` / `Infinity`, which `convert()` treats as
+ * "not loaded" and renders the currency blank. Duplicate codes are preserved;
+ * de-duplication, if needed, is the caller's concern.
+ *
+ * @param data raw API payload; anything that is not an array (e.g. an HTTP
+ *   error body, `null`) yields `[]`.
  * @returns valid rate entries, in source order.
  */
-export function parseNbrbRates(data: NbrbRate[]): RateEntry[] {
+export function parseNbrbRates(data: unknown): RateEntry[] {
   if (!Array.isArray(data)) return []
   return data
-    .filter(r => r.Cur_Scale > 0 && r.Cur_OfficialRate > 0)
+    .filter(isUsableRate)
     .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
 }

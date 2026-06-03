@@ -27,6 +27,11 @@ describe('parseNbrbRates', () => {
     ])
   })
 
+  it('divides by scale with float-precision tolerance', () => {
+    const [entry] = parseNbrbRates([rate({ Cur_Scale: 100, Cur_OfficialRate: 1.1 })])
+    expect(entry?.bynRate).toBeCloseTo(0.011, 12)
+  })
+
   it('skips records with a non-positive scale', () => {
     const result = parseNbrbRates([
       rate({ Cur_Abbreviation: 'USD', Cur_Scale: 1 }),
@@ -45,6 +50,34 @@ describe('parseNbrbRates', () => {
     expect(result.map(r => r.code)).toEqual(['USD'])
   })
 
+  it('skips records with non-finite scale or rate', () => {
+    const result = parseNbrbRates([
+      rate({ Cur_Abbreviation: 'USD' }),
+      rate({ Cur_Abbreviation: 'INFR', Cur_OfficialRate: Infinity }),
+      rate({ Cur_Abbreviation: 'INFS', Cur_Scale: Infinity }),
+      rate({ Cur_Abbreviation: 'NANR', Cur_OfficialRate: NaN }),
+      rate({ Cur_Abbreviation: 'NANS', Cur_Scale: NaN })
+    ])
+    expect(result.map(r => r.code)).toEqual(['USD'])
+  })
+
+  it('does not coerce string numbers (a string scale/rate is dropped)', () => {
+    const result = parseNbrbRates([
+      rate({ Cur_Abbreviation: 'STRS', Cur_Scale: '1' as unknown as number }),
+      rate({ Cur_Abbreviation: 'STRR', Cur_OfficialRate: '3.2' as unknown as number })
+    ])
+    expect(result).toEqual([])
+  })
+
+  it('skips records with a missing or non-string code', () => {
+    const result = parseNbrbRates([
+      rate({ Cur_Abbreviation: 'USD' }),
+      rate({ Cur_Abbreviation: undefined as unknown as string }),
+      { Cur_ID: 9, Date: '', Cur_Scale: 1, Cur_Name: '', Cur_OfficialRate: 2 } as unknown as NbrbRate
+    ])
+    expect(result.map(r => r.code)).toEqual(['USD'])
+  })
+
   it('preserves source order of valid entries', () => {
     const result = parseNbrbRates([
       rate({ Cur_Abbreviation: 'EUR' }),
@@ -54,12 +87,22 @@ describe('parseNbrbRates', () => {
     expect(result.map(r => r.code)).toEqual(['EUR', 'CNY'])
   })
 
+  it('keeps duplicate codes (de-duplication is the caller’s concern)', () => {
+    const result = parseNbrbRates([
+      rate({ Cur_Abbreviation: 'USD', Cur_OfficialRate: 3.2 }),
+      rate({ Cur_Abbreviation: 'USD', Cur_OfficialRate: 3.3 })
+    ])
+    expect(result).toHaveLength(2)
+  })
+
   it('returns an empty array for empty input', () => {
     expect(parseNbrbRates([])).toEqual([])
   })
 
   it('returns an empty array for a non-array payload (e.g. error body)', () => {
-    expect(parseNbrbRates(null as unknown as NbrbRate[])).toEqual([])
-    expect(parseNbrbRates({ error: 'boom' } as unknown as NbrbRate[])).toEqual([])
+    expect(parseNbrbRates(null)).toEqual([])
+    expect(parseNbrbRates(undefined)).toEqual([])
+    expect(parseNbrbRates({ error: 'boom' })).toEqual([])
+    expect(parseNbrbRates('not-json')).toEqual([])
   })
 })

@@ -5,7 +5,7 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
-import { parseNbrbRates, type NbrbRate } from '~/utils/nbrb'
+import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { vHoldRepeat } from '~/directives/holdRepeat'
 
 /** Currency row shown in the converter UI */
@@ -21,7 +21,7 @@ interface CurrencyRow {
 
 interface CachedRates {
   date: string
-  rates: Array<{ code: string, bynRate: number }>
+  rates: RateEntry[]
   timestamp: number
 }
 
@@ -109,7 +109,7 @@ function recalcFrom(code: string, amount: number) {
   }
 }
 
-function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: string) {
+function applyRates(rateMap: RateEntry[], date: string) {
   for (const { code, bynRate } of rateMap) {
     const c = currencies.value.find(r => r.code === code)
     if (c) c.bynRate = bynRate
@@ -139,7 +139,7 @@ function loadFromCache(): CachedRates | null {
   }
 }
 
-function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
+function saveToCache(date: string, rates: RateEntry[]) {
   if (typeof sessionStorage === 'undefined') return
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
