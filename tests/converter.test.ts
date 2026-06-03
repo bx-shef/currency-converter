@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyStep, convert, roundValue, stepFor } from '../app/utils/converter'
+import { applyStep, convert, recalcFrom, roundValue, stepFor } from '../app/utils/converter'
 
 describe('roundValue', () => {
   it('rounds to 4 decimal places', () => {
@@ -141,5 +141,48 @@ describe('applyStep', () => {
   })
   it('eliminates IEEE-754 noise in result', () => {
     expect(applyStep(0.1, 1)).toBe(1.1)
+  })
+})
+
+describe('recalcFrom', () => {
+  const rows = [
+    { code: 'BYN', bynRate: 1, value: undefined as number | undefined },
+    { code: 'USD', bynRate: 3.2, value: undefined as number | undefined },
+    { code: 'EUR', bynRate: 3.6, value: undefined as number | undefined }
+  ]
+
+  it('sets the source row and converts the rest', () => {
+    const result = recalcFrom(rows, 'BYN', 100)
+    expect(result.find(r => r.code === 'BYN')?.value).toBe(100)
+    expect(result.find(r => r.code === 'USD')?.value).toBe(31.25) // 100 / 3.2
+    expect(result.find(r => r.code === 'EUR')?.value).toBe(27.7778) // 100 / 3.6
+  })
+
+  it('converts from a non-BYN source', () => {
+    const result = recalcFrom(rows, 'USD', 100)
+    expect(result.find(r => r.code === 'USD')?.value).toBe(100)
+    expect(result.find(r => r.code === 'BYN')?.value).toBe(320) // 100 * 3.2
+    expect(result.find(r => r.code === 'EUR')?.value).toBe(88.8889) // 100 * 3.2 / 3.6
+  })
+
+  it('is pure — does not mutate the input rows', () => {
+    const snapshot = JSON.stringify(rows)
+    recalcFrom(rows, 'BYN', 50)
+    expect(JSON.stringify(rows)).toBe(snapshot)
+  })
+
+  it('leaves a row undefined when its rate is missing', () => {
+    const withMissing = [
+      { code: 'BYN', bynRate: 1, value: undefined as number | undefined },
+      { code: 'XXX', bynRate: 0, value: undefined as number | undefined }
+    ]
+    const result = recalcFrom(withMissing, 'BYN', 100)
+    expect(result.find(r => r.code === 'XXX')?.value).toBeUndefined()
+  })
+
+  it('copies rows unchanged when the source code is not found', () => {
+    const result = recalcFrom(rows, 'GBP', 100)
+    expect(result.map(r => r.value)).toEqual(rows.map(r => r.value))
+    expect(result).not.toBe(rows)
   })
 })

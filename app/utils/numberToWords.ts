@@ -1,5 +1,6 @@
 /**
- * Russian "amount in words" for Belarusian Roubles (BYN).
+ * Russian "amount in words" for ruble-denominated currencies (BYN and RUB —
+ * both use the «рубль / копейка» denominations and identical word forms).
  * Capitalised first letter so the result reads like a formal cheque line:
  *   123.45 → "Сто двадцать три рубля 45 копеек"
  *     1.01 → "Один рубль 01 копейка"          (singular kopeck inflection)
@@ -64,10 +65,10 @@ function integerToWords(n: number): string {
 }
 
 /**
- * Formats a BYN amount as a Russian "sum in words" string.
+ * Formats a ruble amount (BYN or RUB) as a Russian "sum in words" string.
  * @returns '' for NaN / ±Infinity; capitalised string otherwise.
  */
-export function bynAmountInWords(amount: number): string {
+export function rublesAmountInWords(amount: number): string {
   if (!isFinite(amount)) return ''
   const sign = amount < 0 ? 'минус ' : ''
   // Round the whole amount to kopecks first so floating-point noise (e.g. 1.999)
