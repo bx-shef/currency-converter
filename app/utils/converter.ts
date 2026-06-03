@@ -48,8 +48,13 @@ export function stepFor(value: number | undefined): number {
  * Treats `undefined` / non-finite input as 0.
  * Does NOT clamp to [min, max] — clamping is the caller's responsibility.
  *
+ * The step is chosen from the value *before* the change, so crossing a threshold
+ * is asymmetric by design: 199 +1 → 209 (step 10), and 200 −1 → 100 (step 100).
+ *
  * @param value current amount; `undefined` / non-finite treated as 0.
  * @param direction +1 to increment, -1 to decrement.
+ * @returns the stepped value; the original `current` if rounding yields a
+ *   non-finite result (unreachable for finite inputs, kept as a safety net).
  */
 export function applyStep(value: number | undefined, direction: 1 | -1): number {
   const current = typeof value === 'number' && isFinite(value) ? value : 0
