@@ -68,19 +68,17 @@ const bynFormatter = new Intl.NumberFormat('ru-RU', {
   useGrouping: true
 })
 
-/** Per-currency Intl.NumberFormatOptions — cached to avoid new objects on every render. */
-const currencyFormatOptions = computed<Record<string, Intl.NumberFormatOptions>>(() =>
-  Object.fromEntries(
-    currencies.value
-      .filter(c => /^[A-Z]{3}$/.test(c.code))
-      .map(c => [c.code, {
-        style: 'currency' as const,
-        currency: c.code,
-        currencyDisplay: 'code' as const,
-        currencySign: 'accounting' as const
-      }])
-  )
-)
+/**
+ * Plain grouped-decimal formatting for the inputs. The currency code is already
+ * shown on the left of every row, so repeating it inside the field only steals
+ * width and truncates the number — the one thing the user actually came to read.
+ */
+const numberFormatOptions: Intl.NumberFormatOptions = {
+  style: 'decimal',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: true
+}
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -339,12 +337,14 @@ onBeforeUnmount(() => {
         <div
           v-for="currency in currencies"
           :key="currency.code"
-          class="flex items-center gap-3 rounded px-1 py-0.5 transition-colors"
-          :class="currency.code === activeCurrency ? 'bg-gray-100 dark:bg-gray-900' : ''"
+          class="flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-all duration-150"
+          :class="currency.code === activeCurrency
+            ? 'bg-cyan-400/[0.06] ring-cyan-400/40 dark:bg-cyan-400/[0.07]'
+            : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
           @click="onRowClick(currency.code)"
         >
           <div class="flex w-[6.25rem] shrink-0 flex-col leading-tight">
-            <span class="text-base font-semibold text-gray-700 dark:text-gray-200">
+            <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
             <span class="truncate text-[10px] text-gray-400 dark:text-gray-500">
@@ -360,10 +360,10 @@ onBeforeUnmount(() => {
             :increment="false"
             :decrement="false"
             :highlight="currency.code === activeCurrency"
-            :format-options="currencyFormatOptions[currency.code]"
+            :format-options="numberFormatOptions"
             size="xl"
             class="min-w-0 flex-1"
-            :b24ui="{ base: 'text-right text-lg' }"
+            :b24ui="{ base: 'text-right text-lg font-medium tabular-nums' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
           />
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Sum in words + copy -->
-        <div class="mt-3 rounded border border-gray-200 p-3 dark:border-gray-700">
+        <div class="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3 dark:border-white/10 dark:bg-white/[0.02]">
           <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
             Сумма прописью
           </div>
@@ -429,8 +429,8 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Calculation formula -->
-        <div class="rounded border border-gray-200 p-3 text-sm dark:border-gray-700">
-          <div class="font-mono text-gray-700 dark:text-gray-200">
+        <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+          <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
             (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>
         </div>
