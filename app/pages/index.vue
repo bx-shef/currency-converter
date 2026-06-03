@@ -5,16 +5,8 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, convert } from '~/utils/converter'
 import { bynAmountInWords } from '~/utils/numberToWords'
+import { parseNbrbRates, type NbrbRate } from '~/utils/nbrb'
 import { vHoldRepeat } from '~/directives/holdRepeat'
-
-interface NbrbRate {
-  Cur_ID: number
-  Date: string
-  Cur_Abbreviation: string
-  Cur_Scale: number
-  Cur_Name: string
-  Cur_OfficialRate: number
-}
 
 /** Currency row shown in the converter UI */
 interface CurrencyRow {
@@ -163,9 +155,7 @@ async function fetchRates() {
     const date = data[0]?.Date
       ? new Date(data[0].Date).toLocaleDateString('ru-RU')
       : ''
-    const rateMap = data
-      .filter(r => r.Cur_Scale > 0)
-      .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
+    const rateMap = parseNbrbRates(data)
     applyRates(rateMap, date)
     saveToCache(date, rateMap)
   } catch {
