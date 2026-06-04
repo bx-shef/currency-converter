@@ -23,16 +23,24 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 
 ## Архитектура
 
-- `app/pages/index.vue` — экран конвертера: строки валют, ввод, прописью, формула. Здесь же
-  fetch курсов (`api.nbrb.by`), кэш в `localStorage` (TTL 12 ч, ключ `nbrb_rates_v1`).
+- `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
+  логика — в composables ниже.
+- `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
+- `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
+  (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
+- `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - `app/utils/converter.ts` — конвертация и адаптивный шаг (чистые функции).
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal) и формула `FORMULA_FACTOR = 0.16`.
 - `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**).
+- `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`).
+- `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
+- `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
-- `tests/` — Vitest на утилиты и директиву.
+- `tests/` — Vitest на утилиты, конфиг и директиву.
 
-Бизнес-логика (fetch/кэш) пока заперта в `<script setup>` и не покрыта юнит-тестами —
-вынос в composables отслеживается в issue #48.
+Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие
+Vue-обёртки над ними. Сам рендер композного состояния (полная интеграция composable) тестами
+не покрыт — окружение Vitest `node` не резолвит `vue`; трекается в issue #48.
 
 ## Конвенции
 
