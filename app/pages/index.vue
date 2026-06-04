@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
-import InfoCircleIcon from '@bitrix24/b24icons-vue/outline/InfoCircleIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { rublesAmountInWords } from '~/utils/numberToWords'
@@ -136,24 +135,10 @@ function rowCopyColor(code: string) {
             <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
-            <!-- Full name fits the wider desktop column; on mobile it's behind a help tooltip. -->
+            <!-- Full name is shown only where the column is wide enough (desktop). -->
             <span class="hidden truncate text-[10px] text-gray-400 sm:block dark:text-gray-500">
               {{ currency.name }}
             </span>
-            <!-- @click.stop on the trigger keeps opening the tooltip from activating the row. -->
-            <B24Tooltip
-              :text="currency.name"
-              class="sm:hidden"
-            >
-              <B24Button
-                :icon="InfoCircleIcon"
-                color="air-tertiary-no-accent"
-                size="xs"
-                class="-ms-1 w-fit text-gray-400"
-                :aria-label="`Полное название: ${currency.name}`"
-                @click.stop
-              />
-            </B24Tooltip>
           </div>
           <B24Button
             :icon="CopyIcon"
@@ -248,7 +233,7 @@ function rowCopyColor(code: string) {
                 :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0 me-1.5"
+                class="shrink-0 me-[3px]"
                 @click="copyBynWords(displayAmountInWords)"
               />
             </div>
@@ -263,7 +248,7 @@ function rowCopyColor(code: string) {
                 :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0 me-1.5"
+                class="shrink-0 me-[3px]"
                 @click="copyRubWords(displayAmountInWordsRub)"
               />
             </div>
