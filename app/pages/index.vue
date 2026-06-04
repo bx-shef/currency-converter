@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex justify-center px-4 py-3 sm:py-6">
+  <div class="flex justify-center px-3 py-3 sm:px-4 sm:py-6">
     <div class="w-full max-w-sm">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
@@ -317,13 +317,13 @@ onBeforeUnmount(() => {
         <div
           v-for="currency in currencies"
           :key="currency.code"
-          class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150"
+          class="-mx-2 flex items-center gap-2 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150 sm:gap-3"
           :class="currency.code === activeCurrency
             ? 'bg-cyan-400/[0.06] ring-cyan-400/40 dark:bg-cyan-400/[0.07]'
             : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-[6.25rem] shrink-0 flex-col leading-tight">
+          <div class="flex w-[3.5rem] shrink-0 flex-col leading-tight sm:w-[6.25rem]">
             <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
@@ -342,9 +342,9 @@ onBeforeUnmount(() => {
             :highlight="currency.code === activeCurrency"
             :format-options="numberFormatOptions"
             :aria-label="`Сумма в ${currency.code} (${currency.name})`"
-            size="xl"
+            size="lg"
             class="min-w-0 flex-1"
-            :b24ui="{ base: 'text-right text-lg font-medium tabular-nums' }"
+            :b24ui="{ base: 'text-right text-base font-medium tabular-nums sm:text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
             @focus="activeCurrency = currency.code"
           />
@@ -353,7 +353,7 @@ onBeforeUnmount(() => {
               v-hold-repeat="() => decrementCurrency(currency.code)"
               :icon="MinusIcon"
               color="air-tertiary-no-accent"
-              size="xl"
+              size="lg"
               :aria-label="`Уменьшить ${currency.code}`"
               :disabled="typeof currency.value !== 'number' || currency.value <= 0"
               @click.stop="decrementCurrency(currency.code)"
@@ -362,7 +362,7 @@ onBeforeUnmount(() => {
               v-hold-repeat="() => incrementCurrency(currency.code)"
               :icon="PlusIcon"
               color="air-tertiary-no-accent"
-              size="xl"
+              size="lg"
               :aria-label="`Увеличить ${currency.code}`"
               :disabled="typeof currency.value === 'number' && currency.value >= MAX_AMOUNT"
               @click.stop="incrementCurrency(currency.code)"
