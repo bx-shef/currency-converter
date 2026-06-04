@@ -1,4 +1,4 @@
-.PHONY: dev prod-up prod-down prod-pull prod-redeploy logs \
+.PHONY: dev prod-up prod-down prod-pull prod-redeploy prod-rollback logs \
         init-network init-nginxproxy
 
 # ─── Локальная разработка ────────────────────────────────────────────
@@ -34,6 +34,14 @@ prod-redeploy:
 	docker compose -f docker-compose.prod.yml --env-file .env.prod pull && \
 	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d && \
 	docker image prune -f
+
+## Откат на конкретный прошлый образ: make prod-rollback TAG=sha-abc1234
+## Пинит APP_TAG; контейнер встаёт на этот (неизменный) тег, и Watchtower
+## перестаёт его трогать. Вернуть авто-деплой с latest: make prod-redeploy.
+prod-rollback:
+	@test -n "$(TAG)" || { echo "Usage: make prod-rollback TAG=sha-<commit>"; exit 1; }
+	APP_TAG=$(TAG) docker compose -f docker-compose.prod.yml --env-file .env.prod pull app && \
+	APP_TAG=$(TAG) docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
 
 logs:
 	docker compose -f docker-compose.prod.yml logs -f app

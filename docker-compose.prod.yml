@@ -3,7 +3,9 @@
 
 services:
   app:
-    image: ghcr.io/bx-shef/currency-converter:latest
+    # APP_TAG lets `make prod-rollback TAG=sha-xxxx` pin a previous image;
+    # unset → latest (normal Watchtower-driven deploy).
+    image: ghcr.io/bx-shef/currency-converter:${APP_TAG:-latest}
     container_name: currency-converter
     expose:
       - "80"
@@ -16,6 +18,15 @@ services:
       - proxy-net
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      # So compose/Watchtower can tell whether the container actually serves
+      # traffic after an update (issue #52 P2). "/" always exists, even on an
+      # older rollback image that predates /version.json.
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   watchtower:
     # Pinned tag: floating `latest` would let a compromised upstream image

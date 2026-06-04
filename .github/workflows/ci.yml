@@ -119,5 +119,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  post-deploy:
+    name: post-deploy smoke
+    needs: deploy
+    # Watchtower rolls the new image out on the server asynchronously (~300s),
+    # so we poll the live site until /version.json reports this commit, then
+    # smoke-test it. A hang/failed rollout turns this job (and the run) red.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Wait for rollout & smoke-test
+        env:
+          # Override via repo variable DEPLOY_URL if the domain changes.
+          URL: ${{ vars.DEPLOY_URL || 'https://currency-converter.bx-shef.by' }}
+          EXPECTED: ${{ github.sha }}
+        run: |
+          echo "Жду, пока на $URL поднимется sha=$EXPECTED (Watchtower interval ~300s)…"
+          for i in $(seq 1 40); do
+            live=$(curl -fsS --max-time 10 "$URL/version.json" 2>/dev/null \
+                   | sed -n 's/.*"sha":"\([^"]*\)".*/\1/p' || true)
+            echo "  [$i/40] live=${live:-<none>}"
+            if [ "$live" = "$EXPECTED" ]; then
+              echo "Новая версия в проде — smoke-проверка."
+              curl -fsS --max-time 10 -o /dev/null "$URL/" && echo "GET / → 200 ✅"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Версия $EXPECTED не появилась за ~10 мин — деплой завис или контейнер не поднялся. Проверь Watchtower/логи; при необходимости откат: make prod-rollback TAG=sha-<prev>"
+          exit 1

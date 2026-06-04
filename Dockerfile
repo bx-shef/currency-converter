@@ -15,6 +15,10 @@ WORKDIR /app
 COPY . .
 ARG NUXT_PUBLIC_YANDEX_COUNTER_ID
 ENV NUXT_PUBLIC_YANDEX_COUNTER_ID=$NUXT_PUBLIC_YANDEX_COUNTER_ID
+# Stamp the build commit so the post-deploy smoke job can tell when the new
+# image is actually live behind Watchtower (served as /version.json).
+ARG GIT_SHA=dev
+RUN echo "{\"sha\":\"$GIT_SHA\"}" > public/version.json
 # Generate OG image from SVG (DejaVu supports Cyrillic).
 # inkscape 1.x replaces rsvg-convert which was removed in librsvg 2.57+
 RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \
