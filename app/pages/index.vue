@@ -37,6 +37,9 @@ const MAX_AMOUNT = 1e12
 /** Visual feedback duration after copy / copy error. */
 const COPY_FEEDBACK_MS = 1500
 
+// Display order + RU names; `bynRate` is filled from the НБ РБ API on load.
+// Adding a row here is all it takes to support a new currency — parseNbrbRates
+// returns every code the API provides.
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
   { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT },
@@ -264,12 +267,24 @@ const bynCopier = createCopier(copyState)
 const rubCopier = createCopier(copyStateRub)
 const rowCopier = createCopier(rowCopyState)
 
-/** Copies one row's amount (as displayed) and flashes feedback on that row. */
+/** Copies one row's amount and flashes feedback on that row. */
 function copyRow(code: string) {
   const c = currencies.value.find(r => r.code === code)
   if (!c || typeof c.value !== 'number') return
   copiedCode.value = code
-  rowCopier.copy(formatAmount(c.value))
+  // Strip the locale grouping no-break spaces (U+00A0 / U+202F) so the copied
+  // number pastes cleanly into spreadsheets / payment forms.
+  rowCopier.copy(formatAmount(c.value).replace(/[\u00A0\u202F]/g, ' '))
+}
+
+/**
+ * Copy-button color for a row: success/alert only while its feedback is active,
+ * otherwise neutral. Without the `idle` guard the row would stay "alert" after
+ * the flash resets, because `copiedCode` still points at it.
+ */
+function rowCopyColor(code: string) {
+  if (copiedCode.value !== code || rowCopyState.value === 'idle') return 'air-tertiary-no-accent'
+  return rowCopyState.value === 'ok' ? 'air-primary-success' : 'air-primary-alert'
 }
 
 onBeforeUnmount(() => {
@@ -346,6 +361,7 @@ onBeforeUnmount(() => {
             <span class="hidden truncate text-[10px] text-gray-400 sm:block dark:text-gray-500">
               {{ currency.name }}
             </span>
+            <!-- @click.stop on the trigger keeps opening the tooltip from activating the row. -->
             <B24Tooltip
               :text="currency.name"
               class="sm:hidden"
@@ -362,9 +378,7 @@ onBeforeUnmount(() => {
           </div>
           <B24Button
             :icon="CopyIcon"
-            :color="copiedCode === currency.code
-              ? (rowCopyState === 'ok' ? 'air-primary-success' : 'air-primary-alert')
-              : 'air-tertiary-no-accent'"
+            :color="rowCopyColor(currency.code)"
             size="sm"
             class="shrink-0"
             :disabled="typeof currency.value !== 'number'"
