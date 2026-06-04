@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -21,7 +21,7 @@ RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \
     inkscape -o public/og.png scripts/og.svg
 RUN pnpm generate
 
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.31-alpine AS runner
 COPY --from=builder /app/.output/public /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

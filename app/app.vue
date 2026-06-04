@@ -55,7 +55,7 @@ useSeoMeta({
   twitterCard: 'summary_large_image'
 })
 
-const rawCounterId = config.public.yandexCounterId as string
+const rawCounterId = String(config.public.yandexCounterId ?? '')
 // Accept only numeric IDs to prevent XSS through inline script interpolation
 const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
 
