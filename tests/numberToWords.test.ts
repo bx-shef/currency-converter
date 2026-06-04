@@ -85,4 +85,11 @@ describe('rublesAmountInWords', () => {
     expect(rublesAmountInWords(Infinity)).toBe('')
     expect(rublesAmountInWords(-Infinity)).toBe('')
   })
+  it('returns a lower-case string (caller capitalises for cheque lines)', () => {
+    // Contract guard: the page renders the result verbatim. If someone re-adds
+    // capitalisation here, decide on the caller side — this test should fail loudly.
+    const result = rublesAmountInWords(123.45)
+    expect(result[0]).toBe(result[0]!.toLowerCase())
+    expect(result[0]).not.toBe(result[0]!.toUpperCase())
+  })
 })

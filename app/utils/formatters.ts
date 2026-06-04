@@ -37,3 +37,8 @@ export const FORMULA_FACTOR = 0.16
 export function applyFormula(byn: number): number {
   return Math.round(byn * FORMULA_FACTOR * 100) / 100
 }
+
+/** Upper-cases the first character only; returns '' for empty input. */
+export function capitalizeFirst(text: string): string {
+  return text ? text[0]!.toUpperCase() + text.slice(1) : ''
+}

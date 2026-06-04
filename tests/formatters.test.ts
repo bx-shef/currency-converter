@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFormula, FORMULA_FACTOR, formatAmount, numberFormatOptions } from '../app/utils/formatters'
+import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, numberFormatOptions } from '../app/utils/formatters'
 
 describe('numberFormatOptions', () => {
   it('is plain decimal — no currency style or code', () => {
@@ -30,6 +30,15 @@ describe('formatAmount', () => {
     expect(formatAmount(1.236)).toBe('1,24')
     expect(formatAmount(0)).toBe('0,00')
   })
+
+  // Contract guard for non-finite input. `convert()` already returns undefined for
+  // such values, so they should never reach the field — but if that guard regresses,
+  // Intl renders a non-numeric fallback (not a misleading digit string), not a crash.
+  it('renders a non-numeric Intl fallback for non-finite input', () => {
+    expect(formatAmount(NaN)).not.toMatch(/\d/) // "не число"
+    expect(formatAmount(Infinity)).toContain('∞')
+    expect(formatAmount(-Infinity)).toContain('∞')
+  })
 })
 
 describe('applyFormula', () => {
@@ -42,5 +51,26 @@ describe('applyFormula', () => {
   it('rounds the result to 2 decimal places', () => {
     expect(applyFormula(1)).toBe(0.16)
     expect(applyFormula(0)).toBe(0)
+  })
+
+  it('propagates non-finite input (documents current behaviour)', () => {
+    expect(applyFormula(NaN)).toBeNaN()
+    expect(applyFormula(Infinity)).toBe(Infinity)
+    expect(applyFormula(-Infinity)).toBe(-Infinity)
+  })
+})
+
+describe('capitalizeFirst', () => {
+  it('upper-cases only the first character', () => {
+    expect(capitalizeFirst('сто двадцать три рубля 45 копеек')).toBe('Сто двадцать три рубля 45 копеек')
+    expect(capitalizeFirst('один рубль 01 копейка')).toBe('Один рубль 01 копейка')
+  })
+
+  it('leaves the rest of the string untouched', () => {
+    expect(capitalizeFirst('uSD')).toBe('USD')
+  })
+
+  it('returns empty string for empty input', () => {
+    expect(capitalizeFirst('')).toBe('')
   })
 })

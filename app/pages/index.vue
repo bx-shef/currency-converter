@@ -6,7 +6,7 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, recalcFrom } from '~/utils/converter'
 import { rublesAmountInWords } from '~/utils/numberToWords'
-import { applyFormula, formatAmount, numberFormatOptions } from '~/utils/formatters'
+import { applyFormula, capitalizeFirst, formatAmount, numberFormatOptions } from '~/utils/formatters'
 import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { vHoldRepeat } from '~/directives/holdRepeat'
 
@@ -26,7 +26,8 @@ interface CachedRates {
   timestamp: number
 }
 
-const CACHE_KEY = 'nbrb_rates'
+// Versioned key: bump the suffix on any CachedRates shape change to drop stale caches.
+const CACHE_KEY = 'nbrb_rates_v1'
 /** НБ РБ updates rates once per business day; cache for 12 hours */
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const DEFAULT_AMOUNT = 100
@@ -70,6 +71,14 @@ const amountInWordsRub = computed(() => {
   return rublesAmountInWords(rub.value)
 })
 
+// Optional capitalisation of the first letter (off by default) — handy when the
+// "sum in words" is pasted into a payment order that expects a capital line.
+const wordsCapitalized = ref(false)
+const displayAmountInWords = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWords.value) : amountInWords.value)
+const displayAmountInWordsRub = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWordsRub.value) : amountInWordsRub.value)
+
 const formulaResult = computed(() => applyFormula(activeBynAmount.value))
 
 const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
@@ -96,13 +105,17 @@ function applyRates(rateMap: RateEntry[], date: string) {
   }
 }
 
-/** Reads cached rates from sessionStorage; null when missing, stale, or unparsable. */
+/** Reads cached rates from localStorage; null when missing, stale, or unparsable. */
 function loadFromCache(): CachedRates | null {
-  if (typeof sessionStorage === 'undefined') return null
+  // SSR guard only; in-browser access errors (private mode, blocked storage) are caught below.
+  if (typeof localStorage === 'undefined') return null
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY)
+    const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const cached = JSON.parse(raw) as CachedRates
+    // Guard against a foreign/stale cache shape (e.g. schema change between versions):
+    // a missing `timestamp` would make the TTL check `NaN > TTL` (false) and apply broken data.
+    if (!cached || typeof cached.timestamp !== 'number' || typeof cached.date !== 'string' || !Array.isArray(cached.rates)) return null
     if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
     return cached
   } catch {
@@ -110,13 +123,13 @@ function loadFromCache(): CachedRates | null {
   }
 }
 
-/** Persists rates to sessionStorage; silently no-ops when storage is unavailable. */
+/** Persists rates to localStorage; silently no-ops when storage is unavailable. */
 function saveToCache(date: string, rates: RateEntry[]) {
-  if (typeof sessionStorage === 'undefined') return
+  if (typeof localStorage === 'undefined') return
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
   } catch {
-    // sessionStorage may be unavailable (private browsing, quota exceeded)
+    // localStorage may be unavailable (private browsing, quota exceeded)
   }
 }
 
@@ -128,6 +141,8 @@ async function fetchRates() {
       ? new Date(data[0].Date).toLocaleDateString('ru-RU')
       : ''
     const rateMap = parseNbrbRates(data)
+    // Empty/garbage response would silently zero out every rate; surface it as an error instead.
+    if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
     applyRates(rateMap, date)
     saveToCache(date, rateMap)
   } catch {
@@ -138,11 +153,11 @@ async function fetchRates() {
 async function refresh() {
   if (loading.value || refreshing.value) return
   refreshing.value = true
-  if (typeof sessionStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined') {
     try {
-      sessionStorage.removeItem(CACHE_KEY)
+      localStorage.removeItem(CACHE_KEY)
     } catch {
-      // sessionStorage may be unavailable
+      // localStorage may be unavailable
     }
   }
   await fetchRates()
@@ -241,7 +256,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex justify-center px-3 py-3 sm:py-6">
+  <div class="flex justify-center px-4 py-3 sm:py-6">
     <div class="w-full max-w-sm">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
@@ -259,7 +274,7 @@ onBeforeUnmount(() => {
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
-          :disabled="loading"
+          :disabled="loading || refreshing"
           :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
@@ -273,14 +288,14 @@ onBeforeUnmount(() => {
         <div
           v-for="i in 6"
           :key="i"
-          class="h-14 animate-pulse rounded bg-gray-100 dark:bg-gray-800"
+          class="-mx-2 h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
         />
       </div>
 
       <!-- Error state -->
       <div
         v-else-if="fetchError"
-        class="rounded border border-red-200 p-3 text-sm text-red-500 dark:border-red-800"
+        class="-mx-2 rounded-lg border border-red-200 px-2 py-3 text-sm text-red-500 dark:border-red-800"
       >
         {{ fetchError }}
       </div>
@@ -293,7 +308,7 @@ onBeforeUnmount(() => {
         <div
           v-for="currency in currencies"
           :key="currency.code"
-          class="flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150"
+          class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150"
           :class="currency.code === activeCurrency
             ? 'bg-cyan-400/[0.06] ring-cyan-400/40 dark:bg-cyan-400/[0.07]'
             : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
@@ -347,15 +362,43 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Sum in words + copy -->
-        <div class="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3 dark:border-white/10 dark:bg-white/[0.02]">
-          <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Сумма прописью
+        <div class="-mx-2 mt-3 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 dark:border-white/10 dark:bg-white/[0.02]">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Сумма прописью
+            </span>
+            <div
+              class="flex shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
+              role="group"
+              aria-label="Регистр первой буквы"
+            >
+              <button
+                type="button"
+                class="px-1.5 py-0.5 text-[11px] leading-none transition-colors"
+                :class="!wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="!wordsCapitalized"
+                aria-label="Строчная первая буква"
+                @click="wordsCapitalized = false"
+              >
+                аб
+              </button>
+              <button
+                type="button"
+                class="border-l border-gray-200 px-1.5 py-0.5 text-[11px] leading-none transition-colors dark:border-white/10"
+                :class="wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="wordsCapitalized"
+                aria-label="Заглавная первая буква"
+                @click="wordsCapitalized = true"
+              >
+                Аб
+              </button>
+            </div>
           </div>
           <div class="flex flex-col gap-2">
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">BYN</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">BYN</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWords }}
+                {{ displayAmountInWords }}
               </div>
               <B24Button
                 type="button"
@@ -364,13 +407,13 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0"
-                @click="bynCopier.copy(amountInWords)"
+                @click="bynCopier.copy(displayAmountInWords)"
               />
             </div>
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">RUB</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">RUB</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWordsRub }}
+                {{ displayAmountInWordsRub }}
               </div>
               <B24Button
                 type="button"
@@ -379,14 +422,14 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0"
-                @click="rubCopier.copy(amountInWordsRub)"
+                @click="rubCopier.copy(displayAmountInWordsRub)"
               />
             </div>
           </div>
         </div>
 
         <!-- Calculation formula -->
-        <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+        <div class="-mx-2 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
           <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
             (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>

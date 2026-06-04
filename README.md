@@ -9,8 +9,9 @@
 - Кнопки +/− с автоповтором при удержании: повтор стартует после короткой
   паузы и ускоряется, пока кнопка зажата
 - Адаптивный шаг кнопок: 1 при значении до 10, 10 — до 200, 100 — от 200
-- Сумма прописью для BYN и RUB (формат как в платёжке: «рубль / копейка»)
-- Кэш курсов в sessionStorage (12 ч) — НБ РБ обновляет раз в день
+- Сумма прописью для BYN и RUB (формат как в платёжке: «рубль / копейка»),
+  с переключателем регистра первой буквы (строчная / заглавная)
+- Кэш курсов в localStorage (12 ч) — НБ РБ обновляет раз в день
 - Тёмная тема
 - Статическое приложение (без серверной части)
 - Mobile-first дизайн
@@ -46,6 +47,7 @@ app/
   utils/numberToWords.ts  — сумма прописью на русском
   directives/holdRepeat.ts — автоповтор +/− при удержании
   components/SiteFooter.vue
+scripts/og.svg            — исходник OG-картинки (→ public/og.png на этапе docker build)
 tests/                    — vitest на утилиты и директиву
 ```
 
@@ -74,6 +76,13 @@ pnpm typecheck   # vue-tsc
 pnpm test        # Vitest
 ```
 
+Переменные для локальной разработки — в `.env` (образец в `.env.example`):
+
+| Переменная | Описание |
+|---|---|
+| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (только цифры, необязательно) |
+| `NUXT_ALLOWED_HOSTS` | Разрешённые хосты dev-сервера через запятую — нужно для туннелей (ngrok, localtunnel) |
+
 ## Деплой на сервер
 
 ### Схема
@@ -95,17 +104,17 @@ curl -fsSL https://get.docker.com | sh
 ```bash
 mkdir -p /home/bitrix/currency-converter && cd /home/bitrix/currency-converter
 
-curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
-curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.nginxproxy.yml
-curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/Makefile
-curl -o .env.prod https://raw.githubusercontent.com/bx-shef/currency-converter/main/.env.prod.example
+curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
+curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.nginxproxy.yml
+curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/Makefile
+curl -fsSL -o .env.prod https://raw.githubusercontent.com/bx-shef/currency-converter/main/.env.prod.example
 
 nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
 ```
 
 **3. Создать сеть и запустить**
 ```bash
-docker network create proxy-net 2>/dev/null || true
+make init-network      # docker-сеть proxy-net
 make init-nginxproxy   # nginx-proxy + Let's Encrypt
 make prod-up           # приложение + Watchtower
 ```
@@ -116,7 +125,7 @@ make prod-up           # приложение + Watchtower
 
 ```bash
 cd /home/bitrix/currency-converter
-curl -O https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
+curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
 make prod-up
 ```
 
@@ -140,6 +149,7 @@ make prod-up
 ```bash
 make prod-up        # запустить / перезапустить
 make prod-down      # остановить
+make prod-pull      # скачать свежий образ без перезапуска
 make prod-redeploy  # принудительно обновить без ожидания Watchtower
 make logs           # логи приложения
 ```
