@@ -104,6 +104,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
           color="air-tertiary-no-accent"
           :icon="GitHubIcon"
           size="sm"
+          class="me-[3px]"
         />
       </template>
 
