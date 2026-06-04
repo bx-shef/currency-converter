@@ -6,7 +6,7 @@ import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, recalcFrom } from '~/utils/converter'
 import { rublesAmountInWords } from '~/utils/numberToWords'
-import { applyFormula, formatAmount, numberFormatOptions } from '~/utils/formatters'
+import { applyFormula, capitalizeFirst, formatAmount, numberFormatOptions } from '~/utils/formatters'
 import { vHoldRepeat } from '~/directives/holdRepeat'
 
 interface NbrbRate {
@@ -78,6 +78,14 @@ const amountInWordsRub = computed(() => {
   if (!rub || typeof rub.value !== 'number') return ''
   return rublesAmountInWords(rub.value)
 })
+
+// Optional capitalisation of the first letter (off by default) — handy when the
+// "sum in words" is pasted into a payment order that expects a capital line.
+const wordsCapitalized = ref(false)
+const displayAmountInWords = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWords.value) : amountInWords.value)
+const displayAmountInWordsRub = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWordsRub.value) : amountInWordsRub.value)
 
 const formulaResult = computed(() => applyFormula(activeBynAmount.value))
 
@@ -365,14 +373,42 @@ onBeforeUnmount(() => {
 
         <!-- Sum in words + copy -->
         <div class="-mx-2 mt-3 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 dark:border-white/10 dark:bg-white/[0.02]">
-          <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Сумма прописью
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Сумма прописью
+            </span>
+            <div
+              class="flex shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
+              role="group"
+              aria-label="Регистр первой буквы"
+            >
+              <button
+                type="button"
+                class="px-1.5 py-0.5 text-[11px] leading-none transition-colors"
+                :class="!wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="!wordsCapitalized"
+                aria-label="Строчная первая буква"
+                @click="wordsCapitalized = false"
+              >
+                аб
+              </button>
+              <button
+                type="button"
+                class="border-l border-gray-200 px-1.5 py-0.5 text-[11px] leading-none transition-colors dark:border-white/10"
+                :class="wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="wordsCapitalized"
+                aria-label="Заглавная первая буква"
+                @click="wordsCapitalized = true"
+              >
+                Аб
+              </button>
+            </div>
           </div>
           <div class="flex flex-col gap-2">
             <div class="flex items-start gap-2">
               <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">BYN</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWords }}
+                {{ displayAmountInWords }}
               </div>
               <B24Button
                 type="button"
@@ -381,13 +417,13 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0"
-                @click="bynCopier.copy(amountInWords)"
+                @click="bynCopier.copy(displayAmountInWords)"
               />
             </div>
             <div class="flex items-start gap-2">
               <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">RUB</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWordsRub }}
+                {{ displayAmountInWordsRub }}
               </div>
               <B24Button
                 type="button"
@@ -396,7 +432,7 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0"
-                @click="rubCopier.copy(amountInWordsRub)"
+                @click="rubCopier.copy(displayAmountInWordsRub)"
               />
             </div>
           </div>

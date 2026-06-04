@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFormula, FORMULA_FACTOR, formatAmount, numberFormatOptions } from '../app/utils/formatters'
+import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, numberFormatOptions } from '../app/utils/formatters'
 
 describe('numberFormatOptions', () => {
   it('is plain decimal — no currency style or code', () => {
@@ -57,5 +57,20 @@ describe('applyFormula', () => {
     expect(applyFormula(NaN)).toBeNaN()
     expect(applyFormula(Infinity)).toBe(Infinity)
     expect(applyFormula(-Infinity)).toBe(-Infinity)
+  })
+})
+
+describe('capitalizeFirst', () => {
+  it('upper-cases only the first character', () => {
+    expect(capitalizeFirst('сто двадцать три рубля 45 копеек')).toBe('Сто двадцать три рубля 45 копеек')
+    expect(capitalizeFirst('один рубль 01 копейка')).toBe('Один рубль 01 копейка')
+  })
+
+  it('leaves the rest of the string untouched', () => {
+    expect(capitalizeFirst('uSD')).toBe('USD')
+  })
+
+  it('returns empty string for empty input', () => {
+    expect(capitalizeFirst('')).toBe('')
   })
 })
