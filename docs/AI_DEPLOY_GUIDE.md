@@ -28,12 +28,17 @@ push в main
    Для SSR: `deps` → `builder` → node-runner. Build-args для переменных, которые
    запекаются в бандл.
 2. **`.dockerignore`** — минимум `node_modules`, `.git`, `.env*`, `.nuxt`, `dist`.
-3. **`.github/workflows/ci.yml`** — на каждый PR: install → build → typecheck.
-4. **`.github/workflows/deploy.yml`** — на `push: main`. Шаги:
-   `actions/checkout@v5`, `docker/login-action@v3` (GHCR),
-   `docker/setup-buildx-action@v3`, `docker/metadata-action@v5`,
-   `docker/build-push-action@v6`. Теги `latest` + `sha-<sha>` (даёт
-   откат), cache `type=gha`. В job: `permissions: { contents: read, packages: write }`.
+3. **`.github/workflows/ci.yml`** — единый pipeline (CI/CD), чтобы деплой
+   зависел от зелёного CI (gating, issue #45). Jobs:
+   - `ci` — на push и PR: install → lint → test → typecheck → `nuxt generate`.
+   - `docker-build` — на PR: собирает прод-образ **без push** (smoke-test
+     Dockerfile; ловит поломки базы — см. «грабля #17» — до прода; работает и
+     на Dependabot-PR, без секретов).
+   - `deploy` — `needs: ci`, только на `push: main`: `docker/login-action`
+     (GHCR) → `docker/metadata-action` → `docker/build-push-action`. Теги
+     `latest` + `sha-<sha>` (даёт откат), cache `type=gha`.
+     `permissions: { contents: read, packages: write }`. Красный `ci` теперь
+     блокирует попадание образа в GHCR.
 5. **`docker-compose.prod.yml`** — приложение (`image: ghcr.io/...`) + Watchtower,
    сеть как `external: true`, label-enable.
 6. **`docker-compose.nginxproxy.yml`** — `nginxproxy/nginx-proxy` + `acme-companion`.
