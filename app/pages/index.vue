@@ -111,6 +111,9 @@ function loadFromCache(): CachedRates | null {
     const raw = sessionStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const cached = JSON.parse(raw) as CachedRates
+    // Guard against a foreign/stale cache shape (e.g. schema change between versions):
+    // a missing `timestamp` would make the TTL check `NaN > TTL` (false) and apply broken data.
+    if (!cached || typeof cached.timestamp !== 'number' || !Array.isArray(cached.rates)) return null
     if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
     return cached
   } catch {
@@ -138,6 +141,8 @@ async function fetchRates() {
     const rateMap = data
       .filter(r => r.Cur_Scale > 0)
       .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
+    // Empty/garbage response would silently zero out every rate; surface it as an error instead.
+    if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
     applyRates(rateMap, date)
     saveToCache(date, rateMap)
   } catch {
@@ -269,7 +274,7 @@ onBeforeUnmount(() => {
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
-          :disabled="loading"
+          :disabled="loading || refreshing"
           :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
@@ -290,7 +295,7 @@ onBeforeUnmount(() => {
       <!-- Error state -->
       <div
         v-else-if="fetchError"
-        class="-mx-2 rounded-lg border border-red-200 px-3 py-3 text-sm text-red-500 dark:border-red-800"
+        class="-mx-2 rounded-lg border border-red-200 px-2 py-3 text-sm text-red-500 dark:border-red-800"
       >
         {{ fetchError }}
       </div>

@@ -1,10 +1,10 @@
 /**
  * Russian "amount in words" for ruble-denominated currencies (BYN and RUB —
  * both use the «рубль / копейка» denominations and identical word forms).
- * Capitalised first letter so the result reads like a formal cheque line:
- *   123.45 → "Сто двадцать три рубля 45 копеек"
- *     1.01 → "Один рубль 01 копейка"          (singular kopeck inflection)
- *   1234.00 → "Одна тысяча двести тридцать четыре рубля 00 копеек"
+ * Lower-case (matches the source data; the caller capitalises if a cheque line is needed):
+ *   123.45 → "сто двадцать три рубля 45 копеек"
+ *     1.01 → "один рубль 01 копейка"          (singular kopeck inflection)
+ *   1234.00 → "одна тысяча двести тридцать четыре рубля 00 копеек"
  *
  * Returns '' for NaN / ±Infinity so the caller can safely render the result
  * directly via {{ }} interpolation without an extra guard.
