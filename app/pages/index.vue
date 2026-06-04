@@ -1,68 +1,30 @@
 <script setup lang="ts">
-import type { Ref } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import InfoCircleIcon from '@bitrix24/b24icons-vue/outline/InfoCircleIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
-import { applyStep, recalcFrom } from '~/utils/converter'
 import { rublesAmountInWords } from '~/utils/numberToWords'
 import { applyFormula, capitalizeFirst, formatAmount, numberFormatOptions } from '~/utils/formatters'
-import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { vHoldRepeat } from '~/directives/holdRepeat'
+import { MAX_AMOUNT } from '~/config/currencies'
+import { useNbrbRates } from '~/composables/useNbrbRates'
+import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
 
-/** Currency row shown in the converter UI */
-interface CurrencyRow {
-  code: string
-  name: string
-  /** BYN per 1 unit of this currency; always 1 for BYN itself */
-  bynRate: number
-  /** Current amount entered or calculated for this currency */
-  value: number | undefined
-}
-
-interface CachedRates {
-  date: string
-  rates: RateEntry[]
-  timestamp: number
-}
-
-// Versioned key: bump the suffix on any CachedRates shape change to drop stale caches.
-const CACHE_KEY = 'nbrb_rates_v1'
-/** НБ РБ updates rates once per business day; cache for 12 hours */
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const DEFAULT_AMOUNT = 100
-/** Upper bound for input — keeps `value * rate` away from Number.MAX_SAFE_INTEGER. */
-const MAX_AMOUNT = 1e12
-/** Visual feedback duration after copy / copy error. */
-const COPY_FEEDBACK_MS = 1500
-
-// Display order + RU names; `bynRate` is filled from the НБ РБ API on load.
-// Adding a row here is all it takes to support a new currency — parseNbrbRates
-// returns every code the API provides.
-const DEFAULT_CURRENCIES: CurrencyRow[] = [
-  { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
-  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT },
-  { code: 'KZT', name: 'казахстанский тенге', bynRate: 0, value: undefined },
-  { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined },
-  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined },
-  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined }
-]
-
-const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
-const ratesDate = ref('')
-const loading = ref(true)
-const refreshing = ref(false)
-const fetchError = ref('')
-const activeCurrency = ref('BYN')
-
-type CopyState = 'idle' | 'ok' | 'err'
-const copyState = ref<CopyState>('idle')
-const copyStateRub = ref<CopyState>('idle')
-// Per-row "copy amount" feedback: which row was last copied and its flash state.
-const rowCopyState = ref<CopyState>('idle')
-const copiedCode = ref<string | null>(null)
+// Rate loading, caching and row state live in the composable (issue #48).
+const {
+  currencies,
+  ratesDate,
+  loading,
+  refreshing,
+  fetchError,
+  activeCurrency,
+  refresh,
+  onValueUpdate,
+  onRowClick,
+  incrementCurrency,
+  decrementCurrency
+} = useNbrbRates()
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -88,210 +50,27 @@ const displayAmountInWordsRub = computed(() =>
   wordsCapitalized.value ? capitalizeFirst(amountInWordsRub.value) : amountInWordsRub.value)
 
 const formulaResult = computed(() => applyFormula(activeBynAmount.value))
-
 const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
 
-/**
- * Applies fetched BYN-rates to the rows and recomputes values. Keeps the active
- * currency as the conversion source when its rate is available; otherwise falls
- * back to BYN with the default amount (e.g. when rates load before any input).
- */
-function applyRates(rateMap: RateEntry[], date: string) {
-  for (const { code, bynRate } of rateMap) {
-    const c = currencies.value.find(r => r.code === code)
-    if (c) c.bynRate = bynRate
-  }
-  ratesDate.value = date
-  const active = currencies.value.find(c => c.code === activeCurrency.value)
-  if (active && typeof active.value === 'number' && active.bynRate > 0) {
-    currencies.value = recalcFrom(currencies.value, active.code, active.value)
-  } else {
-    activeCurrency.value = 'BYN'
-    const byn = currencies.value.find(c => c.code === 'BYN')
-    const amount = byn?.value ?? DEFAULT_AMOUNT
-    currencies.value = recalcFrom(currencies.value, 'BYN', amount)
-  }
-}
+// Clipboard feedback: one flash per "sum in words" line, plus a keyed one for
+// the per-row "copy amount" buttons.
+const { state: copyState, copy: copyBynWords } = useCopyFeedback()
+const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
+const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 
-/** Reads cached rates from localStorage; null when missing, stale, or unparsable. */
-function loadFromCache(): CachedRates | null {
-  // SSR guard only; in-browser access errors (private mode, blocked storage) are caught below.
-  if (typeof localStorage === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(CACHE_KEY)
-    if (!raw) return null
-    const cached = JSON.parse(raw) as CachedRates
-    // Guard against a foreign/stale cache shape (e.g. schema change between versions):
-    // a missing `timestamp` would make the TTL check `NaN > TTL` (false) and apply broken data.
-    if (!cached || typeof cached.timestamp !== 'number' || typeof cached.date !== 'string' || !Array.isArray(cached.rates)) return null
-    if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
-    // Drop tampered/corrupt entries (e.g. hand-edited localStorage) so downstream
-    // conversion never sees a non-finite or non-positive rate.
-    const rates = cached.rates.filter(
-      (r): r is RateEntry =>
-        !!r && typeof r.code === 'string' && r.code !== ''
-        && typeof r.bynRate === 'number' && Number.isFinite(r.bynRate) && r.bynRate > 0
-    )
-    if (!rates.length) return null
-    return { ...cached, rates }
-  } catch {
-    return null
-  }
-}
-
-/** Persists rates to localStorage; silently no-ops when storage is unavailable. */
-function saveToCache(date: string, rates: RateEntry[]) {
-  if (typeof localStorage === 'undefined') return
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
-  } catch {
-    // localStorage may be unavailable (private browsing, quota exceeded)
-  }
-}
-
-async function fetchRates() {
-  fetchError.value = ''
-  try {
-    // Cap the wait so a hanging NBRB endpoint surfaces an error instead of an endless spinner.
-    const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0', { timeout: 10_000 })
-    const date = data[0]?.Date
-      ? new Date(data[0].Date).toLocaleDateString('ru-RU')
-      : ''
-    const rateMap = parseNbrbRates(data)
-    // Empty/garbage response would silently zero out every rate; surface it as an error instead.
-    if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
-    applyRates(rateMap, date)
-    saveToCache(date, rateMap)
-  } catch {
-    fetchError.value = 'Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.'
-  }
-}
-
-async function refresh() {
-  if (loading.value || refreshing.value) return
-  refreshing.value = true
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.removeItem(CACHE_KEY)
-    } catch {
-      // localStorage may be unavailable
-    }
-  }
-  await fetchRates()
-  refreshing.value = false
-}
-
-onMounted(async () => {
-  fetchError.value = ''
-  const cached = loadFromCache()
-  if (cached) {
-    applyRates(cached.rates, cached.date)
-    loading.value = false
-    return
-  }
-  await fetchRates()
-  loading.value = false
-})
-
-/**
- * Handles input on a currency field: normalizes null/NaN to `undefined`, makes
- * the row active, and recomputes the other rows from it (a cleared field leaves
- * the rest untouched).
- */
-function onValueUpdate(code: string, value: number | null | undefined) {
-  const c = currencies.value.find(r => r.code === code)
-  if (!c) return
-  const normalized = value == null || (typeof value === 'number' && isNaN(value))
-    ? undefined
-    : value
-  c.value = normalized
-  activeCurrency.value = code
-  if (typeof normalized === 'number') {
-    currencies.value = recalcFrom(currencies.value, code, normalized)
-  }
-}
-
-function onRowClick(code: string) {
-  activeCurrency.value = code
-}
-
-/** Increments the given currency by one adaptive step, clamped to MAX_AMOUNT. */
-function incrementCurrency(code: string) {
-  const c = currencies.value.find(r => r.code === code)
-  if (!c) return
-  onValueUpdate(code, Math.min(applyStep(c.value, 1), MAX_AMOUNT))
-}
-
-/** Decrements the given currency by one adaptive step, clamped to 0. */
-function decrementCurrency(code: string) {
-  const c = currencies.value.find(r => r.code === code)
-  if (!c) return
-  onValueUpdate(code, Math.max(applyStep(c.value, -1), 0))
-}
-
-/**
- * Builds a clipboard-copy action bound to one feedback-state ref. Writes the
- * text and flashes `ok`/`err` on `state` for COPY_FEEDBACK_MS. `dispose` clears
- * the pending reset timer on unmount.
- */
-function createCopier(state: Ref<CopyState>) {
-  let timer: ReturnType<typeof setTimeout> | null = null
-  function flash(next: 'ok' | 'err') {
-    state.value = next
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      state.value = 'idle'
-    }, COPY_FEEDBACK_MS)
-  }
-  async function copy(text: string) {
-    if (!text) return
-    if (typeof navigator === 'undefined' || !navigator.clipboard) {
-      // insecure context / unsupported — surface it instead of swallowing.
-      flash('err')
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(text)
-      flash('ok')
-    } catch {
-      flash('err')
-    }
-  }
-  function dispose() {
-    if (timer) clearTimeout(timer)
-  }
-  return { copy, dispose }
-}
-
-const bynCopier = createCopier(copyState)
-const rubCopier = createCopier(copyStateRub)
-const rowCopier = createCopier(rowCopyState)
-
-/** Copies one row's amount and flashes feedback on that row. */
+/** Copies one row's amount, stripping locale no-break spaces for clean pasting. */
 function copyRow(code: string) {
   const c = currencies.value.find(r => r.code === code)
   if (!c || typeof c.value !== 'number') return
-  copiedCode.value = code
   // Strip the locale grouping no-break spaces (U+00A0 / U+202F) so the copied
   // number pastes cleanly into spreadsheets / payment forms.
-  rowCopier.copy(formatAmount(c.value).replace(/[\u00A0\u202F]/g, ' '))
+  copyRowAmount(code, formatAmount(c.value).replace(/[\u00A0\u202F]/g, ' '))
 }
 
-/**
- * Copy-button color for a row: success/alert only while its feedback is active,
- * otherwise neutral. Without the `idle` guard the row would stay "alert" after
- * the flash resets, because `copiedCode` still points at it.
- */
+/** Copy-button colour for a row: success/alert only while its flash is active. */
 function rowCopyColor(code: string) {
-  if (copiedCode.value !== code || rowCopyState.value === 'idle') return 'air-tertiary-no-accent'
-  return rowCopyState.value === 'ok' ? 'air-primary-success' : 'air-primary-alert'
+  return rowCopyColorFor(code, 'air-primary-success', 'air-primary-alert', 'air-tertiary-no-accent')
 }
-
-onBeforeUnmount(() => {
-  bynCopier.dispose()
-  rubCopier.dispose()
-  rowCopier.dispose()
-})
 </script>
 
 <template>
@@ -400,7 +179,7 @@ onBeforeUnmount(() => {
             class="min-w-0 flex-1"
             :b24ui="{ base: 'text-right text-base font-medium tabular-nums sm:text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
-            @focus="activeCurrency = currency.code"
+            @focus="onRowClick(currency.code)"
           />
           <div class="flex shrink-0 gap-1">
             <B24Button
@@ -470,7 +249,7 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0 me-1.5"
-                @click="bynCopier.copy(displayAmountInWords)"
+                @click="copyBynWords(displayAmountInWords)"
               />
             </div>
             <div class="flex items-start gap-2">
@@ -485,7 +264,7 @@ onBeforeUnmount(() => {
                 size="sm"
                 :icon="CopyIcon"
                 class="shrink-0 me-1.5"
-                @click="rubCopier.copy(displayAmountInWordsRub)"
+                @click="copyRubWords(displayAmountInWordsRub)"
               />
             </div>
           </div>

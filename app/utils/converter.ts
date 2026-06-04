@@ -86,3 +86,21 @@ export function recalcFrom<T extends ConvertibleRow>(rows: readonly T[], sourceC
       : { ...r, value: convert(amount, source.bynRate, r.bynRate) }
   )
 }
+
+/**
+ * Picks the row to recompute everything from after rates (re)load: the active
+ * row when it has a usable amount and a loaded rate, otherwise BYN with its
+ * current amount (falling back to `defaultAmount`).
+ */
+export function resolveRecalcSource(
+  rows: readonly ConvertibleRow[],
+  activeCode: string,
+  defaultAmount: number
+): { code: string, amount: number } {
+  const active = rows.find(r => r.code === activeCode)
+  if (active && typeof active.value === 'number' && active.bynRate > 0) {
+    return { code: active.code, amount: active.value }
+  }
+  const byn = rows.find(r => r.code === 'BYN')
+  return { code: 'BYN', amount: byn?.value ?? defaultAmount }
+}
