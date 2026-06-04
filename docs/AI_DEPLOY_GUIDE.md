@@ -119,7 +119,7 @@ cp .env.prod.example .env.prod && nano .env.prod
    на стороне сервера.
 
 11. **`rsvg-convert` удалён в librsvg 2.57+.** Если в Dockerfile нужна
-    SVG→PNG конвертация (OG-картинки) — на свежих Alpine (например `node:26-alpine`)
+    SVG→PNG конвертация (OG-картинки) — на свежих Alpine (`node:22-alpine` и новее)
     `rsvg-convert` уже нет. Использовать `inkscape`:
     `apk add inkscape font-dejavu fontconfig && fc-cache -f`. Либо рендерить
     OG через библиотеку (Satori), без системного бинаря.
@@ -144,6 +144,12 @@ cp .env.prod.example .env.prod && nano .env.prod
     на nginx-proxy — на случай мисконфигурации внешнего слоя.
     Минимум: `Strict-Transport-Security`, `X-Content-Type-Options`,
     `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP`.
+
+17. **Node 25+ выкинул corepack из официальных образов.** `RUN corepack enable`
+    в Dockerfile упадёт с `exit 127`. Держать базу на LTS со встроенным corepack
+    (`node:22-alpine`, выровнено с CI), либо ставить вручную:
+    `npm i -g corepack@latest && corepack enable`. Dependabot настроен НЕ прыгать
+    на мажоры node автоматически — иначе сборка снова падает.
 
 ---
 
