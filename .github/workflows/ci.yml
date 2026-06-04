@@ -21,7 +21,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         # Version is read from "packageManager" field in package.json
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           # Node 22 LTS — eslint-flat-config-utils uses Object.groupBy (Node 21+)
           node-version: '22'
