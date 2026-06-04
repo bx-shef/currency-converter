@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex justify-center px-3 py-3 sm:py-6">
+  <div class="flex justify-center px-4 py-3 sm:py-6">
     <div class="w-full max-w-sm">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
@@ -283,14 +283,14 @@ onBeforeUnmount(() => {
         <div
           v-for="i in 6"
           :key="i"
-          class="h-14 animate-pulse rounded bg-gray-100 dark:bg-gray-800"
+          class="-mx-2 h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
         />
       </div>
 
       <!-- Error state -->
       <div
         v-else-if="fetchError"
-        class="rounded border border-red-200 p-3 text-sm text-red-500 dark:border-red-800"
+        class="-mx-2 rounded-lg border border-red-200 px-3 py-3 text-sm text-red-500 dark:border-red-800"
       >
         {{ fetchError }}
       </div>
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
         <div
           v-for="currency in currencies"
           :key="currency.code"
-          class="flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150"
+          class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150"
           :class="currency.code === activeCurrency
             ? 'bg-cyan-400/[0.06] ring-cyan-400/40 dark:bg-cyan-400/[0.07]'
             : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
@@ -357,13 +357,13 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Sum in words + copy -->
-        <div class="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3 dark:border-white/10 dark:bg-white/[0.02]">
+        <div class="-mx-2 mt-3 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 dark:border-white/10 dark:bg-white/[0.02]">
           <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
             Сумма прописью
           </div>
           <div class="flex flex-col gap-2">
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">BYN</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">BYN</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
                 {{ amountInWords }}
               </div>
@@ -378,7 +378,7 @@ onBeforeUnmount(() => {
               />
             </div>
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">RUB</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">RUB</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
                 {{ amountInWordsRub }}
               </div>
@@ -396,7 +396,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Calculation formula -->
-        <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+        <div class="-mx-2 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
           <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
             (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>
