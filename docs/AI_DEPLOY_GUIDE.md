@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-06-03
+> Last reviewed: 2026-06-04
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -119,7 +119,7 @@ cp .env.prod.example .env.prod && nano .env.prod
    на стороне сервера.
 
 11. **`rsvg-convert` удалён в librsvg 2.57+.** Если в Dockerfile нужна
-    SVG→PNG конвертация (OG-картинки) — на Alpine 3.21 (`node:20-alpine`)
+    SVG→PNG конвертация (OG-картинки) — на свежих Alpine (например `node:26-alpine`)
     `rsvg-convert` уже нет. Использовать `inkscape`:
     `apk add inkscape font-dejavu fontconfig && fc-cache -f`. Либо рендерить
     OG через библиотеку (Satori), без системного бинаря.

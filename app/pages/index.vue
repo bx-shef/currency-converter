@@ -7,16 +7,8 @@ import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, recalcFrom } from '~/utils/converter'
 import { rublesAmountInWords } from '~/utils/numberToWords'
 import { applyFormula, capitalizeFirst, formatAmount, numberFormatOptions } from '~/utils/formatters'
+import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { vHoldRepeat } from '~/directives/holdRepeat'
-
-interface NbrbRate {
-  Cur_ID: number
-  Date: string
-  Cur_Abbreviation: string
-  Cur_Scale: number
-  Cur_Name: string
-  Cur_OfficialRate: number
-}
 
 /** Currency row shown in the converter UI */
 interface CurrencyRow {
@@ -30,7 +22,7 @@ interface CurrencyRow {
 
 interface CachedRates {
   date: string
-  rates: Array<{ code: string, bynRate: number }>
+  rates: RateEntry[]
   timestamp: number
 }
 
@@ -96,7 +88,7 @@ const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
  * currency as the conversion source when its rate is available; otherwise falls
  * back to BYN with the default amount (e.g. when rates load before any input).
  */
-function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: string) {
+function applyRates(rateMap: RateEntry[], date: string) {
   for (const { code, bynRate } of rateMap) {
     const c = currencies.value.find(r => r.code === code)
     if (c) c.bynRate = bynRate
@@ -132,7 +124,7 @@ function loadFromCache(): CachedRates | null {
 }
 
 /** Persists rates to localStorage; silently no-ops when storage is unavailable. */
-function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
+function saveToCache(date: string, rates: RateEntry[]) {
   if (typeof localStorage === 'undefined') return
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
@@ -148,9 +140,7 @@ async function fetchRates() {
     const date = data[0]?.Date
       ? new Date(data[0].Date).toLocaleDateString('ru-RU')
       : ''
-    const rateMap = data
-      .filter(r => r.Cur_Scale > 0)
-      .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
+    const rateMap = parseNbrbRates(data)
     // Empty/garbage response would silently zero out every rate; surface it as an error instead.
     if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
     applyRates(rateMap, date)
