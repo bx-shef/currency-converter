@@ -24,6 +24,10 @@ describe('formatAmount', () => {
     expect(out).not.toMatch(/BYN|RUB|₽|Br/)
   })
 
+  it('groups a five-digit amount (typical converted KZT range)', () => {
+    expect(formatAmount(14705.5)).toMatch(/^14\D705,50$/)
+  })
+
   it('pads and rounds to 2 fraction digits', () => {
     expect(formatAmount(7)).toBe('7,00')
     expect(formatAmount(1.234)).toBe('1,23')

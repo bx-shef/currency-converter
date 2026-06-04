@@ -32,6 +32,14 @@ describe('parseNbrbRates', () => {
     expect(entry?.bynRate).toBeCloseTo(0.011, 12)
   })
 
+  it('normalises a Cur_Scale of 1000 (e.g. KZT) to a per-unit rate', () => {
+    const [entry] = parseNbrbRates([
+      rate({ Cur_Abbreviation: 'KZT', Cur_Scale: 1000, Cur_OfficialRate: 5.7234 })
+    ])
+    expect(entry?.code).toBe('KZT')
+    expect(entry?.bynRate).toBeCloseTo(0.0057234, 10)
+  })
+
   it('skips records with a non-positive scale', () => {
     const result = parseNbrbRates([
       rate({ Cur_Abbreviation: 'USD', Cur_Scale: 1 }),
