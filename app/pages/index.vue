@@ -2,6 +2,7 @@
 import type { Ref } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
+import InfoCircleIcon from '@bitrix24/b24icons-vue/outline/InfoCircleIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { applyStep, recalcFrom } from '~/utils/converter'
@@ -39,6 +40,7 @@ const COPY_FEEDBACK_MS = 1500
 const DEFAULT_CURRENCIES: CurrencyRow[] = [
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
   { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT },
+  { code: 'KZT', name: 'казахстанский тенге', bynRate: 0, value: undefined },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined },
   { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined },
   { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined },
@@ -55,6 +57,9 @@ const activeCurrency = ref('BYN')
 type CopyState = 'idle' | 'ok' | 'err'
 const copyState = ref<CopyState>('idle')
 const copyStateRub = ref<CopyState>('idle')
+// Per-row "copy amount" feedback: which row was last copied and its flash state.
+const rowCopyState = ref<CopyState>('idle')
+const copiedCode = ref<string | null>(null)
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -257,10 +262,20 @@ function createCopier(state: Ref<CopyState>) {
 
 const bynCopier = createCopier(copyState)
 const rubCopier = createCopier(copyStateRub)
+const rowCopier = createCopier(rowCopyState)
+
+/** Copies one row's amount (as displayed) and flashes feedback on that row. */
+function copyRow(code: string) {
+  const c = currencies.value.find(r => r.code === code)
+  if (!c || typeof c.value !== 'number') return
+  copiedCode.value = code
+  rowCopier.copy(formatAmount(c.value))
+}
 
 onBeforeUnmount(() => {
   bynCopier.dispose()
   rubCopier.dispose()
+  rowCopier.dispose()
 })
 </script>
 
@@ -284,7 +299,7 @@ onBeforeUnmount(() => {
           size="sm"
           :icon="RefreshIcon"
           :disabled="loading || refreshing"
-          :class="['ml-auto', refreshing ? '[&_svg]:animate-spin' : '']"
+          :class="['ml-auto me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
@@ -295,7 +310,7 @@ onBeforeUnmount(() => {
         class="flex flex-col gap-2"
       >
         <div
-          v-for="i in 6"
+          v-for="i in 7"
           :key="i"
           class="-mx-2 h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
         />
@@ -323,14 +338,39 @@ onBeforeUnmount(() => {
             : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-[3.5rem] shrink-0 flex-col leading-tight sm:w-[6.25rem]">
+          <div class="flex w-16 shrink-0 flex-col leading-tight sm:w-[6.25rem]">
             <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
-            <span class="truncate text-[10px] text-gray-400 dark:text-gray-500">
+            <!-- Full name fits the wider desktop column; on mobile it's behind a help tooltip. -->
+            <span class="hidden truncate text-[10px] text-gray-400 sm:block dark:text-gray-500">
               {{ currency.name }}
             </span>
+            <B24Tooltip
+              :text="currency.name"
+              class="sm:hidden"
+            >
+              <B24Button
+                :icon="InfoCircleIcon"
+                color="air-tertiary-no-accent"
+                size="xs"
+                class="-ms-1 w-fit text-gray-400"
+                :aria-label="`Полное название: ${currency.name}`"
+                @click.stop
+              />
+            </B24Tooltip>
           </div>
+          <B24Button
+            :icon="CopyIcon"
+            :color="copiedCode === currency.code
+              ? (rowCopyState === 'ok' ? 'air-primary-success' : 'air-primary-alert')
+              : 'air-tertiary-no-accent'"
+            size="sm"
+            class="shrink-0"
+            :disabled="typeof currency.value !== 'number'"
+            :aria-label="`Скопировать сумму ${currency.code}`"
+            @click.stop="copyRow(currency.code)"
+          />
           <B24InputNumber
             :model-value="currency.value"
             :model-modifiers="{ optional: true }"
@@ -415,7 +455,7 @@ onBeforeUnmount(() => {
                 :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0"
+                class="shrink-0 me-1.5"
                 @click="bynCopier.copy(displayAmountInWords)"
               />
             </div>
@@ -430,7 +470,7 @@ onBeforeUnmount(() => {
                 :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0"
+                class="shrink-0 me-1.5"
                 @click="rubCopier.copy(displayAmountInWordsRub)"
               />
             </div>
