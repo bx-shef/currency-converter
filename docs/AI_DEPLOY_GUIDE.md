@@ -40,7 +40,7 @@ push в main
    Включается, **только если на сервере nginx-proxy ещё не стоит**.
 7. **`.env.prod.example`** — `DOMAIN`, `LETSENCRYPT_EMAIL` (+ runtime env приложения,
    если есть). Реальный `.env.prod` лежит на сервере, не в git.
-8. **`Makefile`** — `prod-up`, `prod-down`, `prod-redeploy`, `logs`,
+8. **`Makefile`** — `prod-up`, `prod-down`, `prod-pull`, `prod-redeploy`, `logs`,
    `init-network`, `init-nginxproxy`.
 9. **`README.md`** — раздел Deploy: ссылки на raw-URL файлов и команды для сервера.
 

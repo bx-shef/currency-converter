@@ -34,7 +34,8 @@ interface CachedRates {
   timestamp: number
 }
 
-const CACHE_KEY = 'nbrb_rates'
+// Versioned key: bump the suffix on any CachedRates shape change to drop stale caches.
+const CACHE_KEY = 'nbrb_rates_v1'
 /** НБ РБ updates rates once per business day; cache for 12 hours */
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const DEFAULT_AMOUNT = 100
@@ -106,6 +107,7 @@ function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: str
 
 /** Reads cached rates from localStorage; null when missing, stale, or unparsable. */
 function loadFromCache(): CachedRates | null {
+  // SSR guard only; in-browser access errors (private mode, blocked storage) are caught below.
   if (typeof localStorage === 'undefined') return null
   try {
     const raw = localStorage.getItem(CACHE_KEY)
@@ -113,7 +115,7 @@ function loadFromCache(): CachedRates | null {
     const cached = JSON.parse(raw) as CachedRates
     // Guard against a foreign/stale cache shape (e.g. schema change between versions):
     // a missing `timestamp` would make the TTL check `NaN > TTL` (false) and apply broken data.
-    if (!cached || typeof cached.timestamp !== 'number' || !Array.isArray(cached.rates)) return null
+    if (!cached || typeof cached.timestamp !== 'number' || typeof cached.date !== 'string' || !Array.isArray(cached.rates)) return null
     if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
     return cached
   } catch {

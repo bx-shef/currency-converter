@@ -148,6 +148,7 @@ make prod-up
 ```bash
 make prod-up        # запустить / перезапустить
 make prod-down      # остановить
+make prod-pull      # скачать свежий образ без перезапуска
 make prod-redeploy  # принудительно обновить без ожидания Watchtower
 make logs           # логи приложения
 ```

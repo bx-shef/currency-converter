@@ -66,7 +66,7 @@ function integerToWords(n: number): string {
 
 /**
  * Formats a ruble amount (BYN or RUB) as a Russian "sum in words" string.
- * @returns '' for NaN / ±Infinity; capitalised string otherwise.
+ * @returns '' for NaN / ±Infinity; lower-case string otherwise.
  */
 export function rublesAmountInWords(amount: number): string {
   if (!isFinite(amount)) return ''
