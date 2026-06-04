@@ -5,7 +5,7 @@
  * are unit-tested on their own.
  */
 import { onMounted, ref } from 'vue'
-import { applyStep, recalcFrom } from '~/utils/converter'
+import { applyStep, recalcFrom, resolveRecalcSource } from '~/utils/converter'
 import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { CACHE_KEY, parseCache, serializeCache, type CachedRates } from '~/utils/ratesCache'
 import { createCurrencyRows, DEFAULT_AMOUNT, MAX_AMOUNT } from '~/config/currencies'
@@ -15,6 +15,13 @@ const RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
 /** Cap the fetch so a hanging endpoint surfaces an error, not an endless spinner. */
 const FETCH_TIMEOUT_MS = 10_000
 
+/**
+ * Converter state for the page: reactive currency rows, load status and input
+ * actions. Loads rates from cache or the API on mount.
+ * @returns status refs (`currencies`, `ratesDate`, `loading`, `refreshing`,
+ *   `fetchError`, `activeCurrency`) and actions (`refresh`, `onValueUpdate`,
+ *   `onRowClick`, `incrementCurrency`, `decrementCurrency`).
+ */
 export function useNbrbRates() {
   const currencies = ref(createCurrencyRows())
   const ratesDate = ref('')
@@ -35,22 +42,17 @@ export function useNbrbRates() {
       if (c) c.bynRate = bynRate
     }
     ratesDate.value = date
-    const active = currencies.value.find(c => c.code === activeCurrency.value)
-    if (active && typeof active.value === 'number' && active.bynRate > 0) {
-      currencies.value = recalcFrom(currencies.value, active.code, active.value)
-    } else {
-      activeCurrency.value = 'BYN'
-      const byn = currencies.value.find(c => c.code === 'BYN')
-      const amount = byn?.value ?? DEFAULT_AMOUNT
-      currencies.value = recalcFrom(currencies.value, 'BYN', amount)
-    }
+    const { code, amount } = resolveRecalcSource(currencies.value, activeCurrency.value, DEFAULT_AMOUNT)
+    activeCurrency.value = code
+    currencies.value = recalcFrom(currencies.value, code, amount)
   }
 
   /** Reads cached rates from localStorage; null when missing, stale, or unparsable. */
   function readCache(): CachedRates | null {
-    // SSR guard; in-browser access errors (private mode, blocked storage) caught below.
-    if (typeof localStorage === 'undefined') return null
+    if (typeof localStorage === 'undefined') return null // SSR guard
     try {
+      // localStorage.getItem can throw (SecurityError in blocked/partitioned
+      // storage); parseCache itself never throws.
       return parseCache(localStorage.getItem(CACHE_KEY), Date.now())
     } catch {
       return null
@@ -84,6 +86,7 @@ export function useNbrbRates() {
     }
   }
 
+  /** Clears the cache and refetches; ignored while a load is already running. */
   async function refresh() {
     if (loading.value || refreshing.value) return
     refreshing.value = true

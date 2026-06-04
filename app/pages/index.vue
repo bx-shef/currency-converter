@@ -179,7 +179,7 @@ function rowCopyColor(code: string) {
             class="min-w-0 flex-1"
             :b24ui="{ base: 'text-right text-base font-medium tabular-nums sm:text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
-            @focus="activeCurrency = currency.code"
+            @focus="onRowClick(currency.code)"
           />
           <div class="flex shrink-0 gap-1">
             <B24Button

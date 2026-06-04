@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { applyStep, convert, recalcFrom, roundValue, stepFor } from '../app/utils/converter'
+import { applyStep, convert, recalcFrom, resolveRecalcSource, roundValue, stepFor } from '../app/utils/converter'
+
+describe('resolveRecalcSource', () => {
+  const rows = [
+    { code: 'BYN', bynRate: 1, value: 100 },
+    { code: 'USD', bynRate: 3.2, value: 50 },
+    { code: 'EUR', bynRate: 3.5, value: undefined }
+  ]
+
+  it('keeps the active row when it has a usable amount and rate', () => {
+    expect(resolveRecalcSource(rows, 'USD', 999)).toEqual({ code: 'USD', amount: 50 })
+  })
+
+  it('falls back to BYN when the active row has no rate yet', () => {
+    expect(resolveRecalcSource(rows, 'EUR', 999)).toEqual({ code: 'BYN', amount: 100 })
+  })
+
+  it('falls back to BYN when the active row is empty', () => {
+    const r = [{ code: 'BYN', bynRate: 1, value: 100 }, { code: 'USD', bynRate: 3.2, value: undefined }]
+    expect(resolveRecalcSource(r, 'USD', 999)).toEqual({ code: 'BYN', amount: 100 })
+  })
+
+  it('uses the default amount when BYN itself is empty', () => {
+    const r = [{ code: 'BYN', bynRate: 1, value: undefined }, { code: 'USD', bynRate: 0, value: undefined }]
+    expect(resolveRecalcSource(r, 'USD', 250)).toEqual({ code: 'BYN', amount: 250 })
+  })
+})
 
 describe('roundValue', () => {
   it('rounds to 4 decimal places', () => {

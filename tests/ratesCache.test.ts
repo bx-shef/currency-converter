@@ -39,6 +39,14 @@ describe('parseCache', () => {
     expect(parseCache(raw(), NOW + 5000, 1000)).toBeNull()
   })
 
+  it('treats a future timestamp (clock skew) as still fresh', () => {
+    expect(parseCache(raw(), NOW - 60_000)).not.toBeNull()
+  })
+
+  it('rejects an over-long date string', () => {
+    expect(parseCache(raw({ date: 'x'.repeat(33) }), NOW)).toBeNull()
+  })
+
   it('drops corrupt rate entries and keeps the valid ones', () => {
     const mixed = JSON.stringify({
       date: 'x',

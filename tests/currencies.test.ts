@@ -32,8 +32,10 @@ describe('DEFAULT_CURRENCIES', () => {
 describe('createCurrencyRows', () => {
   it('returns an independent deep copy of the defaults', () => {
     const rows = createCurrencyRows()
-    rows[0]!.value = 999
-    expect(DEFAULT_CURRENCIES[0]!.value).toBeUndefined()
+    // Mutate BYN — the row whose value actually changes at runtime.
+    const byn = rows.find(c => c.code === 'BYN')!
+    byn.value = 999
+    expect(DEFAULT_CURRENCIES.find(c => c.code === 'BYN')!.value).toBe(DEFAULT_AMOUNT)
     expect(rows.map(c => c.code)).toEqual(DEFAULT_CURRENCIES.map(c => c.code))
   })
 })

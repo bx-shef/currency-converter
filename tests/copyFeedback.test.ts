@@ -64,6 +64,13 @@ describe('createFlash', () => {
     vi.advanceTimersByTime(5000)
     expect(state.value).toBe('ok')
   })
+
+  it('dispose is a safe no-op when nothing is pending', () => {
+    const state = { value: 'idle' as CopyState }
+    const { dispose } = createFlash(state, 1000)
+    expect(() => dispose()).not.toThrow()
+    expect(state.value).toBe('idle')
+  })
 })
 
 describe('pickColor', () => {

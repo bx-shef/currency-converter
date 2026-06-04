@@ -28,8 +28,10 @@ function isCachedRates(value: unknown): value is CachedRates {
   const c = value as Record<string, unknown>
   // A missing `timestamp` would make the TTL check `NaN > TTL` (false) and
   // apply broken data — reject the whole record instead.
+  // Bound the date length: it is shown to the user, and an unbounded string
+  // from tampered localStorage should not reach the UI even as plain text.
   return typeof c.timestamp === 'number'
-    && typeof c.date === 'string'
+    && typeof c.date === 'string' && c.date.length <= 32
     && Array.isArray(c.rates)
 }
 
