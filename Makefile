@@ -25,6 +25,10 @@ prod-up:
 prod-down:
 	docker compose -f docker-compose.prod.yml down
 
+## Скачать свежий образ (без перезапуска контейнера)
+prod-pull:
+	docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+
 ## Принудительно обновить прямо сейчас (без ожидания Watchtower)
 prod-redeploy:
 	docker compose -f docker-compose.prod.yml --env-file .env.prod pull && \

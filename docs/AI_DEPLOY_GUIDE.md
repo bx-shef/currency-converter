@@ -105,42 +105,42 @@ cp .env.prod.example .env.prod && nano .env.prod
    Команда: `--interval 300 --cleanup --label-enable`.
    На приложении: `labels: ["com.centurylinklabs.watchtower.enable=true"]`.
 
-7. **GHCR push требует `permissions: packages: write`** в workflow.
+8. **GHCR push требует `permissions: packages: write`** в workflow.
    `GITHUB_TOKEN` встроенный, отдельный PAT не нужен.
 
-8. **Build-args vs runtime env.** Для Nuxt/Vite/Next и любых SSG/SPA публичные
+9. **Build-args vs runtime env.** Для Nuxt/Vite/Next и любых SSG/SPA публичные
    переменные «запекаются» в бандл при сборке → передавать через `build-args`
    в workflow и `ARG`/`ENV` в Dockerfile, **не** через `environment:` в compose.
    Runtime env (серверная часть, секреты сервера) — в `.env.prod` на сервере.
 
-9. **Lockfile нужен для CI cache.** Без `pnpm-lock.yaml` / `package-lock.json`
+10. **Lockfile нужен для CI cache.** Без `pnpm-lock.yaml` / `package-lock.json`
    нельзя включить `cache: 'pnpm'` в `setup-node` — упадёт. Сгенерировать
    локально и закоммитить **до** включения кеша. Не пытаться чинить через PR
    на стороне сервера.
 
-10. **`rsvg-convert` удалён в librsvg 2.57+.** Если в Dockerfile нужна
+11. **`rsvg-convert` удалён в librsvg 2.57+.** Если в Dockerfile нужна
     SVG→PNG конвертация (OG-картинки) — на Alpine 3.21 (`node:20-alpine`)
     `rsvg-convert` уже нет. Использовать `inkscape`:
     `apk add inkscape font-dejavu fontconfig && fc-cache -f`. Либо рендерить
     OG через библиотеку (Satori), без системного бинаря.
 
-11. **Публичный репозиторий → публичный GHCR-образ → `docker login` на сервере
+12. **Публичный репозиторий → публичный GHCR-образ → `docker login` на сервере
     не нужен.** Приватный → нужен PAT с `read:packages`:
     - на сервере один раз `echo $PAT | docker login ghcr.io -u <user> --password-stdin`,
     - либо `WATCHTOWER_REGISTRY_AUTH_FILE=/root/.docker/config.json` env у Watchtower.
 
-12. **`docker compose up` / `pull` без `--env-file .env.prod`** не подхватит
+13. **`docker compose up` / `pull` без `--env-file .env.prod`** не подхватит
     переменные. В Makefile прописывать `--env-file .env.prod` для `up`/`pull`/
     `config` вызовов (для `down` не нужен).
 
-13. **DNS должен быть готов ДО первого запуска acme-companion** — иначе
+14. **DNS должен быть готов ДО первого запуска acme-companion** — иначе
     Let's Encrypt не сможет валидировать и закеширует rate-limit на час.
 
-14. **CI permissions явно**: даже на чисто read-only CI добавлять
+15. **CI permissions явно**: даже на чисто read-only CI добавлять
     `permissions: { contents: read }` на уровне workflow или job.
     Дефолтные permissions репозитория могут быть шире — supply-chain hardening.
 
-15. **HSTS и security-заголовки** ставить в nginx внутри образа, а не только
+16. **HSTS и security-заголовки** ставить в nginx внутри образа, а не только
     на nginx-proxy — на случай мисконфигурации внешнего слоя.
     Минимум: `Strict-Transport-Security`, `X-Content-Type-Options`,
     `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `CSP`.
@@ -170,7 +170,7 @@ cp .env.prod.example .env.prod && nano .env.prod
    - серверные (runtime env) → идут в `.env.prod`
 8. Репозиторий публичный или приватный (для GHCR)
 9. Имя образа в GHCR (по умолчанию `ghcr.io/<owner>/<repo>`)
-10. Любые специфичные системные зависимости в билде (шрифты, бинари — см. грабли #10)
+10. Любые специфичные системные зависимости в билде (шрифты, бинари — см. грабли #11)
 
 ### Шаг 3. Реализация
 
@@ -212,8 +212,8 @@ cp .env.prod.example .env.prod && nano .env.prod
 - TLS не выдан → `docker logs <acme-companion>`. Проверить, что DNS
   резолвится с публичного IP, не закеширован старый AAAA, и `LETSENCRYPT_EMAIL`
   задан в `.env.prod` nginx-proxy.
-- CI падает на `pnpm install` с cache → грабли #9, нет lockfile.
-- Сборка падает на rsvg/inkscape → грабли #10.
+- CI падает на `pnpm install` с cache → грабли #10, нет lockfile.
+- Сборка падает на rsvg/inkscape → грабли #11.
 
 ---
 

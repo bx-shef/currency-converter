@@ -104,11 +104,11 @@ function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: str
   }
 }
 
-/** Reads cached rates from sessionStorage; null when missing, stale, or unparsable. */
+/** Reads cached rates from localStorage; null when missing, stale, or unparsable. */
 function loadFromCache(): CachedRates | null {
-  if (typeof sessionStorage === 'undefined') return null
+  if (typeof localStorage === 'undefined') return null
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY)
+    const raw = localStorage.getItem(CACHE_KEY)
     if (!raw) return null
     const cached = JSON.parse(raw) as CachedRates
     // Guard against a foreign/stale cache shape (e.g. schema change between versions):
@@ -121,13 +121,13 @@ function loadFromCache(): CachedRates | null {
   }
 }
 
-/** Persists rates to sessionStorage; silently no-ops when storage is unavailable. */
+/** Persists rates to localStorage; silently no-ops when storage is unavailable. */
 function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
-  if (typeof sessionStorage === 'undefined') return
+  if (typeof localStorage === 'undefined') return
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
   } catch {
-    // sessionStorage may be unavailable (private browsing, quota exceeded)
+    // localStorage may be unavailable (private browsing, quota exceeded)
   }
 }
 
@@ -153,11 +153,11 @@ async function fetchRates() {
 async function refresh() {
   if (loading.value || refreshing.value) return
   refreshing.value = true
-  if (typeof sessionStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined') {
     try {
-      sessionStorage.removeItem(CACHE_KEY)
+      localStorage.removeItem(CACHE_KEY)
     } catch {
-      // sessionStorage may be unavailable
+      // localStorage may be unavailable
     }
   }
   await fetchRates()
