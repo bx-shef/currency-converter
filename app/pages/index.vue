@@ -117,7 +117,15 @@ function loadFromCache(): CachedRates | null {
     // a missing `timestamp` would make the TTL check `NaN > TTL` (false) and apply broken data.
     if (!cached || typeof cached.timestamp !== 'number' || typeof cached.date !== 'string' || !Array.isArray(cached.rates)) return null
     if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
-    return cached
+    // Drop tampered/corrupt entries (e.g. hand-edited localStorage) so downstream
+    // conversion never sees a non-finite or non-positive rate.
+    const rates = cached.rates.filter(
+      (r): r is RateEntry =>
+        !!r && typeof r.code === 'string' && r.code !== ''
+        && typeof r.bynRate === 'number' && Number.isFinite(r.bynRate) && r.bynRate > 0
+    )
+    if (!rates.length) return null
+    return { ...cached, rates }
   } catch {
     return null
   }
@@ -136,7 +144,8 @@ function saveToCache(date: string, rates: RateEntry[]) {
 async function fetchRates() {
   fetchError.value = ''
   try {
-    const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0')
+    // Cap the wait so a hanging NBRB endpoint surfaces an error instead of an endless spinner.
+    const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0', { timeout: 10_000 })
     const date = data[0]?.Date
       ? new Date(data[0].Date).toLocaleDateString('ru-RU')
       : ''

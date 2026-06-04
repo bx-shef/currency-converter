@@ -21,6 +21,7 @@ const KOPECK_FORMS: [string, string, string] = ['копейка', 'копейк�
 const THOUSAND_FORMS: [string, string, string] = ['тысяча', 'тысячи', 'тысяч']
 const MILLION_FORMS: [string, string, string] = ['миллион', 'миллиона', 'миллионов']
 const BILLION_FORMS: [string, string, string] = ['миллиард', 'миллиарда', 'миллиардов']
+const TRILLION_FORMS: [string, string, string] = ['триллион', 'триллиона', 'триллионов']
 
 /** Converts 0..999 to Russian words. `feminine` toggles "одна/две" for тысяча. */
 function threeDigit(n: number, feminine: boolean): string {
@@ -49,14 +50,21 @@ export function pluralize(n: number, forms: [string, string, string]): string {
   return forms[2]
 }
 
-/** Converts a non-negative integer up to a few billions to Russian words; `0` → `'ноль'`. */
+/**
+ * Converts a non-negative integer up to 999 trillion to Russian words; `0` → `'ноль'`.
+ * Covers the full input range (`MAX_AMOUNT = 1e12` in the converter): without the
+ * trillions group, 1e12 lands `billions = 1000`, and `threeDigit(1000)` overruns
+ * `HUNDREDS` → `undefined` in the output.
+ */
 function integerToWords(n: number): string {
   if (n === 0) return 'ноль'
   const parts: string[] = []
-  const billions = Math.floor(n / 1_000_000_000)
+  const trillions = Math.floor(n / 1_000_000_000_000)
+  const billions = Math.floor((n % 1_000_000_000_000) / 1_000_000_000)
   const millions = Math.floor((n % 1_000_000_000) / 1_000_000)
   const thousands = Math.floor((n % 1_000_000) / 1_000)
   const rest = n % 1_000
+  if (trillions) parts.push(threeDigit(trillions, false), pluralize(trillions, TRILLION_FORMS))
   if (billions) parts.push(threeDigit(billions, false), pluralize(billions, BILLION_FORMS))
   if (millions) parts.push(threeDigit(millions, false), pluralize(millions, MILLION_FORMS))
   if (thousands) parts.push(threeDigit(thousands, true), pluralize(thousands, THOUSAND_FORMS))

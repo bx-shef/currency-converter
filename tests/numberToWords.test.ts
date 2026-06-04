@@ -77,6 +77,14 @@ describe('rublesAmountInWords', () => {
     expect(rublesAmountInWords(1_000_000_000)).toBe('один миллиард рублей 00 копеек')
     expect(rublesAmountInWords(2_000_000_000)).toBe('два миллиарда рублей 00 копеек')
   })
+  it('handles trillions up to MAX_AMOUNT (regression: 1e12 used to render "undefined")', () => {
+    // MAX_AMOUNT in the converter is 1e12 and is reachable via input/clamp, so the
+    // sum-in-words must cover it. Before the trillions group it overran HUNDREDS.
+    expect(rublesAmountInWords(1_000_000_000_000)).toBe('один триллион рублей 00 копеек')
+    expect(rublesAmountInWords(2_345_000_000_000)).toBe(
+      'два триллиона триста сорок пять миллиардов рублей 00 копеек'
+    )
+  })
   it('handles negative', () => {
     expect(rublesAmountInWords(-5)).toBe('минус пять рублей 00 копеек')
   })

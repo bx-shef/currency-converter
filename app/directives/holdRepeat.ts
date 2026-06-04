@@ -26,7 +26,7 @@ export interface HoldRepeatTiming {
   acceleration: number
 }
 
-export const DEFAULT_HOLD_TIMING: HoldRepeatTiming = {
+export const DEFAULT_HOLD_TIMING: Readonly<HoldRepeatTiming> = {
   initialDelay: 400,
   interval: 120,
   minInterval: 25,

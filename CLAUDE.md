@@ -16,7 +16,7 @@ pnpm dev          # дев-сервер
 pnpm lint         # ESLint
 pnpm typecheck    # vue-tsc --noEmit
 pnpm test         # Vitest
-pnpm build        # nuxt build/generate
+pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 ```
 
 Перед пушем прогоняй `pnpm lint && pnpm typecheck && pnpm test` — это же гоняет CI.
