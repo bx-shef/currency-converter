@@ -9,6 +9,11 @@ import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResour
 
 const config = useRuntimeConfig()
 
+// b24ui colorMode persists the choice under this @vueuse/core key; the inline
+// theme-init script below reads it to set the class before paint. Keep in sync
+// with b24ui's `colorModeStorageKey` default.
+const COLOR_MODE_STORAGE_KEY = 'vueuse-color-scheme'
+
 const navItems = [
   [
     {
@@ -36,17 +41,19 @@ useHead({
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
+    // No static theme class here: b24ui colorMode owns `dark`/`light` on the
+    // client; the theme-init script below applies it before first paint.
     lang: 'ru'
   },
   script: [
     {
       // FOUC guard for SSG: b24ui colorMode (vueuse) sets the class only on the
-      // client, so we apply the stored/OS theme before first paint. Reads
-      // b24ui's storage key `vueuse-color-scheme`; defaults to `auto` (OS).
+      // client, so we apply the stored/OS theme before first paint. Defaults to
+      // `auto` (OS) when nothing is stored — matches colorModeInitialValue.
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',
-      innerHTML: '(function(){try{var s=localStorage.getItem("vueuse-color-scheme")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();'
+      innerHTML: `(function(){try{var s=localStorage.getItem("${COLOR_MODE_STORAGE_KEY}")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();`
     }
   ]
 })
