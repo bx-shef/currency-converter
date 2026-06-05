@@ -16,7 +16,7 @@
 pnpm dev          # дев-сервер
 pnpm lint         # ESLint
 pnpm typecheck    # vue-tsc --noEmit
-pnpm test         # Vitest
+pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 ```
 
@@ -42,7 +42,7 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
-- `tests/nuxt/*.nuxt.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
+- `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
   на composables (`useNbrbRates`, `useCopyFeedback`) и страницу `index.vue`; `$fetch`/`localStorage`
   мокаются. Разделение проектов — в `vitest.config.ts` (`defineVitestProject`).
 

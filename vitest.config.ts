@@ -9,7 +9,6 @@ const alias = {
 // Two projects (vitest 4): fast `unit` tests in node, and `nuxt` tests
 // (composables/components) under a real Nuxt runtime via @nuxt/test-utils.
 export default defineConfig(async () => ({
-  resolve: { alias },
   test: {
     projects: [
       {
@@ -22,9 +21,12 @@ export default defineConfig(async () => ({
         }
       },
       await defineVitestProject({
+        resolve: { alias },
         test: {
           name: 'nuxt',
-          include: ['tests/nuxt/**/*.test.ts']
+          include: ['tests/nuxt/**/*.test.ts'],
+          // Nuxt cold start + happy-dom can exceed the 5s default on CI.
+          testTimeout: 30_000
         }
       })
     ]

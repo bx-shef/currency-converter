@@ -16,7 +16,8 @@ jobs:
   ci:
     name: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20m: the `nuxt` Vitest project boots a Nuxt runtime on top of lint/typecheck/generate.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v5
