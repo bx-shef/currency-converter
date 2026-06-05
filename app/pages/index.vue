@@ -60,7 +60,7 @@ const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
 const { state: copyStateFormula, copy: copyFormulaText } = useCopyFeedback()
 const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 
-/** Copies one row's amount as a plain number (dot, 2 decimals, no grouping) \u2014
+/** Copies one row's amount as a plain number (dot, 2 decimals, no grouping) —
  *  the same clean format as the formula copy, for pasting into spreadsheets. */
 function copyRow(code: string) {
   const c = currencies.value.find(r => r.code === code)
