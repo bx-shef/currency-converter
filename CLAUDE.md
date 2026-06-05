@@ -44,7 +44,7 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
 - `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
-  на composables (`useNbrbRates`, `useCopyFeedback`) и страницу `index.vue`; `$fetch`/`localStorage`
+  на composables (`useNbrbRates`, `useCopyFeedback`), colorMode и страницу `index.vue`; `$fetch`/`localStorage`
   мокаются. Разделение проектов — в `vitest.config.ts` (`defineVitestProject`).
 
 Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие

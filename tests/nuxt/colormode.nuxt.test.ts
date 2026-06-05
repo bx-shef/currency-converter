@@ -39,6 +39,8 @@ describe('color mode (theme toggle wiring)', () => {
     await flushPromises()
     await nextTick()
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+    // Persisted under the key the inline theme-init script (app.vue) reads.
+    expect(localStorage.getItem('vueuse-color-scheme')).toBe('dark')
 
     cm.preference = 'light'
     await flushPromises()

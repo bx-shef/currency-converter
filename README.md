@@ -43,6 +43,7 @@
 ```
 app/
   app.vue                  — каркас (шапка, тема, навигация, подвал, SEO, Метрика)
+  app.config.ts            — включает colorMode b24ui (без него переключатель темы — no-op)
   pages/index.vue          — экран конвертера (тонкий): строки, прописью, формула
   config/currencies.ts     — каталог валют (состав, MAX_AMOUNT, дефолт)
   composables/
