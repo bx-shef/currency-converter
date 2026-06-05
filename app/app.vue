@@ -49,7 +49,8 @@ useHead({
     {
       // FOUC guard for SSG: b24ui colorMode (vueuse) sets the class only on the
       // client, so we apply the stored/OS theme before first paint. Defaults to
-      // `auto` (OS) when nothing is stored — matches colorModeInitialValue.
+      // `auto` (OS) when nothing is stored. Only dark/light/auto occur via the
+      // toggle, so anything non-"light" is treated as dark.
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',
@@ -114,6 +115,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
+        <!-- me-[3px]: nudge the rightmost header control off the edge (as the GitHub button was) -->
         <B24ColorModeButton
           size="sm"
           class="me-[3px]"
