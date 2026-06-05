@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, numberFormatOptions } from '../app/utils/formatters'
+import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions } from '../app/utils/formatters'
+
+describe('formatPlainAmount', () => {
+  it('formats with exactly 2 decimals and a dot separator', () => {
+    expect(formatPlainAmount(12.3)).toBe('12.30')
+    expect(formatPlainAmount(1234.5)).toBe('1234.50')
+    expect(formatPlainAmount(0)).toBe('0.00')
+  })
+
+  it('rounds to 2 decimals', () => {
+    expect(formatPlainAmount(12.345)).toBe('12.35')
+    expect(formatPlainAmount(12.344)).toBe('12.34')
+  })
+
+  it('has no grouping separators (spreadsheet-friendly)', () => {
+    expect(formatPlainAmount(1234567.89)).toBe('1234567.89')
+  })
+
+  it('handles negatives and non-finite input', () => {
+    expect(formatPlainAmount(-5)).toBe('-5.00')
+    expect(formatPlainAmount(NaN)).toBe('0.00')
+    expect(formatPlainAmount(Infinity)).toBe('0.00')
+    expect(formatPlainAmount(-Infinity)).toBe('0.00')
+    expect(formatPlainAmount(-0)).toBe('0.00')
+  })
+})
 
 describe('numberFormatOptions', () => {
   it('is plain decimal — no currency style or code', () => {

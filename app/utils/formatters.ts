@@ -42,3 +42,12 @@ export function applyFormula(byn: number): number {
 export function capitalizeFirst(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : ''
 }
+
+/**
+ * Plain numeric string for the clipboard: exactly 2 fraction digits, dot
+ * separator, no grouping — pastes cleanly into spreadsheets / payment forms
+ * (e.g. 1234.5 → "1234.50"). Non-finite input yields "0.00".
+ */
+export function formatPlainAmount(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : '0.00'
+}
