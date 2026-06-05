@@ -195,7 +195,7 @@ function rowCopyColor(code: string) {
               Сумма прописью
             </span>
             <div
-              class="flex shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
+              class="flex shrink-0 me-[2px] overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
               role="group"
               aria-label="Регистр первой буквы"
             >

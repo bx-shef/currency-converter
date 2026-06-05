@@ -84,7 +84,8 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
 
 <template>
   <B24App :locale="ru">
-    <B24Header>
+    <!-- toggle = B24Header's burger button (data-slot="toggle"); nudge it 3px toward the edge -->
+    <B24Header :b24ui="{ toggle: '-ms-[3px]' }">
       <template #left>
         <NuxtLink
           to="/"
