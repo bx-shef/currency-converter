@@ -26,7 +26,7 @@
     text-anchor="middle"
     font-family="DejaVu Sans, sans-serif"
     font-size="40"
-    fill="rgba(255,255,255,0.78)">&#x41D;&#x430;&#x446;&#x438;&#x43E;&#x43D;&#x430;&#x43B;&#x44C;&#x43D;&#x44B;&#x439; &#x411;&#x430;&#x43D;&#x43A; &#x420;&#x435;&#x441;&#x43F;&#x443;&#x431;&#x43B;&#x438;&#x43A;&#x438; &#x411;&#x435;&#x43B;&#x430;&#x440;&#x443;&#x441;&#x44C;</text>
+    fill="rgba(255,255,255,0.78)">Простые решения от AI-ассистента</text>
 
   <!-- Separator -->
   <line x1="340" y1="382" x2="860" y2="382" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>

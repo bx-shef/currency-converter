@@ -30,9 +30,10 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
-- Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`,
-  `colorModeInitialValue: 'auto'`); inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки
-  (против FOUC при SSG, т.к. colorMode применяет класс только на клиенте).
+- Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
+  Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
+  b24ui сам эти top-level ключи в appConfig не кладёт**, без них `useColorMode()` = no-op stub
+  (кнопка молча не работает). inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки (FOUC при SSG).
 - `app/utils/converter.ts` — конвертация и адаптивный шаг (чистые функции).
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`
   и `formatPlainAmount` («чистое» число с точкой для буфера).
