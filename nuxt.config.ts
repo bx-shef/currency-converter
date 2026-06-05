@@ -28,6 +28,12 @@ export default defineNuxtConfig({
     }
   },
 
+  // Theme via b24ui's native colorMode (vueuse). 'auto' = follow the OS on first
+  // visit; the choice is then persisted by b24ui (key `vueuse-color-scheme`).
+  b24ui: {
+    colorModeInitialValue: 'auto'
+  },
+
   eslint: {
     config: {
       stylistic: {

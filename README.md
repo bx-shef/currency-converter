@@ -49,7 +49,6 @@ app/
   composables/
     useNbrbRates.ts        — загрузка курсов, кэш, состояние строк, ввод
     useCopyFeedback.ts     — копирование в буфер с вспышкой ok/err
-    useTheme.ts            — переключатель светлой/тёмной темы
   utils/                   — чистые функции, покрыты тестами:
     converter.ts           — конвертация и адаптивный шаг
     formatters.ts          — формат чисел, формула, «чистое» число для буфера
@@ -57,7 +56,6 @@ app/
     nbrb.ts                — парсинг ответа НБ РБ
     ratesCache.ts          — валидация/сериализация кэша курсов
     copyFeedback.ts        — clipboard + флеш-машина + выбор цвета
-    theme.ts               — выбор темы (saved / системная)
   directives/holdRepeat.ts — автоповтор +/− при удержании
   components/SiteFooter.vue
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)

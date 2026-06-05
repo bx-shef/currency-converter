@@ -1,22 +1,13 @@
 <script setup lang="ts">
 import { ru } from '@bitrix24/b24ui-nuxt/locale'
-import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
 import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
 import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
-import SunIcon from '@bitrix24/b24icons-vue/outline/SunIcon'
-import MoonIcon from '@bitrix24/b24icons-vue/outline/MoonIcon'
-import { useTheme } from '~/composables/useTheme'
 
 const config = useRuntimeConfig()
-
-const { theme, toggleTheme } = useTheme()
-// In dark mode the toggle offers the sun (→ light), and vice versa.
-const themeIcon = computed(() => theme.value === 'dark' ? SunIcon : MoonIcon)
-const themeLabel = computed(() => theme.value === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему')
 
 const navItems = [
   [
@@ -45,18 +36,17 @@ useHead({
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
-    lang: 'ru',
-    // SSG default; the theme-init script below overrides it before paint.
-    class: 'dark'
+    lang: 'ru'
   },
   script: [
     {
-      // Apply the saved/system theme before paint to avoid a flash.
-      // Mirrors resolveInitialTheme(); the literal "theme" must match THEME_KEY (~/utils/theme).
+      // FOUC guard for SSG: b24ui colorMode (vueuse) sets the class only on the
+      // client, so we apply the stored/OS theme before first paint. Reads
+      // b24ui's storage key `vueuse-color-scheme`; defaults to `auto` (OS).
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',
-      innerHTML: '(function(){try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var c=document.documentElement.classList;c.toggle("dark",t==="dark");c.toggle("light",t==="light");}catch(e){}})();'
+      innerHTML: '(function(){try{var s=localStorage.getItem("vueuse-color-scheme")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();'
     }
   ]
 })
@@ -117,19 +107,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
-        <B24Button
-          :aria-label="themeLabel"
-          color="air-tertiary-no-accent"
-          size="sm"
-          :icon="themeIcon"
-          @click="toggleTheme"
-        />
-        <B24Button
-          to="https://github.com/bx-shef/currency-converter"
-          target="_blank"
-          aria-label="GitHub"
-          color="air-tertiary-no-accent"
-          :icon="GitHubIcon"
+        <B24ColorModeButton
           size="sm"
           class="me-[3px]"
         />
