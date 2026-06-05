@@ -131,7 +131,7 @@ function rowCopyColor(code: string) {
             : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-16 shrink-0 flex-col justify-center leading-tight sm:w-[6.25rem]">
+          <div class="flex w-16 shrink-0 flex-col leading-tight sm:w-[6.25rem]">
             <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
@@ -195,7 +195,7 @@ function rowCopyColor(code: string) {
               Сумма прописью
             </span>
             <div
-              class="flex shrink-0 overflow-hidden rounded-md border border-gray-200 me-[2px] dark:border-white/10"
+              class="flex shrink-0 me-[2px] overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
               role="group"
               aria-label="Регистр первой буквы"
             >
