@@ -46,12 +46,13 @@ useHead({
   ],
   htmlAttrs: {
     lang: 'ru',
+    // SSG default; the theme-init script below overrides it before paint.
     class: 'dark'
   },
   script: [
     {
       // Apply the saved/system theme before paint to avoid a flash.
-      // Mirrors resolveInitialTheme() in ~/utils/theme.
+      // Mirrors resolveInitialTheme(); the literal "theme" must match THEME_KEY (~/utils/theme).
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',

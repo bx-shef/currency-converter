@@ -21,6 +21,8 @@ describe('formatPlainAmount', () => {
     expect(formatPlainAmount(-5)).toBe('-5.00')
     expect(formatPlainAmount(NaN)).toBe('0.00')
     expect(formatPlainAmount(Infinity)).toBe('0.00')
+    expect(formatPlainAmount(-Infinity)).toBe('0.00')
+    expect(formatPlainAmount(-0)).toBe('0.00')
   })
 })
 

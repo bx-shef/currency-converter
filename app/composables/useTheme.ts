@@ -11,15 +11,21 @@ import { oppositeTheme, resolveInitialTheme, THEME_KEY, type Theme } from '~/uti
 
 /** Reflects `theme` on <html> via b24ui's dark/light classes. */
 function applyTheme(theme: Theme) {
+  if (typeof document === 'undefined') return // client-only (SSG/SSR guard)
   const list = document.documentElement.classList
   list.toggle('dark', theme === 'dark')
   list.toggle('light', theme === 'light')
 }
 
+/**
+ * Theme state for the app shell. Instantiate once (in `app.vue`): each call
+ * creates an independent ref, synced only via the DOM / localStorage.
+ */
 export function useTheme() {
   // SSG prerenders <html class="dark">; reconciled with the real choice on mount.
   const theme = ref<Theme>('dark')
 
+  /** Sets the theme, applies it to <html>, and persists the choice. */
   function setTheme(next: Theme) {
     theme.value = next
     applyTheme(next)
@@ -30,6 +36,7 @@ export function useTheme() {
     }
   }
 
+  /** Switches between light and dark. */
   function toggleTheme() {
     setTheme(oppositeTheme(theme.value))
   }

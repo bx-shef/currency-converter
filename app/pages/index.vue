@@ -50,6 +50,8 @@ const displayAmountInWordsRub = computed(() =>
 
 const formulaResult = computed(() => applyFormula(activeBynAmount.value))
 const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
+/** Plain (dot, 2 decimals, no grouping) formula result for the clipboard. */
+const formulaPlain = computed(() => formatPlainAmount(formulaResult.value))
 
 // Clipboard feedback: one flash per "sum in words" line, plus a keyed one for
 // the per-row "copy amount" buttons.
@@ -268,7 +270,7 @@ function rowCopyColor(code: string) {
             size="sm"
             :icon="CopyIcon"
             class="shrink-0 me-[3px]"
-            @click="copyFormulaText(formatPlainAmount(formulaResult))"
+            @click="copyFormulaText(formulaPlain)"
           />
         </div>
       </div>

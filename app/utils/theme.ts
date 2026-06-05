@@ -6,7 +6,11 @@
 
 export type Theme = 'light' | 'dark'
 
-/** localStorage key for the persisted theme choice. */
+/**
+ * localStorage key for the persisted theme choice.
+ * SYNC: the literal `'theme'` is also hard-coded in app.vue's inline
+ * theme-init script (which runs before the bundle loads).
+ */
 export const THEME_KEY = 'theme'
 
 /** Type guard for a persisted/raw theme value. */
