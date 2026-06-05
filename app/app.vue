@@ -7,8 +7,16 @@ import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
 import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
+import SunIcon from '@bitrix24/b24icons-vue/outline/SunIcon'
+import MoonIcon from '@bitrix24/b24icons-vue/outline/MoonIcon'
+import { useTheme } from '~/composables/useTheme'
 
 const config = useRuntimeConfig()
+
+const { theme, toggleTheme } = useTheme()
+// In dark mode the toggle offers the sun (→ light), and vice versa.
+const themeIcon = computed(() => theme.value === 'dark' ? SunIcon : MoonIcon)
+const themeLabel = computed(() => theme.value === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему')
 
 const navItems = [
   [
@@ -39,7 +47,17 @@ useHead({
   htmlAttrs: {
     lang: 'ru',
     class: 'dark'
-  }
+  },
+  script: [
+    {
+      // Apply the saved/system theme before paint to avoid a flash.
+      // Mirrors resolveInitialTheme() in ~/utils/theme.
+      key: 'theme-init',
+      tagPosition: 'head',
+      tagPriority: 'critical',
+      innerHTML: '(function(){try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var c=document.documentElement.classList;c.toggle("dark",t==="dark");c.toggle("light",t==="light");}catch(e){}})();'
+    }
+  ]
 })
 
 const title = 'Конвертер валют НБ РБ'
@@ -98,6 +116,13 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
+        <B24Button
+          :aria-label="themeLabel"
+          color="air-tertiary-no-accent"
+          size="sm"
+          :icon="themeIcon"
+          @click="toggleTheme"
+        />
         <B24Button
           to="https://github.com/bx-shef/currency-converter"
           target="_blank"
