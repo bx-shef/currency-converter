@@ -1,22 +1,18 @@
 <script setup lang="ts">
 import { ru } from '@bitrix24/b24ui-nuxt/locale'
-import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
 import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
 import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
-import SunIcon from '@bitrix24/b24icons-vue/outline/SunIcon'
-import MoonIcon from '@bitrix24/b24icons-vue/outline/MoonIcon'
-import { useTheme } from '~/composables/useTheme'
 
 const config = useRuntimeConfig()
 
-const { theme, toggleTheme } = useTheme()
-// In dark mode the toggle offers the sun (→ light), and vice versa.
-const themeIcon = computed(() => theme.value === 'dark' ? SunIcon : MoonIcon)
-const themeLabel = computed(() => theme.value === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему')
+// b24ui colorMode persists the choice under this @vueuse/core key; the inline
+// theme-init script below reads it to set the class before paint. Keep in sync
+// with b24ui's `colorModeStorageKey` default.
+const COLOR_MODE_STORAGE_KEY = 'vueuse-color-scheme'
 
 const navItems = [
   [
@@ -45,18 +41,20 @@ useHead({
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
-    lang: 'ru',
-    // SSG default; the theme-init script below overrides it before paint.
-    class: 'dark'
+    // No static theme class here: b24ui colorMode owns `dark`/`light` on the
+    // client; the theme-init script below applies it before first paint.
+    lang: 'ru'
   },
   script: [
     {
-      // Apply the saved/system theme before paint to avoid a flash.
-      // Mirrors resolveInitialTheme(); the literal "theme" must match THEME_KEY (~/utils/theme).
+      // FOUC guard for SSG: b24ui colorMode (vueuse) sets the class only on the
+      // client, so we apply the stored/OS theme before first paint. Defaults to
+      // `auto` (OS) when nothing is stored. Only dark/light/auto occur via the
+      // toggle, so anything non-"light" is treated as dark.
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',
-      innerHTML: '(function(){try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var c=document.documentElement.classList;c.toggle("dark",t==="dark");c.toggle("light",t==="light");}catch(e){}})();'
+      innerHTML: `(function(){try{var s=localStorage.getItem("${COLOR_MODE_STORAGE_KEY}")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();`
     }
   ]
 })
@@ -117,19 +115,8 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
-        <B24Button
-          :aria-label="themeLabel"
-          color="air-tertiary-no-accent"
-          size="sm"
-          :icon="themeIcon"
-          @click="toggleTheme"
-        />
-        <B24Button
-          to="https://github.com/bx-shef/currency-converter"
-          target="_blank"
-          aria-label="GitHub"
-          color="air-tertiary-no-accent"
-          :icon="GitHubIcon"
+        <!-- me-[3px]: nudge the rightmost header control off the edge (as the GitHub button was) -->
+        <B24ColorModeButton
           size="sm"
           class="me-[3px]"
         />

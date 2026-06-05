@@ -29,8 +29,9 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
-- `app/composables/useTheme.ts` — переключатель светлой/тёмной темы (класс на `<html>`, localStorage;
-  парный inline-скрипт `theme-init` в `app.vue` применяет тему до отрисовки — против FOUC).
+- Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`,
+  `colorModeInitialValue: 'auto'`); inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки
+  (против FOUC при SSG, т.к. colorMode применяет класс только на клиенте).
 - `app/utils/converter.ts` — конвертация и адаптивный шаг (чистые функции).
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`
   и `formatPlainAmount` («чистое» число с точкой для буфера).
@@ -38,7 +39,6 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`).
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
-- `app/utils/theme.ts` — выбор темы (resolve по saved/системной), чистые функции.
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
 - `tests/` — Vitest на утилиты, конфиг и директиву.
 

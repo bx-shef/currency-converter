@@ -16,6 +16,12 @@
         rel="noopener noreferrer"
         class="hover:underline dark:hover:text-white"
       >offer.bx-shef.by</a>
+      <a
+        href="https://github.com/bx-shef/currency-converter"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hover:underline dark:hover:text-white"
+      >GitHub</a>
     </div>
   </div>
 </template>
