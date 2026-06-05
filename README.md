@@ -58,7 +58,7 @@ app/
   directives/holdRepeat.ts — автоповтор +/− при удержании
   components/SiteFooter.vue  — подвал: ссылки (НБ РБ, оферта, GitHub)
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
-tests/                     — vitest на утилиты, конфиг и директиву
+tests/                     — vitest: *.test.ts (node) + nuxt/*.nuxt.test.ts (@nuxt/test-utils)
 ```
 
 Курсы берутся из публичного API НБ РБ:

@@ -7,7 +7,8 @@
 - **Nuxt 4** (статическая генерация, `nuxt generate`)
 - **Vue 3** — `<script setup lang="ts">`
 - **TypeScript** (строгий), **Tailwind CSS v4**, **Bitrix24 UI** (`b24ui`)
-- **Vitest** — юнит-тесты (окружение `node`)
+- **Vitest** — два проекта: `unit` (node, чистые функции) и `nuxt`
+  (`@nuxt/test-utils` + happy-dom, composables и компоненты)
 
 ## Команды
 
@@ -40,11 +41,13 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
-- `tests/` — Vitest на утилиты, конфиг и директиву.
+- `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
+- `tests/nuxt/*.nuxt.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
+  на composables (`useNbrbRates`, `useCopyFeedback`) и страницу `index.vue`; `$fetch`/`localStorage`
+  мокаются. Разделение проектов — в `vitest.config.ts` (`defineVitestProject`).
 
 Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие
-Vue-обёртки над ними. Интеграция самих composables тестами не покрыта — окружение Vitest
-`node` не резолвит `vue`; продолжение/инфра трекаются в issue #62.
+Vue-обёртки над ними. Сами composables и `index.vue` покрыты в проекте `nuxt` (см. `tests/nuxt/`).
 
 ## Конвенции
 
