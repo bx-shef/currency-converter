@@ -326,15 +326,19 @@ describe('vHoldRepeat — window blur / tab visibility', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('keeps repeating on visibilitychange while still visible', () => {
+  it('keeps repeating on visibilitychange while still visible (no-op by design)', () => {
     const { cb } = startHold()
+    expect(doc.listenerCount('visibilitychange')).toBe(1) // listener really wired
     doc.hidden = false
     doc.dispatch('visibilitychange')
+    // Only `hidden` stops the hold (covered above); a visible change must not.
     vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.interval * 2)
     expect(cb.mock.calls.length).toBeGreaterThan(0)
   })
 
   it('removes the window/document listeners on unmount', () => {
+    // blur / visibilitychange listeners are attached at mounted (not on hold),
+    // so no startHold() is needed to assert they are torn down.
     const el = new MockElement()
     const directive = mount(el, vi.fn())
     expect(win.listenerCount('blur')).toBe(1)
