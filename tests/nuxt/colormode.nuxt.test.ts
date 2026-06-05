@@ -30,6 +30,8 @@ describe('color mode (theme toggle wiring)', () => {
     const cm = await runComposable(() => useColorMode())
     expect(cm.forced).toBeFalsy()
     expect(typeof cm.value).toBe('string')
+    // First visit follows the OS (not b24ui's 'light' default) — see app.config.ts.
+    expect(cm.colorModeInitialValue).toBe('auto')
   })
 
   it('switches the <html> class when the preference changes', async () => {
