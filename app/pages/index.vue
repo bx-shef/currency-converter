@@ -74,7 +74,7 @@ function rowCopyColor(code: string) {
 
 <template>
   <div class="flex justify-center px-3 py-3 sm:px-4 sm:py-6">
-    <div class="w-full max-w-sm">
+    <div class="w-full max-w-sm sm:max-w-[464px]">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
           href="https://www.nbrb.by/"
