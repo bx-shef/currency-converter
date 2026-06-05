@@ -275,3 +275,73 @@ describe('vHoldRepeat directive', () => {
     expect(el.listenerCount('click')).toBe(0)
   })
 })
+
+/**
+ * Window-blur / tab-visibility branches: in plain node `window`/`document` are
+ * undefined, so the directive skips wiring them and these paths go uncovered
+ * (issue #48). We stub minimal global targets so the listeners are attached and
+ * can be exercised — still without jsdom.
+ */
+describe('vHoldRepeat — window blur / tab visibility', () => {
+  let win: MockElement
+  let doc: MockElement & { hidden: boolean }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    win = new MockElement()
+    doc = Object.assign(new MockElement(), { hidden: false })
+    vi.stubGlobal('window', win)
+    vi.stubGlobal('document', doc)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  /** Mounts an element and holds it past the first auto-repeat tick. */
+  function startHold() {
+    const el = new MockElement()
+    const cb = vi.fn()
+    const directive = mount(el, cb)
+    el.dispatch('pointerdown', { pointerType: 'touch', button: 0 })
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.initialDelay)
+    expect(cb).toHaveBeenCalledTimes(1)
+    cb.mockClear()
+    return { el, cb, directive }
+  }
+
+  it('stops repeating on window blur (e.g. Alt-Tab mid-hold)', () => {
+    const { cb } = startHold()
+    win.dispatch('blur')
+    vi.advanceTimersByTime(5000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('stops repeating when the tab becomes hidden', () => {
+    const { cb } = startHold()
+    doc.hidden = true
+    doc.dispatch('visibilitychange')
+    vi.advanceTimersByTime(5000)
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('keeps repeating on visibilitychange while still visible', () => {
+    const { cb } = startHold()
+    doc.hidden = false
+    doc.dispatch('visibilitychange')
+    vi.advanceTimersByTime(DEFAULT_HOLD_TIMING.interval * 2)
+    expect(cb.mock.calls.length).toBeGreaterThan(0)
+  })
+
+  it('removes the window/document listeners on unmount', () => {
+    const el = new MockElement()
+    const directive = mount(el, vi.fn())
+    expect(win.listenerCount('blur')).toBe(1)
+    expect(doc.listenerCount('visibilitychange')).toBe(1)
+
+    directive.beforeUnmount(el as unknown as HTMLElement, null as never, null as never, null as never)
+    expect(win.listenerCount('blur')).toBe(0)
+    expect(doc.listenerCount('visibilitychange')).toBe(0)
+  })
+})
