@@ -60,13 +60,12 @@ const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
 const { state: copyStateFormula, copy: copyFormulaText } = useCopyFeedback()
 const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 
-/** Copies one row's amount, stripping locale no-break spaces for clean pasting. */
+/** Copies one row's amount as a plain number (dot, 2 decimals, no grouping) \u2014
+ *  the same clean format as the formula copy, for pasting into spreadsheets. */
 function copyRow(code: string) {
   const c = currencies.value.find(r => r.code === code)
   if (!c || typeof c.value !== 'number') return
-  // Strip the locale grouping no-break spaces (U+00A0 / U+202F) so the copied
-  // number pastes cleanly into spreadsheets / payment forms.
-  copyRowAmount(code, formatAmount(c.value).replace(/[\u00A0\u202F]/g, ' '))
+  copyRowAmount(code, formatPlainAmount(c.value))
 }
 
 /** Copy-button colour for a row: success/alert only while its flash is active. */
