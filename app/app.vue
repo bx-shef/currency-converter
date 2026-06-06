@@ -154,6 +154,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
           :icon="GitHubIcon"
           to="https://github.com/bx-shef/currency-converter"
           target="_blank"
+          rel="noopener noreferrer"
           aria-label="GitHub"
           color="air-tertiary-no-accent"
           size="sm"
