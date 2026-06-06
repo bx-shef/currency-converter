@@ -57,7 +57,7 @@ app/
     ratesCache.ts          — валидация/сериализация кэша курсов
     copyFeedback.ts        — clipboard + флеш-машина + выбор цвета
   directives/holdRepeat.ts — автоповтор +/− при удержании
-  components/SiteFooter.vue  — подвал: ссылки (НБ РБ, оферта, GitHub)
+  components/SiteFooter.vue  — центральные ссылки подвала (НБ РБ, оферта); copyright/GitHub — в app.vue
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```
