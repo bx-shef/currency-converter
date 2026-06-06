@@ -49,4 +49,17 @@ describe('index.vue (converter page)', () => {
 
     expect(wrapper.text()).toContain('Не удалось загрузить курсы')
   })
+
+  it('copies a row amount as a plain number (dot, no grouping)', async () => {
+    const writeText = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    // BYN defaults to 100 → USD = 100 / 3.2 = 31.25; copied without grouping/comma.
+    await wrapper.get('[aria-label="Скопировать сумму USD"]').trigger('click')
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledWith('31.25')
+  })
 })
