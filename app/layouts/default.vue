@@ -26,7 +26,8 @@ const navItems = [
 
 <template>
   <B24App :locale="ru">
-    <B24Header>
+    <!-- toggle = B24Header's burger button (data-slot="toggle"); nudge it 3px toward the edge -->
+    <B24Header :b24ui="{ toggle: '-ms-[3px]' }">
       <template #left>
         <NuxtLink
           to="/"
@@ -39,13 +40,10 @@ const navItems = [
       <B24NavigationMenu :items="navItems" />
 
       <template #right>
-        <B24Button
-          to="https://github.com/bx-shef/currency-converter"
-          target="_blank"
-          aria-label="GitHub"
-          color="air-tertiary-no-accent"
-          :icon="GitHubIcon"
+        <!-- me-[3px]: nudge the rightmost header control off the edge (as the GitHub button was) -->
+        <B24ColorModeButton
           size="sm"
+          class="me-[3px]"
         />
       </template>
 
@@ -70,7 +68,21 @@ const navItems = [
 
     <B24Footer>
       <template #left>
-        <SiteFooter />
+        <span class="text-xs text-gray-500 dark:text-white/55">© {{ new Date().getFullYear() }} ИП Шевчик И. С</span>
+      </template>
+
+      <SiteFooter />
+
+      <template #right>
+        <B24Button
+          :icon="GitHubIcon"
+          to="https://github.com/bx-shef/currency-converter"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub"
+          color="air-tertiary-no-accent"
+          size="sm"
+        />
       </template>
     </B24Footer>
   </B24App>

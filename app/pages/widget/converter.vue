@@ -5,8 +5,9 @@ import { computed, onMounted } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import SendIcon from '@bitrix24/b24icons-vue/outline/SendIcon'
 import { useB24 } from '~/composables/useB24'
-import { useCurrencyConverter } from '~/composables/useCurrencyConverter'
-import { stepFor } from '~/utils/converter'
+import { useNbrbRates } from '~/composables/useNbrbRates'
+import { formatPlainAmount, numberFormatOptions } from '~/utils/formatters'
+import { MAX_AMOUNT } from '~/config/currencies'
 
 definePageMeta({ layout: 'clear' })
 
@@ -23,10 +24,10 @@ const {
   refreshing,
   fetchError,
   activeCurrency,
-  bootstrap,
   refresh,
-  onValueUpdate
-} = useCurrencyConverter()
+  onValueUpdate,
+  onRowClick
+} = useNbrbRates()
 
 useHead({ title: t('page.widget.seo.title') })
 
@@ -46,18 +47,11 @@ const siteUrl = safeHttpUrl(config.public.siteUrl as string, 'https://github.com
 
 onMounted(async () => {
   await b24Instance.init()
-  await bootstrap()
 })
 
-// Converter rounds to 4 decimals, which leaks float noise into chat lines like
-// "287.4999" — format to 2 decimals for the message body since this is a chat
-// insert (final destination), not the in-form value the user is still editing.
-function formatAmount(n: number): string {
-  return n.toFixed(2)
-}
-
 /** Builds "100.00 USD = 287.50 BYN" lines for every currency with a value,
- *  anchored on the currently active row. Kept compact for a chat insert. */
+ *  anchored on the currently active row. Plain numbers (dot, no grouping)
+ *  for a clean chat paste. */
 function buildMessage(): string {
   const active = currencies.value.find(c => c.code === activeCurrency.value)
   if (!active || typeof active.value !== 'number') return ''
@@ -66,7 +60,7 @@ function buildMessage(): string {
   for (const c of currencies.value) {
     if (c.code === active.code) continue
     if (typeof c.value !== 'number') continue
-    lines.push(`${formatAmount(active.value)} ${active.code} = ${formatAmount(c.value)} ${c.code}`)
+    lines.push(`${formatPlainAmount(active.value)} ${active.code} = ${formatPlainAmount(c.value)} ${c.code}`)
   }
   if (lines.length === 0) return ''
   const header = ratesDate.value ? `${t('app.subtitle')} · ${t('app.ratesOn', { date: ratesDate.value })}` : t('app.subtitle')
@@ -150,6 +144,7 @@ async function insertIntoChat() {
         v-else
         :key="currency.code"
         class="flex items-center gap-2"
+        @click="onRowClick(currency.code)"
       >
         <span class="w-10 shrink-0 text-xs font-semibold text-(--ui-color-base-1)">
           {{ currency.code }}
@@ -157,15 +152,18 @@ async function insertIntoChat() {
         <B24InputNumber
           :model-value="currency.value"
           :model-modifiers="{ optional: true }"
-          :step="stepFor(currency.value)"
+          :step="0.01"
           :min="0"
-          :max="1e12"
+          :max="MAX_AMOUNT"
+          :increment="false"
+          :decrement="false"
           :highlight="currency.code === activeCurrency"
+          :format-options="numberFormatOptions"
           size="xs"
           class="min-w-0 flex-1"
-          :b24ui="{ base: 'text-right' }"
+          :b24ui="{ base: 'text-right tabular-nums' }"
           @update:model-value="onValueUpdate(currency.code, $event)"
-          @focus="activeCurrency = currency.code"
+          @focus="onRowClick(currency.code)"
         />
       </div>
     </div>

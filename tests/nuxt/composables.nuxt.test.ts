@@ -1,0 +1,163 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
+import { defineComponent } from 'vue'
+import { useNbrbRates } from '~/composables/useNbrbRates'
+import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
+import { CACHE_KEY, MOCK_RATES } from './fixtures'
+
+// `$fetch` is mocked via vi.stubGlobal: in the Nuxt test env it resolves off the
+// global, so stubbing globalThis.$fetch intercepts the composable's calls.
+
+/** Runs a composable inside a mounted component and returns its result. */
+async function runComposable<T>(fn: () => T): Promise<T> {
+  let result!: T
+  const Comp = defineComponent({
+    setup() {
+      result = fn()
+      return () => null
+    }
+  })
+  await mountSuspended(Comp)
+  return result
+}
+
+describe('useNbrbRates', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('loads rates from the API on mount and fills bynRate', async () => {
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+    expect(api.currencies.value.find(c => c.code === 'RUB')?.bynRate).toBeCloseTo(0.036, 10)
+    expect(api.loading.value).toBe(false)
+    expect(api.ratesDate.value).not.toBe('')
+  })
+
+  it('uses a fresh cache without hitting the API', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      date: '04.06.2026',
+      rates: [{ code: 'USD', bynRate: 9.99 }],
+      timestamp: Date.now()
+    }))
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(9.99)
+    expect(api.ratesDate.value).toBe('04.06.2026')
+    expect(api.loading.value).toBe(false)
+  })
+
+  it('refresh refetches the rates', async () => {
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await api.refresh()
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a re-entrant refresh while one is already in flight', async () => {
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(1) // initial mount load
+
+    const first = api.refresh() // sets refreshing=true, fetch in flight
+    const second = api.refresh() // guard: refreshing → ignored, no fetch
+    await Promise.all([first, second])
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2) // only the first refresh fetched
+  })
+
+  it('refetches when the cached rates are stale (past the 12h TTL)', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      date: '01.01.2020',
+      rates: [{ code: 'USD', bynRate: 1 }],
+      timestamp: Date.now() - 13 * 60 * 60 * 1000 // 13h old > 12h TTL
+    }))
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    // Fresh rate from the API, not the stale cached 1.
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+  })
+
+  it('surfaces an error message when the API fails', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('network down')
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.fetchError.value).not.toBe('')
+    expect(api.loading.value).toBe(false)
+  })
+
+  it('recomputes other currencies when a value is entered', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => MOCK_RATES))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    // 100 USD → BYN at rate 3.2 = 320 BYN.
+    api.onValueUpdate('USD', 100)
+    expect(api.currencies.value.find(c => c.code === 'BYN')?.value).toBe(320)
+    expect(api.activeCurrency.value).toBe('USD')
+  })
+})
+
+describe('useCopyFeedback wrappers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('useCopyFeedback flashes ok after a successful copy', async () => {
+    const writeText = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+
+    const api = await runComposable(() => useCopyFeedback())
+    expect(api.state.value).toBe('idle')
+    await api.copy('1234.50')
+    expect(writeText).toHaveBeenCalledWith('1234.50')
+    expect(api.state.value).toBe('ok')
+    api.dispose() // clear the pending flash timer (component stays mounted in the test)
+  })
+
+  it('useKeyedCopyFeedback marks the active key and colours only it', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(async () => {}) } })
+
+    const api = await runComposable(() => useKeyedCopyFeedback())
+    await api.copy('USD', '100')
+    expect(api.activeKey.value).toBe('USD')
+    expect(api.colorFor('USD', 'ok', 'err', 'idle')).toBe('ok')
+    expect(api.colorFor('EUR', 'ok', 'err', 'idle')).toBe('idle')
+    api.dispose()
+  })
+})

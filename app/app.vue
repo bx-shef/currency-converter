@@ -1,6 +1,11 @@
 <script setup lang="ts">
 const config = useRuntimeConfig()
 
+// b24ui colorMode persists the choice under this @vueuse/core key; the inline
+// theme-init script below reads it to set the class before paint. Keep in sync
+// with b24ui's `colorModeStorageKey` default.
+const COLOR_MODE_STORAGE_KEY = 'vueuse-color-scheme'
+
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -13,9 +18,22 @@ useHead({
     { rel: 'preconnect', href: 'https://api.nbrb.by' }
   ],
   htmlAttrs: {
-    lang: 'ru',
-    class: 'dark'
-  }
+    // No static theme class here: b24ui colorMode owns `dark`/`light` on the
+    // client; the theme-init script below applies it before first paint.
+    lang: 'ru'
+  },
+  script: [
+    {
+      // FOUC guard for SSG: b24ui colorMode (vueuse) sets the class only on the
+      // client, so we apply the stored/OS theme before first paint. Defaults to
+      // `auto` (OS) when nothing is stored. Only dark/light/auto occur via the
+      // toggle, so anything non-"light" is treated as dark.
+      key: 'theme-init',
+      tagPosition: 'head',
+      tagPriority: 'critical',
+      innerHTML: `(function(){try{var s=localStorage.getItem("${COLOR_MODE_STORAGE_KEY}")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();`
+    }
+  ]
 })
 
 const title = 'Конвертер валют НБ РБ'
@@ -31,7 +49,7 @@ useSeoMeta({
   twitterCard: 'summary_large_image'
 })
 
-const rawCounterId = config.public.yandexCounterId as string
+const rawCounterId = String(config.public.yandexCounterId ?? '')
 // Accept only numeric IDs to prevent XSS through inline script interpolation
 const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
 

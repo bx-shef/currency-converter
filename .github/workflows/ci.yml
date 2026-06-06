@@ -1,5 +1,8 @@
-name: CI
+name: CI/CD
 
+# Single pipeline so the deploy is gated on a green CI (issue #45 P1):
+#   PR  → ci + docker-build (validate, no registry push)
+#   main → ci → deploy (build + push to GHCR; Watchtower picks it up ~5 min)
 on:
   push:
     branches: [main]
@@ -13,15 +16,16 @@ jobs:
   ci:
     name: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20m: the `nuxt` Vitest project boots a Nuxt runtime on top of lint/typecheck/generate.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         # Version is read from "packageManager" field in package.json
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           # Node 22 LTS — eslint-flat-config-utils uses Object.groupBy (Node 21+)
           node-version: '22'
@@ -46,3 +50,78 @@ jobs:
 
       - name: Build (nuxt generate)
         run: pnpm generate
+
+  docker-build:
+    name: docker-build
+    # Validate the production image builds on every PR. Catches Dockerfile /
+    # base-image breakage (e.g. corepack removed in node 25+, see deploy guide
+    # грабля #17) before it can reach main and the GHCR deploy. No registry push.
+    # Runs on Dependabot PRs too — that is exactly where a node bump would surface.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          # The analytics counter is irrelevant to a build smoke-test and
+          # omitting the secret keeps this job working on Dependabot PRs.
+          cache-from: type=gha
+
+  deploy:
+    name: Build & Push to GHCR
+    needs: ci
+    # Gate the deploy on CI (issue #45 P1): a red CI now blocks the image from
+    # ever reaching GHCR / Watchtower. Only the main branch deploys.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: write  # required to push to ghcr.io
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # built-in, no extra secret needed
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NUXT_PUBLIC_YANDEX_COUNTER_ID=${{ secrets.NUXT_PUBLIC_YANDEX_COUNTER_ID }}
+            NUXT_PUBLIC_SITE_URL=${{ vars.NUXT_PUBLIC_SITE_URL }}
+            NUXT_PUBLIC_AUTHOR_NAME=${{ vars.NUXT_PUBLIC_AUTHOR_NAME }}
+            NUXT_PUBLIC_AUTHOR_URL=${{ vars.NUXT_PUBLIC_AUTHOR_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

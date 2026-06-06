@@ -2,88 +2,34 @@
 import type { B24Frame } from '@bitrix24/b24jssdk'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
-import { convert, stepFor } from '~/utils/converter'
-import { bynAmountInWords } from '~/utils/numberToWords'
+import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
+import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
+import { rublesAmountInWords } from '~/utils/numberToWords'
+import { applyFormula, capitalizeFirst, formatAmount, formatPlainAmount, numberFormatOptions } from '~/utils/formatters'
+import { vHoldRepeat } from '~/directives/holdRepeat'
+import { MAX_AMOUNT } from '~/config/currencies'
+import { useNbrbRates } from '~/composables/useNbrbRates'
+import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
 import { useB24 } from '~/composables/useB24'
-
-interface NbrbRate {
-  Cur_ID: number
-  Date: string
-  Cur_Abbreviation: string
-  Cur_Scale: number
-  Cur_Name: string
-  Cur_OfficialRate: number
-}
-
-/** Currency row shown in the converter UI */
-interface CurrencyRow {
-  code: string
-  name: string
-  /** BYN per 1 unit of this currency; always 1 for BYN itself */
-  bynRate: number
-  /** Current amount entered or calculated for this currency */
-  value: number | undefined
-  removable: boolean
-}
-
-interface CachedRates {
-  date: string
-  rates: Array<{ code: string, bynRate: number }>
-  timestamp: number
-}
-
-const CACHE_KEY = 'nbrb_rates'
-/** НБ РБ updates rates once per business day; cache for 12 hours */
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const DEFAULT_AMOUNT = 100
-/** Upper bound for input — keeps `value * rate` away from Number.MAX_SAFE_INTEGER. */
-const MAX_AMOUNT = 1e12
-/** Visual feedback duration after copy / copy error. */
-const COPY_FEEDBACK_MS = 1500
-/** Formula factor: (X − 20%) × 20% ≡ X × 0.8 × 0.2 ≡ X × 0.16. Spec'd by the page owner. */
-const FORMULA_FACTOR = 0.16
-
-const DEFAULT_CURRENCIES: CurrencyRow[] = [
-  { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined, removable: false },
-  { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT, removable: false },
-  { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined, removable: false },
-  { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined, removable: false },
-  { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined, removable: false },
-  { code: 'EUR', name: 'евро', bynRate: 0, value: undefined, removable: false }
-]
 
 const { t } = useI18n()
 const b24Instance = useB24()
 const isB24 = computed(() => b24Instance.isInit())
 
-const currencies = ref<CurrencyRow[]>(DEFAULT_CURRENCIES.map(c => ({ ...c })))
-const ratesDate = ref('')
-const loading = ref(true)
-const refreshing = ref(false)
-const fetchError = ref('')
-const activeCurrency = ref('BYN')
-const copyState = ref<'idle' | 'ok' | 'err'>('idle')
-const copyStateRub = ref<'idle' | 'ok' | 'err'>('idle')
-
-const bynFormatter = new Intl.NumberFormat('ru-RU', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-  useGrouping: true
-})
-
-/** Per-currency Intl.NumberFormatOptions — cached to avoid new objects on every render. */
-const currencyFormatOptions = computed<Record<string, Intl.NumberFormatOptions>>(() =>
-  Object.fromEntries(
-    currencies.value
-      .filter(c => /^[A-Z]{3}$/.test(c.code))
-      .map(c => [c.code, {
-        style: 'currency' as const,
-        currency: c.code,
-        currencyDisplay: 'code' as const,
-        currencySign: 'accounting' as const
-      }])
-  )
-)
+// Rate loading, caching and row state live in the composable (issue #48).
+const {
+  currencies,
+  ratesDate,
+  loading,
+  refreshing,
+  fetchError,
+  activeCurrency,
+  refresh,
+  onValueUpdate,
+  onRowClick,
+  incrementCurrency,
+  decrementCurrency
+} = useNbrbRates()
 
 const activeBynAmount = computed(() => {
   const byn = currencies.value.find(c => c.code === 'BYN')
@@ -91,202 +37,63 @@ const activeBynAmount = computed(() => {
   return byn.value
 })
 
-const amountInWords = computed(() => bynAmountInWords(activeBynAmount.value))
+const amountInWords = computed(() => rublesAmountInWords(activeBynAmount.value))
 
-/**
- * RUB amount in words. Uses the same ruble/kopeck word forms as BYN —
- * both share "рубль / копейка" denominations.
- */
+/** RUB amount in words — same ruble/kopeck word forms as BYN. */
 const amountInWordsRub = computed(() => {
   const rub = currencies.value.find(c => c.code === 'RUB')
   if (!rub || typeof rub.value !== 'number') return ''
-  return bynAmountInWords(rub.value)
+  return rublesAmountInWords(rub.value)
 })
 
-const formulaResult = computed(() => {
-  return Math.round(activeBynAmount.value * FORMULA_FACTOR * 100) / 100
-})
+// Optional capitalisation of the first letter (off by default) — handy when the
+// "sum in words" is pasted into a payment order that expects a capital line.
+const wordsCapitalized = ref(false)
+const displayAmountInWords = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWords.value) : amountInWords.value)
+const displayAmountInWordsRub = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(amountInWordsRub.value) : amountInWordsRub.value)
 
-const formattedFormulaY = computed(() => bynFormatter.format(formulaResult.value))
+const formulaResult = computed(() => applyFormula(activeBynAmount.value))
+const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
+/** Plain (dot, 2 decimals, no grouping) formula result for the clipboard. */
+const formulaPlain = computed(() => formatPlainAmount(formulaResult.value))
 
-/** Recalculates all currency values based on `amount` units of `code`. */
-function recalcFrom(code: string, amount: number) {
-  const source = currencies.value.find(c => c.code === code)
-  if (!source) return
-  for (const c of currencies.value) {
-    if (c.code !== code) {
-      c.value = convert(amount, source.bynRate, c.bynRate)
-    }
-  }
-}
+// Clipboard feedback: one flash per "sum in words" line, plus a keyed one for
+// the per-row "copy amount" buttons.
+const { state: copyState, copy: copyBynWords } = useCopyFeedback()
+const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
+const { state: copyStateFormula, copy: copyFormulaText } = useCopyFeedback()
+const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 
-function applyRates(rateMap: Array<{ code: string, bynRate: number }>, date: string) {
-  for (const { code, bynRate } of rateMap) {
-    const c = currencies.value.find(r => r.code === code)
-    if (c) c.bynRate = bynRate
-  }
-  ratesDate.value = date
-  const active = currencies.value.find(c => c.code === activeCurrency.value)
-  if (active && typeof active.value === 'number' && active.bynRate > 0) {
-    recalcFrom(active.code, active.value)
-  } else {
-    activeCurrency.value = 'BYN'
-    const byn = currencies.value.find(c => c.code === 'BYN')
-    if (byn) byn.value = byn.value ?? DEFAULT_AMOUNT
-    recalcFrom('BYN', byn?.value ?? DEFAULT_AMOUNT)
-  }
-}
-
-function loadFromCache(): CachedRates | null {
-  if (typeof sessionStorage === 'undefined') return null
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY)
-    if (!raw) return null
-    const cached = JSON.parse(raw) as CachedRates
-    if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null
-    return cached
-  } catch {
-    return null
-  }
-}
-
-function saveToCache(date: string, rates: Array<{ code: string, bynRate: number }>) {
-  if (typeof sessionStorage === 'undefined') return
-  try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ date, rates, timestamp: Date.now() }))
-  } catch {
-    // sessionStorage may be unavailable (private browsing, quota exceeded)
-  }
-}
-
-async function fetchRates() {
-  fetchError.value = ''
-  try {
-    const data = await $fetch<NbrbRate[]>('https://api.nbrb.by/exrates/rates?periodicity=0')
-    const date = data[0]?.Date
-      ? new Date(data[0].Date).toLocaleDateString('ru-RU')
-      : ''
-    const rateMap = data
-      .filter(r => r.Cur_Scale > 0)
-      .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
-    applyRates(rateMap, date)
-    saveToCache(date, rateMap)
-  } catch {
-    fetchError.value = 'Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.'
-  }
-}
-
-async function refresh() {
-  if (loading.value || refreshing.value) return
-  refreshing.value = true
-  if (typeof sessionStorage !== 'undefined') {
-    try {
-      sessionStorage.removeItem(CACHE_KEY)
-    } catch {
-      // sessionStorage may be unavailable
-    }
-  }
-  await fetchRates()
-  refreshing.value = false
-}
-
-onMounted(async () => {
-  fetchError.value = ''
-  const cached = loadFromCache()
-  if (cached) {
-    applyRates(cached.rates, cached.date)
-    loading.value = false
-  } else {
-    await fetchRates()
-    loading.value = false
-  }
-
-  if (isB24.value) {
-    try {
-      const $b24 = b24Instance.get() as B24Frame
-      await $b24.parent.setTitle(t('page.index.seo.title'))
-    } catch {
-      // setTitle is best-effort — failure inside the frame is non-fatal
-    }
-  }
-})
-
-function onValueUpdate(code: string, value: number | null | undefined) {
+/** Copies one row's amount as a plain number (dot, 2 decimals, no grouping) —
+ *  the same clean format as the formula copy, for pasting into spreadsheets. */
+function copyRow(code: string) {
   const c = currencies.value.find(r => r.code === code)
-  if (!c) return
-  const normalized = value == null || (typeof value === 'number' && isNaN(value))
-    ? undefined
-    : value
-  c.value = normalized
-  activeCurrency.value = code
-  if (typeof normalized === 'number') {
-    recalcFrom(code, normalized)
-  }
+  if (!c || typeof c.value !== 'number') return
+  copyRowAmount(code, formatPlainAmount(c.value))
 }
 
-function onRowClick(code: string) {
-  activeCurrency.value = code
+/** Copy-button colour for a row: success/alert only while its flash is active. */
+function rowCopyColor(code: string) {
+  return rowCopyColorFor(code, 'air-primary-success', 'air-primary-alert', 'air-tertiary-no-accent')
 }
 
-let copyResetTimer: ReturnType<typeof setTimeout> | null = null
-let copyResetTimerRub: ReturnType<typeof setTimeout> | null = null
-
-function flashCopyState(state: 'ok' | 'err') {
-  copyState.value = state
-  if (copyResetTimer) clearTimeout(copyResetTimer)
-  copyResetTimer = setTimeout(() => {
-    copyState.value = 'idle'
-  }, COPY_FEEDBACK_MS)
-}
-
-function flashCopyStateRub(state: 'ok' | 'err') {
-  copyStateRub.value = state
-  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
-  copyResetTimerRub = setTimeout(() => {
-    copyStateRub.value = 'idle'
-  }, COPY_FEEDBACK_MS)
-}
-
-async function copyWords() {
-  const text = amountInWords.value
-  if (!text) return
-  if (typeof navigator === 'undefined' || !navigator.clipboard) {
-    flashCopyState('err')
-    return
-  }
+// Inside a B24 frame: set the iframe title so the portal tab/window updates.
+onMounted(async () => {
+  if (!isB24.value) return
   try {
-    await navigator.clipboard.writeText(text)
-    flashCopyState('ok')
+    const $b24 = b24Instance.get() as B24Frame
+    await $b24.parent.setTitle(t('page.index.seo.title'))
   } catch {
-    // insecure context, permission denied, etc. — surface it instead of swallowing.
-    flashCopyState('err')
+    // setTitle is best-effort — failure inside the frame is non-fatal
   }
-}
-
-async function copyWordsRub() {
-  const text = amountInWordsRub.value
-  if (!text) return
-  if (typeof navigator === 'undefined' || !navigator.clipboard) {
-    flashCopyStateRub('err')
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(text)
-    flashCopyStateRub('ok')
-  } catch {
-    flashCopyStateRub('err')
-  }
-}
-
-onBeforeUnmount(() => {
-  if (copyResetTimer) clearTimeout(copyResetTimer)
-  if (copyResetTimerRub) clearTimeout(copyResetTimerRub)
 })
 </script>
 
 <template>
-  <div class="flex justify-center px-3 py-3 sm:py-6">
-    <div class="w-full max-w-sm">
+  <div class="flex justify-center px-3 py-3 sm:px-4 sm:py-6">
+    <div class="w-full max-w-sm sm:max-w-[464px]">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
           href="https://www.nbrb.by/"
@@ -310,8 +117,8 @@ onBeforeUnmount(() => {
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
-          :disabled="loading"
-          :class="[refreshing ? '[&_svg]:animate-spin' : '']"
+          :disabled="loading || refreshing"
+          :class="['me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
@@ -322,16 +129,16 @@ onBeforeUnmount(() => {
         class="flex flex-col gap-2"
       >
         <div
-          v-for="i in 6"
+          v-for="i in 7"
           :key="i"
-          class="h-14 animate-pulse rounded bg-gray-100 dark:bg-gray-800"
+          class="-mx-2 h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
         />
       </div>
 
       <!-- Error state -->
       <div
         v-else-if="fetchError"
-        class="rounded border border-red-200 p-3 text-sm text-red-500 dark:border-red-800"
+        class="-mx-2 rounded-lg border border-red-200 px-2 py-3 text-sm text-red-500 dark:border-red-800"
       >
         {{ fetchError }}
       </div>
@@ -344,44 +151,107 @@ onBeforeUnmount(() => {
         <div
           v-for="currency in currencies"
           :key="currency.code"
-          class="flex items-center gap-3 rounded px-1 py-0.5 transition-colors"
-          :class="currency.code === activeCurrency ? 'bg-gray-100 dark:bg-gray-900' : ''"
+          class="-mx-2 flex items-center gap-2 rounded-lg px-2 py-1.5 ring-1 transition-[background-color,box-shadow] duration-150 sm:gap-3"
+          :class="currency.code === activeCurrency
+            ? 'bg-cyan-400/[0.06] ring-cyan-400/40 dark:bg-cyan-400/[0.07]'
+            : 'ring-transparent hover:bg-gray-50 dark:hover:bg-white/[0.03]'"
           @click="onRowClick(currency.code)"
         >
-          <div class="flex w-[6.25rem] shrink-0 flex-col leading-tight">
-            <span class="text-base font-semibold text-gray-700 dark:text-gray-200">
+          <div class="flex w-16 shrink-0 flex-col leading-tight sm:w-[6.25rem]">
+            <span class="text-base font-semibold tracking-wide text-gray-700 dark:text-gray-100">
               {{ currency.code }}
             </span>
-            <span class="truncate text-[10px] text-gray-400 dark:text-gray-500">
+            <!-- Full name is shown only where the column is wide enough (desktop). -->
+            <span class="hidden truncate text-[10px] text-gray-400 sm:block dark:text-gray-500">
               {{ currency.name }}
             </span>
           </div>
+          <B24Button
+            :icon="CopyIcon"
+            :color="rowCopyColor(currency.code)"
+            size="sm"
+            class="shrink-0"
+            :disabled="typeof currency.value !== 'number'"
+            :aria-label="`Скопировать сумму ${currency.code}`"
+            @click.stop="copyRow(currency.code)"
+          />
           <B24InputNumber
             :model-value="currency.value"
             :model-modifiers="{ optional: true }"
-            :step="stepFor(currency.value)"
+            :step="0.01"
             :min="0"
             :max="MAX_AMOUNT"
+            :increment="false"
+            :decrement="false"
             :highlight="currency.code === activeCurrency"
-            :format-options="currencyFormatOptions[currency.code]"
-            size="xl"
+            :format-options="numberFormatOptions"
+            :aria-label="`Сумма в ${currency.code} (${currency.name})`"
+            size="lg"
             class="min-w-0 flex-1"
-            :b24ui="{ base: 'text-right text-lg' }"
+            :b24ui="{ base: 'text-right text-base font-medium tabular-nums sm:text-lg' }"
             @update:model-value="onValueUpdate(currency.code, $event)"
-            @focus="activeCurrency = currency.code"
+            @focus="onRowClick(currency.code)"
           />
+          <div class="flex shrink-0 gap-1">
+            <B24Button
+              v-hold-repeat="() => decrementCurrency(currency.code)"
+              :icon="MinusIcon"
+              color="air-tertiary-no-accent"
+              size="lg"
+              :aria-label="`Уменьшить ${currency.code}`"
+              :disabled="typeof currency.value !== 'number' || currency.value <= 0"
+              @click.stop="decrementCurrency(currency.code)"
+            />
+            <B24Button
+              v-hold-repeat="() => incrementCurrency(currency.code)"
+              :icon="PlusIcon"
+              color="air-tertiary-no-accent"
+              size="lg"
+              :aria-label="`Увеличить ${currency.code}`"
+              :disabled="typeof currency.value === 'number' && currency.value >= MAX_AMOUNT"
+              @click.stop="incrementCurrency(currency.code)"
+            />
+          </div>
         </div>
 
         <!-- Sum in words + copy -->
-        <div class="mt-3 rounded border border-gray-200 p-3 dark:border-gray-700">
-          <div class="mb-2 text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
-            Сумма прописью
+        <div class="-mx-2 mt-3 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 dark:border-white/10 dark:bg-white/[0.02]">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Сумма прописью
+            </span>
+            <div
+              class="flex shrink-0 me-[2px] overflow-hidden rounded-md border border-gray-200 dark:border-white/10"
+              role="group"
+              aria-label="Регистр первой буквы"
+            >
+              <button
+                type="button"
+                class="px-1.5 py-0.5 text-[11px] leading-none transition-colors"
+                :class="!wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="!wordsCapitalized"
+                aria-label="Строчная первая буква"
+                @click="wordsCapitalized = false"
+              >
+                аб
+              </button>
+              <button
+                type="button"
+                class="border-l border-gray-200 px-1.5 py-0.5 text-[11px] leading-none transition-colors dark:border-white/10"
+                :class="wordsCapitalized ? 'bg-gray-200 font-semibold text-gray-900 dark:bg-white/15 dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+                :aria-pressed="wordsCapitalized"
+                aria-label="Заглавная первая буква"
+                @click="wordsCapitalized = true"
+              >
+                Аб
+              </button>
+            </div>
           </div>
           <div class="flex flex-col gap-2">
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">BYN</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">BYN</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWords }}
+                {{ displayAmountInWords }}
               </div>
               <B24Button
                 type="button"
@@ -389,14 +259,14 @@ onBeforeUnmount(() => {
                 :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0"
-                @click="copyWords"
+                class="shrink-0 me-[3px]"
+                @click="copyBynWords(displayAmountInWords)"
               />
             </div>
             <div class="flex items-start gap-2">
-              <span class="w-8 shrink-0 pt-0.5 text-[10px] text-gray-400 dark:text-gray-500">RUB</span>
+              <span class="w-6 shrink-0 pt-0.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">RUB</span>
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
-                {{ amountInWordsRub }}
+                {{ displayAmountInWordsRub }}
               </div>
               <B24Button
                 type="button"
@@ -404,18 +274,27 @@ onBeforeUnmount(() => {
                 :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
                 size="sm"
                 :icon="CopyIcon"
-                class="shrink-0"
-                @click="copyWordsRub"
+                class="shrink-0 me-[3px]"
+                @click="copyRubWords(displayAmountInWordsRub)"
               />
             </div>
           </div>
         </div>
 
         <!-- Calculation formula -->
-        <div class="rounded border border-gray-200 p-3 text-sm dark:border-gray-700">
-          <div class="font-mono text-gray-700 dark:text-gray-200">
+        <div class="-mx-2 flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+          <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
             (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
           </div>
+          <B24Button
+            type="button"
+            :aria-label="copyStateFormula === 'ok' ? 'Скопировано' : copyStateFormula === 'err' ? 'Не удалось скопировать' : 'Скопировать результат формулы'"
+            :color="copyStateFormula === 'ok' ? 'air-primary-success' : copyStateFormula === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+            size="sm"
+            :icon="CopyIcon"
+            class="shrink-0 me-[3px]"
+            @click="copyFormulaText(formulaPlain)"
+          />
         </div>
       </div>
     </div>

@@ -25,3 +25,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Node 25+ removed corepack from the official images (`RUN corepack enable`
+    # → exit 127). Stay on the 22 LTS line; major bumps are done manually with
+    # the corepack fix in place. Minor/patch of node:22-alpine still flow through.
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
