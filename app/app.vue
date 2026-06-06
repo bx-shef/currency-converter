@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ru } from '@bitrix24/b24ui-nuxt/locale'
+import GitHubIcon from '@bitrix24/b24icons-vue/social/GitHubIcon'
 import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import OpenBookIcon from '@bitrix24/b24icons-vue/main/OpenBookIcon'
 import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
@@ -143,7 +144,21 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
 
     <B24Footer>
       <template #left>
-        <SiteFooter />
+        <span class="text-xs text-gray-500 dark:text-white/55">© {{ new Date().getFullYear() }} ИП Шевчик И. С</span>
+      </template>
+
+      <SiteFooter />
+
+      <template #right>
+        <B24Button
+          :icon="GitHubIcon"
+          to="https://github.com/bx-shef/currency-converter"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub"
+          color="air-tertiary-no-accent"
+          size="sm"
+        />
       </template>
     </B24Footer>
   </B24App>
