@@ -27,8 +27,8 @@ export const MAX_AMOUNT = 1e12
 
 /** Display order + RU names. `bynRate`/`value` are seeded; rates load from the API. */
 export const DEFAULT_CURRENCIES: readonly CurrencyRow[] = [
-  { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
   { code: 'BYN', name: 'белорусский рубль', bynRate: 1, value: DEFAULT_AMOUNT },
+  { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
   { code: 'KZT', name: 'казахстанский тенге', bynRate: 0, value: undefined },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined },
   { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined },

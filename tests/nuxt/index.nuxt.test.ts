@@ -29,6 +29,8 @@ describe('index.vue (converter page)', () => {
     // Header shows the parsed rates date and the "sum in words" block renders.
     expect(text).toContain('04.06.2026')
     expect(text).toContain('Сумма прописью')
+    // The current-quarter label renders under the formula (date-agnostic check).
+    expect(text).toContain('квартал')
   })
 
   it('shows the loading skeleton before the rates resolve', async () => {

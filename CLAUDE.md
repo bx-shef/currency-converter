@@ -35,8 +35,9 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   b24ui сам эти top-level ключи в appConfig не кладёт**, без них `useColorMode()` = no-op stub
   (кнопка молча не работает). inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки (FOUC при SSG).
 - `app/utils/converter.ts` — конвертация и адаптивный шаг (чистые функции).
-- `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`
-  и `formatPlainAmount` («чистое» число с точкой для буфера).
+- `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`,
+  `formatPlainAmount` («чистое» число с точкой для буфера) и `quarterOfDate`/`quarterLabel`
+  (текущий календарный квартал для блока формулы, напр. «II квартал 2026»).
 - `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**).
 - `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`).
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).

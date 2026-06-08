@@ -10,6 +10,11 @@ import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResour
 
 const config = useRuntimeConfig()
 
+// Copyright year — resolved once on the server and serialized via useState, so
+// the client hydrates the same value (no mismatch if the year rolls over while
+// a prebuilt SSG page is served). Refreshes on the next build.
+const currentYear = useState('currentYear', () => new Date().getFullYear())
+
 // b24ui colorMode persists the choice under this @vueuse/core key; the inline
 // theme-init script below reads it to set the class before paint. Keep in sync
 // with b24ui's `colorModeStorageKey` default.
@@ -144,7 +149,7 @@ ym(${yandexCounterId}, "init", { clickmap:true, trackLinks:true, accurateTrackBo
 
     <B24Footer>
       <template #left>
-        <span class="text-xs text-gray-500 dark:text-white/55">© {{ new Date().getFullYear() }} ИП Шевчик И. С</span>
+        <span class="text-xs text-gray-500 dark:text-white/55">© {{ currentYear }} ИП Шевчик И. С</span>
       </template>
 
       <SiteFooter />
