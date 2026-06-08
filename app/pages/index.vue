@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { B24Frame } from '@bitrix24/b24jssdk'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
@@ -9,6 +10,11 @@ import { vHoldRepeat } from '~/directives/holdRepeat'
 import { MAX_AMOUNT } from '~/config/currencies'
 import { useNbrbRates } from '~/composables/useNbrbRates'
 import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
+import { useB24 } from '~/composables/useB24'
+
+const { t } = useI18n()
+const b24Instance = useB24()
+const isB24 = computed(() => b24Instance.isInit())
 
 // Rate loading, caching and row state live in the composable (issue #48).
 const {
@@ -78,6 +84,17 @@ function copyRow(code: string) {
 function rowCopyColor(code: string) {
   return rowCopyColorFor(code, 'air-primary-success', 'air-primary-alert', 'air-tertiary-no-accent')
 }
+
+// Inside a B24 frame: set the iframe title so the portal tab/window updates.
+onMounted(async () => {
+  if (!isB24.value) return
+  try {
+    const $b24 = b24Instance.get() as B24Frame
+    await $b24.parent.setTitle(t('page.index.seo.title'))
+  } catch {
+    // setTitle is best-effort — failure inside the frame is non-fatal
+  }
+})
 </script>
 
 <template>
@@ -94,13 +111,20 @@ function rowCopyColor(code: string) {
           v-if="ratesDate"
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
+        <B24Badge
+          :label="isB24 ? t('mode.b24') : t('mode.standalone')"
+          :color="isB24 ? 'air-primary-success' : 'air-primary-warning'"
+          variant="soft"
+          size="sm"
+          class="ml-auto"
+        />
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
           :disabled="loading || refreshing"
-          :class="['ml-auto me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
+          :class="['me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>

@@ -15,6 +15,15 @@ WORKDIR /app
 COPY . .
 ARG NUXT_PUBLIC_YANDEX_COUNTER_ID
 ENV NUXT_PUBLIC_YANDEX_COUNTER_ID=$NUXT_PUBLIC_YANDEX_COUNTER_ID
+# Bitrix24 placement HANDLER is built from this at install time; must match
+# the public domain the image is served from, otherwise placement.bind stores
+# a broken (relative) URL.
+ARG NUXT_PUBLIC_SITE_URL
+ENV NUXT_PUBLIC_SITE_URL=$NUXT_PUBLIC_SITE_URL
+ARG NUXT_PUBLIC_AUTHOR_NAME
+ENV NUXT_PUBLIC_AUTHOR_NAME=$NUXT_PUBLIC_AUTHOR_NAME
+ARG NUXT_PUBLIC_AUTHOR_URL
+ENV NUXT_PUBLIC_AUTHOR_URL=$NUXT_PUBLIC_AUTHOR_URL
 # Generate OG image from SVG (DejaVu supports Cyrillic).
 # inkscape 1.x replaces rsvg-convert which was removed in librsvg 2.57+
 RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \
