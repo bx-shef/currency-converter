@@ -38,6 +38,22 @@ export function applyFormula(byn: number): number {
   return Math.round(byn * FORMULA_FACTOR * 100) / 100
 }
 
+/** Roman numerals for quarters 1–4 (index = quarter − 1). */
+const ROMAN_QUARTERS = ['I', 'II', 'III', 'IV'] as const
+
+/** Calendar quarter (1–4) for a date — months 0–2 → 1, 3–5 → 2, etc. */
+export function quarterOfDate(date: Date = new Date()): number {
+  return Math.floor(date.getMonth() / 3) + 1
+}
+
+/**
+ * Human-readable current-quarter label for the formula block,
+ * e.g. "II квартал 2026". Defaults to the current date.
+ */
+export function quarterLabel(date: Date = new Date()): string {
+  return `${ROMAN_QUARTERS[quarterOfDate(date) - 1]} квартал ${date.getFullYear()}`
+}
+
 /** Upper-cases the first character only; returns '' for empty input. */
 export function capitalizeFirst(text: string): string {
   return text ? text[0]!.toUpperCase() + text.slice(1) : ''

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions } from '../app/utils/formatters'
+import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel, quarterOfDate } from '../app/utils/formatters'
 
 describe('formatPlainAmount', () => {
   it('formats with exactly 2 decimals and a dot separator', () => {
@@ -86,6 +86,25 @@ describe('applyFormula', () => {
     expect(applyFormula(NaN)).toBeNaN()
     expect(applyFormula(Infinity)).toBe(Infinity)
     expect(applyFormula(-Infinity)).toBe(-Infinity)
+  })
+})
+
+describe('quarterOfDate', () => {
+  it('maps each month to its calendar quarter', () => {
+    expect(quarterOfDate(new Date(2026, 0, 15))).toBe(1) // January
+    expect(quarterOfDate(new Date(2026, 2, 31))).toBe(1) // March
+    expect(quarterOfDate(new Date(2026, 3, 1))).toBe(2) // April
+    expect(quarterOfDate(new Date(2026, 5, 8))).toBe(2) // June
+    expect(quarterOfDate(new Date(2026, 8, 30))).toBe(3) // September
+    expect(quarterOfDate(new Date(2026, 11, 31))).toBe(4) // December
+  })
+})
+
+describe('quarterLabel', () => {
+  it('formats the quarter with a Roman numeral and the year', () => {
+    expect(quarterLabel(new Date(2026, 5, 8))).toBe('II квартал 2026')
+    expect(quarterLabel(new Date(2026, 0, 1))).toBe('I квартал 2026')
+    expect(quarterLabel(new Date(2025, 9, 10))).toBe('IV квартал 2025')
   })
 })
 
