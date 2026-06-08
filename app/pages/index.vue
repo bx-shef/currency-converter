@@ -5,7 +5,7 @@ import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { rublesAmountInWords } from '~/utils/numberToWords'
-import { applyFormula, capitalizeFirst, formatAmount, formatPlainAmount, numberFormatOptions } from '~/utils/formatters'
+import { applyFormula, capitalizeFirst, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel } from '~/utils/formatters'
 import { vHoldRepeat } from '~/directives/holdRepeat'
 import { MAX_AMOUNT } from '~/config/currencies'
 import { useNbrbRates } from '~/composables/useNbrbRates'
@@ -58,6 +58,12 @@ const formulaResult = computed(() => applyFormula(activeBynAmount.value))
 const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
 /** Plain (dot, 2 decimals, no grouping) formula result for the clipboard. */
 const formulaPlain = computed(() => formatPlainAmount(formulaResult.value))
+
+// Current calendar quarter shown under the formula (e.g. "II квартал 2026").
+// Computed once at setup; the label lives inside the `v-else` branch that only
+// renders after rates load on the client (the page prerenders the loading
+// skeleton instead), so there is no SSG hydration mismatch.
+const currentQuarter = quarterLabel()
 
 // Clipboard feedback: one flash per "sum in words" line, plus a keyed one for
 // the per-row "copy amount" buttons.
@@ -282,19 +288,26 @@ onMounted(async () => {
         </div>
 
         <!-- Calculation formula -->
-        <div class="-mx-2 flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
-          <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
-            (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
+        <div class="-mx-2 rounded-xl border border-gray-200 bg-gray-50/60 px-2 py-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
+              (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
+            </div>
+            <B24Button
+              type="button"
+              :aria-label="copyStateFormula === 'ok' ? 'Скопировано' : copyStateFormula === 'err' ? 'Не удалось скопировать' : 'Скопировать результат формулы'"
+              :color="copyStateFormula === 'ok' ? 'air-primary-success' : copyStateFormula === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+              size="sm"
+              :icon="CopyIcon"
+              class="shrink-0 me-[3px]"
+              @click="copyFormulaText(formulaPlain)"
+            />
           </div>
-          <B24Button
-            type="button"
-            :aria-label="copyStateFormula === 'ok' ? 'Скопировано' : copyStateFormula === 'err' ? 'Не удалось скопировать' : 'Скопировать результат формулы'"
-            :color="copyStateFormula === 'ok' ? 'air-primary-success' : copyStateFormula === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-            size="sm"
-            :icon="CopyIcon"
-            class="shrink-0 me-[3px]"
-            @click="copyFormulaText(formulaPlain)"
-          />
+          <!-- Current quarter — small and muted, like the BYN/RUB labels above
+               but one step larger (text-xs) for readability on mobile. -->
+          <div class="mt-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
+            {{ currentQuarter }}
+          </div>
         </div>
       </div>
     </div>

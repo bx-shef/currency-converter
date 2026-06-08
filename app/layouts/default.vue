@@ -8,6 +8,11 @@ import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
 
+// Copyright year — resolved once on the server and serialized via useState, so
+// the client hydrates the same value (no mismatch if the year rolls over while
+// a prebuilt SSG page is served). Refreshes on the next build.
+const currentYear = useState('currentYear', () => new Date().getFullYear())
+
 const navItems = [
   [
     {
@@ -68,7 +73,7 @@ const navItems = [
 
     <B24Footer>
       <template #left>
-        <span class="text-xs text-gray-500 dark:text-white/55">© {{ new Date().getFullYear() }} ИП Шевчик И. С</span>
+        <span class="text-xs text-gray-500 dark:text-white/55">© {{ currentYear }} ИП Шевчик И. С</span>
       </template>
 
       <SiteFooter />
