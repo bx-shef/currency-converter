@@ -279,8 +279,9 @@ function rowCopyColor(code: string) {
               @click="copyFormulaText(formulaPlain)"
             />
           </div>
-          <!-- Current quarter — small, in the same muted style as the BYN/RUB labels above. -->
-          <div class="mt-1.5 text-[10px] font-medium text-gray-400 dark:text-gray-500">
+          <!-- Current quarter — small and muted, like the BYN/RUB labels above
+               but one step larger (text-xs) for readability on mobile. -->
+          <div class="mt-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
             {{ currentQuarter }}
           </div>
         </div>
