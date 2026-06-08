@@ -42,8 +42,8 @@ export function applyFormula(byn: number): number {
 const ROMAN_QUARTERS = ['I', 'II', 'III', 'IV'] as const
 
 /** Calendar quarter (1–4) for a date — months 0–2 → 1, 3–5 → 2, etc. */
-export function quarterOfDate(date: Date = new Date()): number {
-  return Math.floor(date.getMonth() / 3) + 1
+export function quarterOfDate(date: Date = new Date()): 1 | 2 | 3 | 4 {
+  return (Math.floor(date.getMonth() / 3) + 1) as 1 | 2 | 3 | 4
 }
 
 /**
@@ -51,7 +51,8 @@ export function quarterOfDate(date: Date = new Date()): number {
  * e.g. "II квартал 2026". Defaults to the current date.
  */
 export function quarterLabel(date: Date = new Date()): string {
-  return `${ROMAN_QUARTERS[quarterOfDate(date) - 1]} квартал ${date.getFullYear()}`
+  // quarterOfDate is always 1–4, so the index is always in range.
+  return `${ROMAN_QUARTERS[quarterOfDate(date) - 1]!} квартал ${date.getFullYear()}`
 }
 
 /** Upper-cases the first character only; returns '' for empty input. */

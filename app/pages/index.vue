@@ -53,7 +53,10 @@ const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
 /** Plain (dot, 2 decimals, no grouping) formula result for the clipboard. */
 const formulaPlain = computed(() => formatPlainAmount(formulaResult.value))
 
-/** Current calendar quarter, shown under the formula (e.g. "II квартал 2026"). */
+// Current calendar quarter shown under the formula (e.g. "II квартал 2026").
+// Computed once at setup; the label lives inside the `v-else` branch that only
+// renders after rates load on the client (the page prerenders the loading
+// skeleton instead), so there is no SSG hydration mismatch.
 const currentQuarter = quarterLabel()
 
 // Clipboard feedback: one flash per "sum in words" line, plus a keyed one for

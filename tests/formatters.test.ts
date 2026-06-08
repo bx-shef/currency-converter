@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel, quarterOfDate } from '../app/utils/formatters'
 
 describe('formatPlainAmount', () => {
@@ -90,21 +90,36 @@ describe('applyFormula', () => {
 })
 
 describe('quarterOfDate', () => {
+  // Covers both edges of every quarter — an off-by-one in Math.floor(month / 3)
+  // would slip a boundary month into the wrong quarter.
   it('maps each month to its calendar quarter', () => {
-    expect(quarterOfDate(new Date(2026, 0, 15))).toBe(1) // January
-    expect(quarterOfDate(new Date(2026, 2, 31))).toBe(1) // March
-    expect(quarterOfDate(new Date(2026, 3, 1))).toBe(2) // April
-    expect(quarterOfDate(new Date(2026, 5, 8))).toBe(2) // June
-    expect(quarterOfDate(new Date(2026, 8, 30))).toBe(3) // September
-    expect(quarterOfDate(new Date(2026, 11, 31))).toBe(4) // December
+    expect(quarterOfDate(new Date(2026, 0, 15))).toBe(1) // January — start of Q1
+    expect(quarterOfDate(new Date(2026, 2, 31))).toBe(1) // March — end of Q1
+    expect(quarterOfDate(new Date(2026, 3, 1))).toBe(2) // April — start of Q2
+    expect(quarterOfDate(new Date(2026, 5, 8))).toBe(2) // June — end of Q2
+    expect(quarterOfDate(new Date(2026, 6, 1))).toBe(3) // July — start of Q3
+    expect(quarterOfDate(new Date(2026, 8, 30))).toBe(3) // September — end of Q3
+    expect(quarterOfDate(new Date(2026, 9, 1))).toBe(4) // October — start of Q4
+    expect(quarterOfDate(new Date(2026, 11, 31))).toBe(4) // December — end of Q4
   })
 })
 
 describe('quarterLabel', () => {
-  it('formats the quarter with a Roman numeral and the year', () => {
-    expect(quarterLabel(new Date(2026, 5, 8))).toBe('II квартал 2026')
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('formats every quarter with a Roman numeral and the year', () => {
     expect(quarterLabel(new Date(2026, 0, 1))).toBe('I квартал 2026')
+    expect(quarterLabel(new Date(2026, 5, 8))).toBe('II квартал 2026')
+    expect(quarterLabel(new Date(2025, 7, 1))).toBe('III квартал 2025')
     expect(quarterLabel(new Date(2025, 9, 10))).toBe('IV квартал 2025')
+  })
+
+  it('falls back to the current date when called without an argument', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 2, 15)) // March → Q1
+    expect(quarterLabel()).toBe('I квартал 2026')
   })
 })
 
