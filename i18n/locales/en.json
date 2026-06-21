@@ -15,10 +15,6 @@
       "TRY": "Turkish lira"
     }
   },
-  "mode": {
-    "b24": "Inside Bitrix24",
-    "standalone": "Standalone (no B24)"
-  },
   "mock": {
     "title": "Demo mode",
     "description": "Changes will not be applied."
@@ -32,7 +28,6 @@
     },
     "widget": {
       "seo": { "title": "Currency Converter" },
-      "hint": "Convert and insert the amount into chat",
       "inWords": "in words",
       "insert": "Insert into chat",
       "inserted": "Inserted into chat",

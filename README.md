@@ -199,11 +199,21 @@ make prod-up
 | `DOMAIN` | Домен сайта (DNS → IP сервера) |
 | `LETSENCRYPT_EMAIL` | Email для SSL-сертификата |
 
-#### GitHub Secrets (Settings → Secrets and variables → Actions)
+#### GitHub Secrets (Settings → Secrets and variables → Actions → **Secrets**)
 
 | Secret | Описание |
 |---|---|
 | `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (необязательно) |
+
+#### GitHub Variables (Settings → Secrets and variables → Actions → **Variables**)
+
+Это **Variables**, не Secrets (значения не секретные, запекаются в публичный бандл):
+
+| Variable | Описание |
+|---|---|
+| `NUXT_PUBLIC_SITE_URL` | Публичный URL приложения. **Обязателен для встройки в Б24** — без него install-страница намеренно откажется регистрировать виджет (`placement.bind` требует абсолютный HANDLER). |
+| `NUXT_PUBLIC_AUTHOR_NAME` | Подпись в подвале виджета (необязательно, дефолт `bx-shef`). |
+| `NUXT_PUBLIC_AUTHOR_URL` | Ссылка с подписи (необязательно, дефолт `https://bx-shef.by`). |
 
 ### Команды
 

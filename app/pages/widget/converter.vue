@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { B24Frame } from '@bitrix24/b24jssdk'
 import { Text } from '@bitrix24/b24jssdk'
 import { computed, onMounted } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
@@ -9,6 +8,7 @@ import { useNbrbRates } from '~/composables/useNbrbRates'
 import { rublesAmountInWords } from '~/utils/numberToWords'
 import { capitalizeFirst, numberFormatOptions } from '~/utils/formatters'
 import { buildConversionLines, wordsCurrencyCode } from '~/utils/chatMessage'
+import { safeHttpUrl } from '~/utils/url'
 import { MAX_AMOUNT } from '~/config/currencies'
 
 definePageMeta({ layout: 'clear' })
@@ -34,14 +34,6 @@ const {
 useHead({ title: t('page.widget.seo.title') })
 
 const isBusy = ref(false)
-
-// Strip anything that isn't an http(s) URL — these come from env vars an operator
-// controls, but we render them as `:href` and don't want a `javascript:...` value
-// to slip through if the deploy config is ever misconfigured/tampered with.
-function safeHttpUrl(raw: string, fallback: string): string {
-  if (!raw) return fallback
-  return /^https?:\/\//i.test(raw) ? raw : fallback
-}
 
 const authorName = (config.public.authorName as string) || 'bx-shef'
 const authorUrl = safeHttpUrl(config.public.authorUrl as string, 'https://bx-shef.by')
@@ -84,7 +76,7 @@ async function insertIntoChat() {
 
   isBusy.value = true
   try {
-    const $b24 = b24Instance.get() as B24Frame
+    const $b24 = b24Instance.getOrThrow()
     const requestId = Text.getUuidRfc4122()
     await $b24.parent.message.send('im:setImTextareaContent', {
       text,
@@ -194,7 +186,7 @@ async function insertIntoChat() {
         <a
           :href="siteUrl"
           target="_blank"
-          rel="noopener"
+          rel="noopener noreferrer"
           class="hover:underline truncate"
         >
           {{ siteUrl.replace(/^https?:\/\//, '') }}

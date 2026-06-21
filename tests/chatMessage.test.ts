@@ -25,6 +25,7 @@ describe('buildConversionLines', () => {
   it('returns [] when the active row is missing or has no value', () => {
     expect(buildConversionLines(rows, 'GBP')).toEqual([])
     expect(buildConversionLines([{ code: 'BYN', value: undefined }], 'BYN')).toEqual([])
+    expect(buildConversionLines([], 'BYN')).toEqual([])
   })
 
   it('anchors on whichever currency is active', () => {

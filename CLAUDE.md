@@ -27,14 +27,14 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 
 ## Архитектура
 
-- `app/app.vue` — корень: `useHead`/SEO/Метрика/`theme-init`, рендерит `<NuxtLayout>`.
+- `app/app.vue` — корень: `useHead`/SEO/`theme-init`, рендерит `<NuxtLayout>`.
 - `app/layouts/default.vue` — каркас сайта (шапка с `B24ColorModeButton` и навигацией,
-  `B24Footer` с copyright/GitHub, `SiteFooter`). `app/layouts/clear.vue` — минимальный
-  layout под `/install` и виджет (только `<B24App>`, без шапки/подвала).
+  `B24Footer` с copyright/GitHub и `SiteFooter`) **и Яндекс.Метрика** — здесь, а не в
+  `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`).
+  `app/layouts/clear.vue` — минимальный layout под `/install` и виджет (только `<B24App>`).
 - `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
   логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`.
-- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта);
-  copyright и GitHub-кнопка живут в `layouts/default.vue` через слоты `B24Footer`.
+- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-const config = useRuntimeConfig()
-
 // b24ui colorMode persists the choice under this @vueuse/core key; the inline
 // theme-init script below reads it to set the class before paint. Keep in sync
 // with b24ui's `colorModeStorageKey` default.
@@ -48,31 +46,6 @@ useSeoMeta({
   ogType: 'website',
   twitterCard: 'summary_large_image'
 })
-
-const rawCounterId = String(config.public.yandexCounterId ?? '')
-// Accept only numeric IDs (defence in depth; also re-checked inside metrika.js).
-const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
-
-if (yandexCounterId) {
-  // Metrika is bootstrapped from a static, CSP-friendly external file
-  // (`public/metrika.js`, served from 'self') instead of an inline script, so
-  // the CSP needs no `'unsafe-inline'` for scripts. The counter id is passed via
-  // a <meta> tag (HTML, not executable) and re-validated inside metrika.js.
-  useHead({
-    meta: [
-      { name: 'yandex-metrika-id', content: yandexCounterId }
-    ],
-    script: [
-      { key: 'yandex-metrika', src: '/metrika.js', defer: true }
-    ],
-    noscript: [
-      {
-        // No script execution here — just a tracking pixel; counter id is digit-only.
-        innerHTML: `<div><img src="https://mc.yandex.ru/watch/${yandexCounterId}" style="position:absolute; left:-9999px;" alt="" /></div>`
-      }
-    ]
-  })
-}
 </script>
 
 <template>

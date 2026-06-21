@@ -8,10 +8,36 @@ import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
 
+const config = useRuntimeConfig()
+
 // Copyright year — resolved once on the server and serialized via useState, so
 // the client hydrates the same value (no mismatch if the year rolls over while
 // a prebuilt SSG page is served). Refreshes on the next build.
 const currentYear = useState('currentYear', () => new Date().getFullYear())
+
+// Yandex.Metrika lives in the default (site) layout — NOT app-wide — so it does
+// not load on the `clear`-layout pages (/install, /widget/converter) that run
+// inside the Bitrix24 portal iframe, where third-party analytics on portal users
+// is unwanted. Loaded from a static, CSP-friendly /metrika.js (no inline script);
+// the counter id is passed via a <meta> tag and re-validated inside metrika.js.
+const rawCounterId = String(config.public.yandexCounterId ?? '')
+const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
+if (yandexCounterId) {
+  useHead({
+    meta: [
+      { name: 'yandex-metrika-id', content: yandexCounterId }
+    ],
+    script: [
+      { key: 'yandex-metrika', src: '/metrika.js', defer: true }
+    ],
+    noscript: [
+      {
+        // No script execution here — just a tracking pixel; counter id is digit-only.
+        innerHTML: `<div><img src="https://mc.yandex.ru/watch/${yandexCounterId}" style="position:absolute; left:-9999px;" alt="" /></div>`
+      }
+    ]
+  })
+}
 
 const navItems = [
   [

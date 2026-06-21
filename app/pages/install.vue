@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { B24Frame } from '@bitrix24/b24jssdk'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { withoutTrailingSlash } from 'ufo'
 import { useB24 } from '~/composables/useB24'
+import { IM_TEXTAREA_PLACEMENT } from '~/config/b24'
 import { contentLocales } from '../../i18n/i18n'
 import { sleep } from '~/utils/sleep'
 
@@ -33,10 +33,12 @@ const progressColor = ref<'air-primary' | 'air-primary-success' | 'air-primary-w
 const progressValue = ref<null | number>(null)
 // Non-empty while the last install attempt failed — drives the retry UI.
 const installError = ref('')
+// True while an install attempt is in flight — guards the Retry button.
+const isRunning = ref(false)
 
 const requiredScopes = b24Instance.getRequiredRights()
 
-const PLACEMENT = 'IM_TEXTAREA'
+const PLACEMENT = IM_TEXTAREA_PLACEMENT
 
 interface PlacementBinding {
   handlerPath: string
@@ -67,7 +69,7 @@ const diagnostics = computed(() => {
   const missing = requiredScopes.filter(s => !granted.includes(s))
   let domain = ''
   if (isUseB24.value) {
-    const auth = (b24Instance.get() as B24Frame).auth.getAuthData()
+    const auth = b24Instance.getOrThrow().auth.getAuthData()
     domain = auth === false ? '' : auth.domain
   }
   return {
@@ -117,7 +119,7 @@ function buildLangAll() {
 
 async function makeInit(): Promise<void> {
   if (!isUseB24.value) return
-  const $b24 = b24Instance.get() as B24Frame
+  const $b24 = b24Instance.getOrThrow()
 
   await $b24.parent.setTitle(t('page.install.seo.title'))
 
@@ -130,18 +132,20 @@ async function makeInit(): Promise<void> {
 
   initData.value = response.getData() as InitData
 
-  const authData = $b24.auth.getAuthData()
-  console.info('[install] mode=B24, domain=%s, targetOrigin=%s, handler=%s',
-    authData === false ? '?' : authData.domain,
-    b24Instance.targetOrigin(),
-    handlerUrl.value)
-  console.info('[install] scope=', initData.value.scope)
-  console.info('[install] existing placements=', initData.value.placementList)
+  if (import.meta.dev) {
+    const authData = $b24.auth.getAuthData()
+    console.info('[install] mode=B24, domain=%s, targetOrigin=%s, handler=%s',
+      authData === false ? '?' : authData.domain,
+      b24Instance.targetOrigin(),
+      handlerUrl.value)
+    console.info('[install] scope=', initData.value.scope)
+    console.info('[install] existing placements=', initData.value.placementList)
+  }
 }
 
 async function makePlacement(): Promise<void> {
   if (!isUseB24.value) return
-  const $b24 = b24Instance.get() as B24Frame
+  const $b24 = b24Instance.getOrThrow()
 
   // In prod, `appUrl` comes from `NUXT_PUBLIC_SITE_URL`. If the deploy didn't
   // pass that build-arg the HANDLER becomes relative, and B24 will store a
@@ -190,7 +194,7 @@ async function makePlacement(): Promise<void> {
   })
 
   const result = await $b24.callBatch(calls, false)
-  console.info('[install] placement.bind result:', result.getData())
+  if (import.meta.dev) console.info('[install] placement.bind result:', result.getData())
 
   // Refresh placement list so the diagnostic panel reflects the new state.
   const after = await $b24.callMethod('placement.get', {})
@@ -199,7 +203,7 @@ async function makePlacement(): Promise<void> {
 
 async function makeFinish(): Promise<void> {
   if (!isUseB24.value) return
-  const $b24 = b24Instance.get() as B24Frame
+  const $b24 = b24Instance.getOrThrow()
 
   progressColor.value = 'air-primary-success'
   progressValue.value = 100
@@ -220,6 +224,8 @@ async function waitForB24(timeoutMs = 10000): Promise<boolean> {
 /** Runs the full install flow. Surfaces failures as a retryable error state
  *  instead of throwing (a thrown error left the page stuck with no way out). */
 async function runInstall() {
+  if (isRunning.value) return // guard against double-clicking Retry
+  isRunning.value = true
   installError.value = ''
   progressColor.value = 'air-primary'
   progressValue.value = null
@@ -251,9 +257,7 @@ async function runInstall() {
       return
     }
 
-    const $b24 = b24Instance.get() as B24Frame
-    await $b24.parent.setTitle(t('page.install.seo.title'))
-
+    // makeInit() (the first step below) sets the iframe title — no need to repeat it here.
     for (const [key, step] of Object.entries(steps)) {
       stepCode.value = key
       await step.action()
@@ -262,6 +266,8 @@ async function runInstall() {
     console.error('[install]', error)
     progressColor.value = 'air-primary-alert'
     installError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    isRunning.value = false
   }
 }
 
@@ -298,6 +304,7 @@ onMounted(runInstall)
           :label="t('page.install.error.retry')"
           color="air-primary"
           size="sm"
+          :disabled="isRunning"
           @click="runInstall"
         />
       </div>
