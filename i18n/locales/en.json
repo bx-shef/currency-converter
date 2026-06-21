@@ -49,6 +49,7 @@
         "title": "Application installation failed",
         "retry": "Try again"
       },
+      "placementWarning": "Some placements were not registered",
       "diagnostics": {
         "title": "Diagnostics",
         "mode": "Mode",

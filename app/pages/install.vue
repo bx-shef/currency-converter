@@ -198,13 +198,22 @@ async function makePlacement(): Promise<void> {
   //    halt and don't surface its errors.
   if (unbind.length) await $b24.callBatch(unbind, false)
 
-  // 2) Bind every placement. These MUST succeed — e.g. if the portal didn't grant
-  //    the `mobile` scope, the IMMOBILE_CONTEXT_MENU bind fails; surface that
-  //    instead of finishing the install with a half-registered app.
+  // 2) Bind every placement. Surface failures (don't silently finish with a
+  //    half-registered app), but don't hard-fail the whole install: a portal that
+  //    doesn't yet support IMMOBILE_CONTEXT_MENU must still get the working
+  //    desktop IM_TEXTAREA widget. Per-placement required/optional handling is a
+  //    follow-up (see issue tracker for #89).
   const bindResult = await $b24.callBatch(bind, false)
   if (import.meta.dev) console.info('[install] placement.bind result:', bindResult.getData())
   if (!bindResult.isSuccess) {
-    throw new Error(`placement.bind failed: ${bindResult.getErrorMessages().join('; ')}`)
+    const msg = bindResult.getErrorMessages().join('; ')
+    console.error('[install] placement.bind errors:', msg)
+    toast.add({
+      title: t('page.install.placementWarning'),
+      description: msg,
+      color: 'air-primary-warning',
+      duration: 0
+    })
   }
 
   // Refresh placement list so the diagnostic panel reflects the new state. Use a
