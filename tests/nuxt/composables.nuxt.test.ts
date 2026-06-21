@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { useNbrbRates } from '~/composables/useNbrbRates'
 import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
+import { MAX_AMOUNT } from '~/config/currencies'
 import { CACHE_KEY, MOCK_RATES } from './fixtures'
 
 // `$fetch` is mocked via vi.stubGlobal: in the Nuxt test env it resolves off the
@@ -130,6 +131,72 @@ describe('useNbrbRates', () => {
     api.onValueUpdate('USD', 100)
     expect(api.currencies.value.find(c => c.code === 'BYN')?.value).toBe(320)
     expect(api.activeCurrency.value).toBe('USD')
+  })
+
+  it('onRowClick sets the active currency', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => MOCK_RATES))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    api.onRowClick('EUR')
+    expect(api.activeCurrency.value).toBe('EUR')
+  })
+
+  it('incrementCurrency clamps at MAX_AMOUNT', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => MOCK_RATES))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    api.onValueUpdate('BYN', MAX_AMOUNT)
+    api.incrementCurrency('BYN')
+    expect(api.currencies.value.find(c => c.code === 'BYN')?.value).toBe(MAX_AMOUNT)
+  })
+
+  it('decrementCurrency clamps at 0', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => MOCK_RATES))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    api.onValueUpdate('BYN', 1) // step is 1 below 10
+    api.decrementCurrency('BYN')
+    expect(api.currencies.value.find(c => c.code === 'BYN')?.value).toBe(0)
+    api.decrementCurrency('BYN') // stays clamped at 0
+    expect(api.currencies.value.find(c => c.code === 'BYN')?.value).toBe(0)
+  })
+
+  it('surfaces an error when the API returns no usable rates', async () => {
+    // parseNbrbRates drops this record (non-positive scale/rate) → empty map.
+    vi.stubGlobal('$fetch', vi.fn(async () => [{ Cur_Scale: 0, Cur_OfficialRate: 0 }]))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.fetchError.value).not.toBe('')
+  })
+
+  it('leaves the date label empty when the API Date is invalid', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => [
+      { Cur_ID: 1, Date: 'not-a-date', Cur_Abbreviation: 'USD', Cur_Scale: 1, Cur_Name: 'Доллар', Cur_OfficialRate: 3.2 }
+    ]))
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+    expect(api.ratesDate.value).toBe('')
+  })
+
+  it('falls back to the API when localStorage access throws (SecurityError)', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError')
+    })
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+    getItem.mockRestore()
   })
 })
 

@@ -2,6 +2,17 @@
   "name": "currency-converter",
   "type": "module",
   "private": true,
+  "description": "Конвертер валют по официальному курсу НБ РБ (Nuxt SSG)",
+  "license": "MIT",
+  "author": "ИП Шевчик И. С.",
+  "homepage": "https://github.com/bx-shef/currency-converter#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bx-shef/currency-converter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bx-shef/currency-converter/issues"
+  },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
@@ -9,7 +20,8 @@
     "preview": "nuxt preview",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@bitrix24/b24icons-vue": "^2.0.7",

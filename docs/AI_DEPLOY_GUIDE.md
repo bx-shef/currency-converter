@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-06-04
+> Last reviewed: 2026-06-21
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -30,7 +30,9 @@ push в main
 2. **`.dockerignore`** — минимум `node_modules`, `.git`, `.env*`, `.nuxt`, `dist`.
 3. **`.github/workflows/ci.yml`** — единый pipeline (CI/CD), чтобы деплой
    зависел от зелёного CI (gating, issue #45). Jobs `ci` и `docker-build`:
-   - `ci` — на push и PR: install → lint → test → typecheck → `nuxt generate`.
+   - `ci` — на push и PR: install → `nuxi prepare` → lint → test → typecheck → `nuxt generate`
+     (`nuxi prepare` генерит `.nuxt/eslint.config.mjs` и `.nuxt/tsconfig.json`, без них
+     lint/typecheck/test падают; локально это делает `postinstall`).
    - `docker-build` — на PR: собирает прод-образ **без push** (smoke-test
      Dockerfile; ловит поломки базы — см. «грабля #17» — до прода; работает и
      на Dependabot-PR, без секретов). Кэш `type=gha` только на чтение
@@ -59,7 +61,7 @@ push в main
 ├── docker-compose.prod.yml
 ├── docker-compose.nginxproxy.yml   # только если nginx-proxy ещё не развернут
 ├── .env.prod                        # не в git
-└── Makefile                         # опционально
+└── Makefile                         # качается curl'ом вместе с остальными (см. README)
 ```
 
 **Git на сервер не клонируется.** Файлы качаются напрямую через curl из raw-ссылок:
@@ -156,6 +158,20 @@ cp .env.prod.example .env.prod && nano .env.prod
     (`node:22-alpine`, выровнено с CI), либо ставить вручную:
     `npm i -g corepack@latest && corepack enable`. Dependabot настроен НЕ прыгать
     на мажоры node автоматически — иначе сборка снова падает.
+
+18. **nginx-runner запускается non-root → порт ≥1024.** Образ `nginxinc/nginx-unprivileged`
+    работает от пользователя `nginx` и **не может** слушать `:80` (нужны root-привилегии).
+    Слушать `:8080` (`listen 8080` в `nginx.conf`, `EXPOSE 8080`), а в compose приложения
+    выставить `VIRTUAL_PORT: 8080` и `expose: ["8080"]`. nginx-proxy маппит на этот порт.
+
+19. **CSP без `script-src 'unsafe-inline'` требует хэшей, генерируемых при сборке.**
+    Nuxt SSG кладёт в `index.html` два inline-скрипта: FOUC-гард темы и
+    `window.__NUXT__.config` (его хэш меняется каждую сборку из-за `buildId`). Поэтому
+    статически зашить sha256 в `nginx.conf` нельзя — `scripts/csp-hashes.mjs` считает их
+    из собранного HTML и подставляет вместо плейсхолдера `__CSP_SCRIPT_HASHES__` в Dockerfile
+    (после `pnpm generate`, до `COPY` конфига в runner). Любой новый inline-скрипт без
+    `src` ломает страницу (CSP заблокирует) — выносить такие скрипты в `public/*.js`
+    (как Яндекс.Метрику в `public/metrika.js`) или убедиться, что их хэш попадает в CSP.
 
 ---
 

@@ -1,6 +1,6 @@
 # Конвертер валют НБ РБ
 
-> Last reviewed: 2026-06-08
+> Last reviewed: 2026-06-21
 
 Конвертер валют по официальному курсу Национального банка Республики Беларусь.
 
@@ -78,6 +78,7 @@ UI виджета и страницы установки переведены ч
 app/
   app.vue                  — каркас (шапка, тема, навигация, подвал, SEO, Метрика)
   app.config.ts            — включает colorMode b24ui (без него переключатель темы — no-op)
+  assets/css/main.css      — глобальные стили (подключается в nuxt.config.ts)
   pages/index.vue          — экран конвертера (тонкий): строки, прописью, формула
   config/currencies.ts     — каталог валют (состав, MAX_AMOUNT, дефолт)
   composables/
@@ -92,7 +93,9 @@ app/
     copyFeedback.ts        — clipboard + флеш-машина + выбор цвета
   directives/holdRepeat.ts — автоповтор +/− при удержании
   components/SiteFooter.vue  — центральные ссылки подвала (НБ РБ, оферта); copyright/GitHub — в app.vue
+public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
+scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```
 
@@ -109,7 +112,7 @@ tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-util
 ## Локальная разработка
 
 ```bash
-pnpm install
+pnpm install   # postinstall сам прогонит `nuxt prepare` (генерит .nuxt/ для lint/typecheck/test)
 pnpm dev
 ```
 

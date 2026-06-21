@@ -5,13 +5,20 @@ services:
   app:
     image: ghcr.io/bx-shef/currency-converter:latest
     container_name: currency-converter
+    # 8080: the image runs nginx unprivileged (non-root) on 8080.
     expose:
-      - "80"
+      - "8080"
     environment:
       VIRTUAL_HOST: ${DOMAIN}
-      VIRTUAL_PORT: 80
+      VIRTUAL_PORT: 8080
       LETSENCRYPT_HOST: ${DOMAIN}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - proxy-net
     labels:
