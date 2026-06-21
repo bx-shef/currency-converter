@@ -65,13 +65,19 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 Приложение работает в двух режимах: standalone (обычный сайт) и как iframe-приложение
 внутри портала Б24. SDK — `@bitrix24/b24jssdk` (+ `-nuxt`), i18n — `@nuxtjs/i18n`.
 
-- `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (молча no-op вне фрейма —
-  определяет фрейм по `window.name = "domain|appSid"`), `isInit()`, `getRequiredRights()`
-  (`user_brief, im, placement`), `targetOrigin()`.
+- `app/config/b24.ts` — чистые константы встройки (тестируемы без SDK): `B24_REQUIRED_SCOPES`
+  (`user_brief, im, placement, mobile`) и коды плейсментов `IM_TEXTAREA_PLACEMENT`,
+  `IMMOBILE_CONTEXT_MENU_PLACEMENT`.
+- `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (идемпотентен; молча no-op вне
+  фрейма — когда `window.name` отсутствует; парсинг/handshake делает SDK), `isInit()`, `get()`/
+  `getOrThrow()`, `getRequiredRights()` (из `config/b24.ts`), `targetOrigin()`.
 - `app/pages/install.vue` (layout `clear`) — обработчик установки: `init → placement.bind`
-  (плейсмент `IM_TEXTAREA`, чистка старых привязок) `→ installFinish`. Вне фрейма — mock-прогресс
-  с редиректом на `/`. Ошибка показывает retry, а не падает. `LANG_ALL` — `app.title` на всех
-  языках портала. Биндит только абсолютный HANDLER (требует `NUXT_PUBLIC_SITE_URL` в проде).
+  `→ installFinish`. Биндит **два** места: `IM_TEXTAREA` (панель чата, веб) и
+  `IMMOBILE_CONTEXT_MENU` (мобильное контекстное меню сообщения, issue #89) — оба на один
+  обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Вне фрейма —
+  mock-прогресс с редиректом на `/`. Ошибка показывает retry (с `isRunning`-guard), а не падает.
+  `LANG_ALL` — `app.title` на всех языках портала. Биндит только абсолютный HANDLER
+  (требует `NUXT_PUBLIC_SITE_URL` в проде).
 - `app/pages/widget/converter.vue` (layout `clear`) — компактный конвертер под узкий iframe
   чата + сумма прописью; «Вставить в чат» шлёт `im:setImTextareaContent` в родительский фрейм.
 - `app/utils/chatMessage.ts` — чистые `buildConversionLines`/`wordsCurrencyCode` (покрыты тестами).
