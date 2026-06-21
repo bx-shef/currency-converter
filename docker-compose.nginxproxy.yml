@@ -9,7 +9,9 @@
 
 services:
   nginx-proxy:
-    image: nginxproxy/nginx-proxy:alpine
+    # Pinned (not floating `:alpine`/`latest`) so `docker compose pull` can't drag in
+    # a breaking change unattended. Bump deliberately; verify the tag exists first.
+    image: nginxproxy/nginx-proxy:1.7-alpine
     container_name: nginx-proxy
     ports:
       - "80:80"
@@ -24,7 +26,8 @@ services:
       - proxy-net
 
   acme-companion:
-    image: nginxproxy/acme-companion
+    # Pinned (not floating `latest`); bump deliberately, verify the tag exists first.
+    image: nginxproxy/acme-companion:2.5
     container_name: acme-companion
     volumes_from:
       - nginx-proxy

@@ -51,6 +51,11 @@ describe('rublesAmountInWords', () => {
     expect(rublesAmountInWords(25)).toBe('двадцать пять рублей 00 копеек')
     expect(rublesAmountInWords(101)).toBe('сто один рубль 00 копеек')
   })
+  it('handles teens inside the hundreds (threeDigit teens branch)', () => {
+    expect(rublesAmountInWords(111)).toBe('сто одиннадцать рублей 00 копеек')
+    expect(rublesAmountInWords(119)).toBe('сто девятнадцать рублей 00 копеек')
+    expect(rublesAmountInWords(215)).toBe('двести пятнадцать рублей 00 копеек')
+  })
   it('declines kopecks for 1/2/5/11/21', () => {
     expect(rublesAmountInWords(1.01)).toBe('один рубль 01 копейка')
     expect(rublesAmountInWords(1.02)).toBe('один рубль 02 копейки')

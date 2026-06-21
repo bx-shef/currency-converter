@@ -1,7 +1,8 @@
 import type { NbrbRate } from '~/utils/nbrb'
 
-/** localStorage key used by the rates cache (see ratesCache.ts). */
-export const CACHE_KEY = 'nbrb_rates_v1'
+// Re-export the real cache key so the fixture can never drift from production
+// when the version suffix is bumped in ratesCache.ts.
+export { CACHE_KEY } from '~/utils/ratesCache'
 
 /** Shared НБ РБ API response fixture for the Nuxt-environment tests. */
 export const MOCK_RATES: NbrbRate[] = [
