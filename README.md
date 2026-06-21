@@ -19,6 +19,35 @@
 - Светлая и тёмная тема — кнопка в шапке (по умолчанию системная тема, переключение запоминается)
 - Статическое приложение (без серверной части)
 - Mobile-first дизайн
+- Встройка в Битрикс24 — виджет `IM_TEXTAREA` в панели чата с вставкой суммы в сообщение
+
+## Встройка в Битрикс24
+
+Приложение умеет работать в двух режимах: standalone (обычный сайт) и внутри Битрикс24 как iframe-приложение.
+
+### Установка в портал
+
+В разделе «Разработчикам → Иное → Локальное приложение»:
+
+- **Application URL:** `https://<host>/`
+- **Installation URL:** `https://<host>/install`
+- **Scopes (права):** `user_brief`, `im`, `placement`
+
+Страница `/install` сама вызовет `placement.bind` и зарегистрирует виджет в чате (`IM_TEXTAREA`).
+
+### Переменные окружения
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `NUXT_PUBLIC_SITE_URL` | — | Публичный URL приложения. Нужен в проде, чтобы install-страница построила правильный `HANDLER` для `placement.bind`. В dev (через ngrok и т.п.) URL вычисляется из адреса браузера. |
+| `NUXT_PUBLIC_AUTHOR_NAME` | `bx-shef` | Подпись в подвале виджета. |
+| `NUXT_PUBLIC_AUTHOR_URL` | `https://bx-shef.by` | Ссылка с подписи в подвале виджета. |
+
+### Локализация
+
+UI виджета и страницы установки переведены через `@nuxtjs/i18n`. Полные переводы — `ru`, `en`; для остальных языков, поддерживаемых Битриксом, ключи падают в английский фолбэк, плюс отдельно переведён `app.title` (он попадает в `LANG_ALL` у `placement.bind` и показывается как имя виджета в нужном языке портала).
+
+Добавить язык: положить JSON в `i18n/locales/<code>.json` и добавить код в `i18n/i18n.ts`.
 
 ### Отображение чисел
 
@@ -95,6 +124,19 @@ pnpm typecheck   # vue-tsc
 pnpm test        # Vitest
 ```
 
+Одной командой все гейты (install + lint + typecheck + test + generate) — запусти
+и пришли вывод:
+
+```bash
+bash scripts/check.sh                                    # Linux/macOS
+powershell -ExecutionPolicy Bypass -File scripts\check.ps1   # Windows
+```
+
+Встройку в Б24 автотесты не покрывают (нужен реальный портал). Для визуальной
+проверки: `pnpm dev` и открыть `/`, `/install`, `/widget/converter` — на `/install`
+крутится прогресс с редиректом на `/` (вне портала), виджет показывает конвертер
+с прописью и неактивной кнопкой «Вставить в чат».
+
 Переменные для локальной разработки — в `.env` (образец в `.env.example`):
 
 | Переменная | Описание |
@@ -157,11 +199,21 @@ make prod-up
 | `DOMAIN` | Домен сайта (DNS → IP сервера) |
 | `LETSENCRYPT_EMAIL` | Email для SSL-сертификата |
 
-#### GitHub Secrets (Settings → Secrets and variables → Actions)
+#### GitHub Secrets (Settings → Secrets and variables → Actions → **Secrets**)
 
 | Secret | Описание |
 |---|---|
 | `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (необязательно) |
+
+#### GitHub Variables (Settings → Secrets and variables → Actions → **Variables**)
+
+Это **Variables**, не Secrets (значения не секретные, запекаются в публичный бандл):
+
+| Variable | Описание |
+|---|---|
+| `NUXT_PUBLIC_SITE_URL` | Публичный URL приложения. **Обязателен для встройки в Б24** — без него install-страница намеренно откажется регистрировать виджет (`placement.bind` требует абсолютный HANDLER). |
+| `NUXT_PUBLIC_AUTHOR_NAME` | Подпись в подвале виджета (необязательно, дефолт `bx-shef`). |
+| `NUXT_PUBLIC_AUTHOR_URL` | Ссылка с подписи (необязательно, дефолт `https://bx-shef.by`). |
 
 ### Команды
 

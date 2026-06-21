@@ -9,6 +9,7 @@
 - **Nuxt 4** (статическая генерация, `nuxt generate`)
 - **Vue 3** — `<script setup lang="ts">`
 - **TypeScript** (строгий), **Tailwind CSS v4**, **Bitrix24 UI** (`b24ui`)
+- **Bitrix24 JS SDK** (`@bitrix24/b24jssdk`) — встройка в портал (issue #31), **i18n** (`@nuxtjs/i18n`)
 - **Vitest** — два проекта: `unit` (node, чистые функции) и `nuxt`
   (`@nuxt/test-utils` + happy-dom, composables и компоненты)
 
@@ -26,10 +27,14 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 
 ## Архитектура
 
+- `app/app.vue` — корень: `useHead`/SEO/`theme-init`, рендерит `<NuxtLayout>`.
+- `app/layouts/default.vue` — каркас сайта (шапка с `B24ColorModeButton` и навигацией,
+  `B24Footer` с copyright/GitHub и `SiteFooter`) **и Яндекс.Метрика** — здесь, а не в
+  `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`).
+  `app/layouts/clear.vue` — минимальный layout под `/install` и виджет (только `<B24App>`).
 - `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
-  логика — в composables ниже.
-- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта);
-  copyright и GitHub-кнопка живут в `app.vue` через слоты `B24Footer`.
+  логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`.
+- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
@@ -54,6 +59,33 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 
 Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие
 Vue-обёртки над ними. Сами composables и `index.vue` покрыты в проекте `nuxt` (см. `tests/nuxt/`).
+
+## Встройка в Bitrix24 (issue #31)
+
+Приложение работает в двух режимах: standalone (обычный сайт) и как iframe-приложение
+внутри портала Б24. SDK — `@bitrix24/b24jssdk` (+ `-nuxt`), i18n — `@nuxtjs/i18n`.
+
+- `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (молча no-op вне фрейма —
+  определяет фрейм по `window.name = "domain|appSid"`), `isInit()`, `getRequiredRights()`
+  (`user_brief, im, placement`), `targetOrigin()`.
+- `app/pages/install.vue` (layout `clear`) — обработчик установки: `init → placement.bind`
+  (плейсмент `IM_TEXTAREA`, чистка старых привязок) `→ installFinish`. Вне фрейма — mock-прогресс
+  с редиректом на `/`. Ошибка показывает retry, а не падает. `LANG_ALL` — `app.title` на всех
+  языках портала. Биндит только абсолютный HANDLER (требует `NUXT_PUBLIC_SITE_URL` в проде).
+- `app/pages/widget/converter.vue` (layout `clear`) — компактный конвертер под узкий iframe
+  чата + сумма прописью; «Вставить в чат» шлёт `im:setImTextareaContent` в родительский фрейм.
+- `app/utils/chatMessage.ts` — чистые `buildConversionLines`/`wordsCurrencyCode` (покрыты тестами).
+- `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
+  переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
+- `nuxt.config.ts` — `nitro.prerender.routes` явно перечисляет `/install` и `/widget/converter`
+  (на них нет ссылок, иначе краулер их пропустит). `runtimeConfig.public`: `siteUrl`, `authorName`,
+  `authorUrl` (через build-args, см. Dockerfile/ci).
+- `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
+  (`*.bitrix24.*`), иначе iframe-встройка и REST-вызовы install падают. Self-hosted порталы
+  на своём домене нужно добавлять туда вручную.
+
+Встройку нельзя проверить автотестами без реального портала — визуально через `pnpm dev`
+(`/install`, `/widget/converter`); чистая логика — тестами в `tests/chatMessage.test.ts`.
 
 ## Конвенции
 

@@ -1,0 +1,65 @@
+{
+  "app": {
+    "title": "Currency Converter",
+    "subtitle": "NBRB exchange rates",
+    "ratesOn": "on {date}",
+    "refresh": "Refresh rates",
+    "remove": "Remove {name}",
+    "fetchError": "Failed to load NBRB rates. Please refresh the page.",
+    "currencies": {
+      "USD": "US dollar",
+      "EUR": "euro",
+      "BYN": "Belarusian ruble",
+      "RUB": "Russian ruble",
+      "CNY": "Chinese yuan",
+      "TRY": "Turkish lira"
+    }
+  },
+  "mock": {
+    "title": "Demo mode",
+    "description": "Changes will not be applied."
+  },
+  "page": {
+    "index": {
+      "seo": {
+        "title": "NBRB Currency Converter",
+        "description": "Official exchange rates from the National Bank of the Republic of Belarus. Convert USD, EUR, RUB, CNY, TRY and other currencies."
+      }
+    },
+    "widget": {
+      "seo": { "title": "Currency Converter" },
+      "inWords": "in words",
+      "insert": "Insert into chat",
+      "inserted": "Inserted into chat",
+      "insertFailed": "Insert failed",
+      "notInFrame": "Not running inside Bitrix24"
+    },
+    "install": {
+      "seo": { "title": "Application installation" },
+      "ui": { "title": "Application installation" },
+      "step": {
+        "init": { "caption": "Loading portal data…" },
+        "placement": { "caption": "Registering chat widget…" },
+        "finish": { "caption": "Done!" }
+      },
+      "error": {
+        "title": "Application installation failed",
+        "retry": "Try again"
+      },
+      "diagnostics": {
+        "title": "Diagnostics",
+        "mode": "Mode",
+        "domain": "Domain",
+        "targetOrigin": "Target origin",
+        "handler": "Handler",
+        "appCode": "Application",
+        "scopes": "Scopes",
+        "placements": "Placements",
+        "noPlacements": "No placements yet"
+      }
+    }
+  },
+  "footer": {
+    "by": "by"
+  }
+}
