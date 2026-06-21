@@ -33,8 +33,12 @@ export function formatAmount(value: number): string {
  */
 export const FORMULA_FACTOR = 0.16
 
-/** Applies the page formula to a BYN amount and rounds to 2 decimal places. */
+/**
+ * Applies the page formula to a BYN amount and rounds to 2 decimal places.
+ * Non-finite input yields 0 so a stray NaN/Infinity never renders as "NaN".
+ */
 export function applyFormula(byn: number): number {
+  if (!Number.isFinite(byn)) return 0
   return Math.round(byn * FORMULA_FACTOR * 100) / 100
 }
 

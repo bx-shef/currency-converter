@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-06-08
+> Last reviewed: 2026-06-21
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -28,6 +28,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 
 - `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
   логика — в composables ниже.
+- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта);
+  copyright и GitHub-кнопка живут в `app.vue` через слоты `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
@@ -73,5 +75,12 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 
 GHCR + Watchtower за nginx-proxy. Подробности и «грабли» — в [`docs/AI_DEPLOY_GUIDE.md`](docs/AI_DEPLOY_GUIDE.md),
 пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52.
+
+Прод-образ — `nginxinc/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
+**без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt в `index.html` (FOUC-гард
+`theme-init` и `window.__NUXT__.config` с меняющимся `buildId`) разрешаются по sha256-хэшам,
+которые `scripts/csp-hashes.mjs` вычисляет из собранного HTML и подставляет в `nginx.conf`
+(плейсхолдер `__CSP_SCRIPT_HASHES__`) на этапе сборки. Яндекс.Метрика грузится из статического
+`public/metrika.js` (id — через `<meta>`), поэтому inline-скриптов под неё нет.
 </content>
 </invoke>

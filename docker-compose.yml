@@ -5,10 +5,10 @@ services:
       args:
         NUXT_PUBLIC_YANDEX_COUNTER_ID: ${NUXT_PUBLIC_YANDEX_COUNTER_ID:-}
     ports:
-      - "80:80"
+      - "80:8080"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -73,8 +73,12 @@ export function useNbrbRates() {
     fetchError.value = ''
     try {
       const data = await $fetch<NbrbRate[]>(RATES_URL, { timeout: FETCH_TIMEOUT_MS })
-      const date = data[0]?.Date
-        ? new Date(data[0].Date).toLocaleDateString('ru-RU')
+      // Guard against a malformed/missing `Date`: `new Date('garbage')` yields an
+      // Invalid Date whose `toLocaleDateString` is the literal "Invalid Date",
+      // which would otherwise reach the UI. Fall back to an empty label instead.
+      const parsedDate = data[0]?.Date ? new Date(data[0].Date) : null
+      const date = parsedDate && !isNaN(parsedDate.getTime())
+        ? parsedDate.toLocaleDateString('ru-RU')
         : ''
       const rateMap = parseNbrbRates(data)
       // Empty/garbage response would silently zero out every rate; surface it.

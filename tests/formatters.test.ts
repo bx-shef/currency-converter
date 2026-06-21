@@ -82,10 +82,10 @@ describe('applyFormula', () => {
     expect(applyFormula(0)).toBe(0)
   })
 
-  it('propagates non-finite input (documents current behaviour)', () => {
-    expect(applyFormula(NaN)).toBeNaN()
-    expect(applyFormula(Infinity)).toBe(Infinity)
-    expect(applyFormula(-Infinity)).toBe(-Infinity)
+  it('returns 0 for non-finite input so the UI never renders "NaN"', () => {
+    expect(applyFormula(NaN)).toBe(0)
+    expect(applyFormula(Infinity)).toBe(0)
+    expect(applyFormula(-Infinity)).toBe(0)
   })
 })
 
