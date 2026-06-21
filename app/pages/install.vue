@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { withoutTrailingSlash } from 'ufo'
 import { useB24 } from '~/composables/useB24'
 import { IM_TEXTAREA_PLACEMENT, IMMOBILE_CONTEXT_MENU_PLACEMENT } from '~/config/b24'
+import { buildPlacementCalls, type PlacementSpec } from '~/utils/b24Placements'
 import { contentLocales } from '../../i18n/i18n'
 import { sleep } from '~/utils/sleep'
 
@@ -53,14 +54,9 @@ const placementBinding: PlacementBinding = {
 
 const handlerUrl = computed(() => `${appUrl}${placementBinding.handlerPath}`)
 
-interface PlacementSpec {
-  code: string
-  options: Record<string, unknown>
-}
-
 // Placements this app registers. Both reuse the same handler (`/widget/converter`);
-// the page reads `BX24.placement.info()` if it needs the open context.
-const PLACEMENTS: PlacementSpec[] = [
+// the widget reads `$b24.placement.placement` to adapt its primary action.
+const PLACEMENTS: readonly PlacementSpec[] = [
   {
     // Desktop / web chat input panel.
     code: IM_TEXTAREA_PLACEMENT,
@@ -196,34 +192,25 @@ async function makePlacement(): Promise<void> {
 
   const placementList = initData.value.placementList ?? []
   const TITLE = t('app.title')
-  const langAll = buildLangAll()
+  const { unbind, bind } = buildPlacementCalls(placementList, PLACEMENTS, handlerUrl.value, TITLE, buildLangAll())
 
-  // For each placement: remove every existing binding of ours (any handler — old
-  // bindings may point at a previous deploy domain), then bind once. Result: one
-  // clean registration per placement (IM_TEXTAREA + IMMOBILE_CONTEXT_MENU).
-  const calls: { method: string, params: Record<string, unknown> }[] = []
-  for (const p of PLACEMENTS) {
-    for (const s of placementList.filter(item => item.placement === p.code)) {
-      calls.push({ method: 'placement.unbind', params: { PLACEMENT: p.code, HANDLER: s.handler } })
-    }
-    calls.push({
-      method: 'placement.bind',
-      params: {
-        PLACEMENT: p.code,
-        HANDLER: handlerUrl.value,
-        TITLE,
-        LANG_ALL: langAll,
-        OPTIONS: p.options
-      }
-    })
+  // 1) Best-effort cleanup of stale bindings — a missing one is fine, so don't
+  //    halt and don't surface its errors.
+  if (unbind.length) await $b24.callBatch(unbind, false)
+
+  // 2) Bind every placement. These MUST succeed — e.g. if the portal didn't grant
+  //    the `mobile` scope, the IMMOBILE_CONTEXT_MENU bind fails; surface that
+  //    instead of finishing the install with a half-registered app.
+  const bindResult = await $b24.callBatch(bind, false)
+  if (import.meta.dev) console.info('[install] placement.bind result:', bindResult.getData())
+  if (!bindResult.isSuccess) {
+    throw new Error(`placement.bind failed: ${bindResult.getErrorMessages().join('; ')}`)
   }
 
-  const result = await $b24.callBatch(calls, false)
-  if (import.meta.dev) console.info('[install] placement.bind result:', result.getData())
-
-  // Refresh placement list so the diagnostic panel reflects the new state.
-  const after = await $b24.callMethod('placement.get', {})
-  initData.value.placementList = after.getData() as InitData['placementList']
+  // Refresh placement list so the diagnostic panel reflects the new state. Use a
+  // named-key batch so getData() has the same shape as in makeInit().
+  const after = await $b24.callBatch({ placementList: { method: 'placement.get' } })
+  initData.value.placementList = (after.getData() as InitData).placementList ?? []
 }
 
 async function makeFinish(): Promise<void> {

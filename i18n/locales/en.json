@@ -32,6 +32,9 @@
       "insert": "Insert into chat",
       "inserted": "Inserted into chat",
       "insertFailed": "Insert failed",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Copy failed",
       "notInFrame": "Not running inside Bitrix24"
     },
     "install": {
@@ -39,7 +42,7 @@
       "ui": { "title": "Application installation" },
       "step": {
         "init": { "caption": "Loading portal data…" },
-        "placement": { "caption": "Registering chat widget…" },
+        "placement": { "caption": "Registering placements…" },
         "finish": { "caption": "Done!" }
       },
       "error": {
