@@ -20,6 +20,18 @@ import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+/** Recursively yields every *.html file under `dir` (pages live in subfolders:
+ *  /install/index.html, /widget/converter/index.html, …). */
+function htmlFiles(dir) {
+  const out = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) out.push(...htmlFiles(full))
+    else if (entry.name.endsWith('.html')) out.push(full)
+  }
+  return out
+}
+
 const TOKEN = '__CSP_SCRIPT_HASHES__'
 const htmlDir = process.argv[2] || '.output/public'
 const inConf = process.argv[3] || 'nginx.conf'
@@ -28,12 +40,11 @@ const outConf = process.argv[4] || inConf
 // Inline <script> = a script tag without a `src` attribute. Capture its body.
 const INLINE_SCRIPT = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g
 
-/** Collects unique sha256 hashes of inline scripts across all top-level .html files. */
+/** Collects unique sha256 hashes of inline scripts across every .html file. */
 function collectHashes(dir) {
   const hashes = new Set()
-  for (const file of readdirSync(dir)) {
-    if (!file.endsWith('.html')) continue
-    const html = readFileSync(join(dir, file), 'utf8')
+  for (const file of htmlFiles(dir)) {
+    const html = readFileSync(file, 'utf8')
     for (const [, body] of html.matchAll(INLINE_SCRIPT)) {
       hashes.add(createHash('sha256').update(body, 'utf8').digest('base64'))
     }

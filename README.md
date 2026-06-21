@@ -124,6 +124,19 @@ pnpm typecheck   # vue-tsc
 pnpm test        # Vitest
 ```
 
+Одной командой все гейты (install + lint + typecheck + test + generate) — запусти
+и пришли вывод:
+
+```bash
+bash scripts/check.sh                                    # Linux/macOS
+powershell -ExecutionPolicy Bypass -File scripts\check.ps1   # Windows
+```
+
+Встройку в Б24 автотесты не покрывают (нужен реальный портал). Для визуальной
+проверки: `pnpm dev` и открыть `/`, `/install`, `/widget/converter` — на `/install`
+крутится прогресс с редиректом на `/` (вне портала), виджет показывает конвертер
+с прописью и неактивной кнопкой «Вставить в чат».
+
 Переменные для локальной разработки — в `.env` (образец в `.env.example`):
 
 | Переменная | Описание |

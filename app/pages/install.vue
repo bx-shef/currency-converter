@@ -29,8 +29,10 @@ const isUseB24 = computed<boolean>(() => b24Instance.isInit())
 
 useHead({ title: t('page.install.seo.title') })
 
-const progressColor = ref<'air-primary' | 'air-primary-success' | 'air-primary-warning'>('air-primary')
+const progressColor = ref<'air-primary' | 'air-primary-success' | 'air-primary-warning' | 'air-primary-alert'>('air-primary')
 const progressValue = ref<null | number>(null)
+// Non-empty while the last install attempt failed — drives the retry UI.
+const installError = ref('')
 
 const requiredScopes = b24Instance.getRequiredRights()
 
@@ -215,7 +217,13 @@ async function waitForB24(timeoutMs = 10000): Promise<boolean> {
   return isUseB24.value
 }
 
-onMounted(async () => {
+/** Runs the full install flow. Surfaces failures as a retryable error state
+ *  instead of throwing (a thrown error left the page stuck with no way out). */
+async function runInstall() {
+  installError.value = ''
+  progressColor.value = 'air-primary'
+  progressValue.value = null
+  stepCode.value = 'init'
   try {
     const ready = await waitForB24()
 
@@ -239,7 +247,8 @@ onMounted(async () => {
 
       await sleep(2000)
       toast.remove('install-warning-mock')
-      return router.replace('/')
+      await router.replace('/')
+      return
     }
 
     const $b24 = b24Instance.get() as B24Frame
@@ -250,22 +259,17 @@ onMounted(async () => {
       await step.action()
     }
   } catch (error: unknown) {
-    console.error(error)
-    throw error
+    console.error('[install]', error)
+    progressColor.value = 'air-primary-alert'
+    installError.value = error instanceof Error ? error.message : String(error)
   }
-})
+}
+
+onMounted(runInstall)
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center p-4 gap-4">
-    <div class="self-end">
-      <B24Badge
-        :label="diagnostics.mode"
-        :color="diagnostics.isMock ? 'air-primary-warning' : 'air-primary-success'"
-        variant="soft"
-      />
-    </div>
-
     <div class="flex flex-col items-center gap-4 w-full max-w-2xl">
       <h1 class="text-2xl font-bold text-(--ui-color-base-1) text-center">
         {{ t('page.install.ui.title') }}
@@ -279,7 +283,28 @@ onMounted(async () => {
         class="w-1/2"
       />
 
-      <p class="text-sm text-(--ui-color-base-3)">
+      <!-- Error state with retry — replaces the previous hard crash. -->
+      <div
+        v-if="installError"
+        class="flex flex-col items-center gap-2 text-center"
+      >
+        <p class="text-sm font-medium text-(--ui-color-accent-main-alert)">
+          {{ t('page.install.error.title') }}
+        </p>
+        <p class="text-xs text-(--ui-color-base-3) break-all max-w-md">
+          {{ installError }}
+        </p>
+        <B24Button
+          :label="t('page.install.error.retry')"
+          color="air-primary"
+          size="sm"
+          @click="runInstall"
+        />
+      </div>
+      <p
+        v-else
+        class="text-sm text-(--ui-color-base-3)"
+      >
         {{ steps[stepCode]?.caption || '...' }}
       </p>
 

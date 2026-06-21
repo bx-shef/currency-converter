@@ -29,12 +29,18 @@ export default defineNuxtConfig({
     }
   },
 
-  // The previous `routeRules: { '/': { prerender: true } }` is removed: `nuxt
-  // generate` (the deploy mode) prerenders every crawlable route by default, so
-  // the hint is redundant. Client-side B24 detection + i18n still happen at
-  // hydration time on top of the prerendered HTML.
-
   compatibilityDate: '2025-01-15',
+
+  // `/install` and `/widget/converter` are loaded directly by Bitrix24 in an
+  // iframe and are not linked from `/`, so the generate crawler would skip them.
+  // List them explicitly so `nuxt generate` emits real HTML for each. Client-side
+  // B24 detection + i18n still run at hydration on top of the prerendered HTML.
+  nitro: {
+    prerender: {
+      crawlLinks: true,
+      routes: ['/install', '/widget/converter']
+    }
+  },
 
   vite: {
     server: {

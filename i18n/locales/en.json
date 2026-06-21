@@ -33,6 +33,7 @@
     "widget": {
       "seo": { "title": "Currency Converter" },
       "hint": "Convert and insert the amount into chat",
+      "inWords": "in words",
       "insert": "Insert into chat",
       "inserted": "Inserted into chat",
       "insertFailed": "Insert failed",
@@ -45,6 +46,10 @@
         "init": { "caption": "Loading portal data…" },
         "placement": { "caption": "Registering chat widget…" },
         "finish": { "caption": "Done!" }
+      },
+      "error": {
+        "title": "Application installation failed",
+        "retry": "Try again"
       },
       "diagnostics": {
         "title": "Diagnostics",

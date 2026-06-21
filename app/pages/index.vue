@@ -111,20 +111,13 @@ onMounted(async () => {
           v-if="ratesDate"
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
-        <B24Badge
-          :label="isB24 ? t('mode.b24') : t('mode.standalone')"
-          :color="isB24 ? 'air-primary-success' : 'air-primary-warning'"
-          variant="soft"
-          size="sm"
-          class="ml-auto"
-        />
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
           :disabled="loading || refreshing"
-          :class="['me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
+          :class="['ml-auto me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
           @click="refresh"
         />
       </div>
