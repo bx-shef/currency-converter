@@ -61,10 +61,9 @@ const PLACEMENTS: readonly PlacementSpec[] = [
     // Desktop / web chat input panel.
     code: IM_TEXTAREA_PLACEMENT,
     options: {
-      // `iconName` is the chip LABEL in the chat panel. B24 constraints:
-      // ≤50 chars, Latin letters / space / hyphen only. Keep it ASCII so
-      // every portal language renders the same string.
-      iconName: 'Currency',
+      // `iconName` is a Font Awesome class for the chat-panel chip icon
+      // (per B24 docs, e.g. `fa-cloud`). `fa-coins` reads as "currency".
+      iconName: 'fa-coins',
       // ALL = USER + CHAT + LINES + CRM (per B24 docs: when ALL is passed
       // together with other contexts, only ALL takes effect).
       context: 'ALL',

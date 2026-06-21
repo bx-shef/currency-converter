@@ -3,17 +3,7 @@
     "title": "Currency Converter",
     "subtitle": "NBRB exchange rates",
     "ratesOn": "on {date}",
-    "refresh": "Refresh rates",
-    "remove": "Remove {name}",
-    "fetchError": "Failed to load NBRB rates. Please refresh the page.",
-    "currencies": {
-      "USD": "US dollar",
-      "EUR": "euro",
-      "BYN": "Belarusian ruble",
-      "RUB": "Russian ruble",
-      "CNY": "Chinese yuan",
-      "TRY": "Turkish lira"
-    }
+    "refresh": "Refresh rates"
   },
   "mock": {
     "title": "Demo mode",
@@ -22,8 +12,7 @@
   "page": {
     "index": {
       "seo": {
-        "title": "NBRB Currency Converter",
-        "description": "Official exchange rates from the National Bank of the Republic of Belarus. Convert USD, EUR, RUB, CNY, TRY and other currencies."
+        "title": "NBRB Currency Converter"
       }
     },
     "widget": {
