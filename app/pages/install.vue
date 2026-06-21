@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { withoutTrailingSlash } from 'ufo'
 import { useB24 } from '~/composables/useB24'
-import { IM_TEXTAREA_PLACEMENT } from '~/config/b24'
+import { IM_TEXTAREA_PLACEMENT, IMMOBILE_CONTEXT_MENU_PLACEMENT } from '~/config/b24'
 import { contentLocales } from '../../i18n/i18n'
 import { sleep } from '~/utils/sleep'
 
@@ -38,8 +38,6 @@ const isRunning = ref(false)
 
 const requiredScopes = b24Instance.getRequiredRights()
 
-const PLACEMENT = IM_TEXTAREA_PLACEMENT
-
 interface PlacementBinding {
   handlerPath: string
   width: string
@@ -54,6 +52,45 @@ const placementBinding: PlacementBinding = {
 }
 
 const handlerUrl = computed(() => `${appUrl}${placementBinding.handlerPath}`)
+
+interface PlacementSpec {
+  code: string
+  options: Record<string, unknown>
+}
+
+// Placements this app registers. Both reuse the same handler (`/widget/converter`);
+// the page reads `BX24.placement.info()` if it needs the open context.
+const PLACEMENTS: PlacementSpec[] = [
+  {
+    // Desktop / web chat input panel.
+    code: IM_TEXTAREA_PLACEMENT,
+    options: {
+      // `iconName` is the chip LABEL in the chat panel. B24 constraints:
+      // ≤50 chars, Latin letters / space / hyphen only. Keep it ASCII so
+      // every portal language renders the same string.
+      iconName: 'Currency',
+      // ALL = USER + CHAT + LINES + CRM (per B24 docs: when ALL is passed
+      // together with other contexts, only ALL takes effect).
+      context: 'ALL',
+      role: 'USER',
+      color: 'AZURE',
+      width: placementBinding.width,
+      height: placementBinding.height,
+      extranet: 'N'
+    }
+  },
+  {
+    // Mobile message context menu (issue #89). Opens in a slider; B24 passes
+    // `dialogId` + `messageId` via `BX24.placement.info().options`. Modeled on the
+    // documented desktop `IM_CONTEXT_MENU` OPTIONS (no width/height/icon — slider).
+    code: IMMOBILE_CONTEXT_MENU_PLACEMENT,
+    options: {
+      context: 'ALL',
+      role: 'USER',
+      extranet: 'N'
+    }
+  }
+]
 
 interface InitData {
   appInfo?: { ID?: number, CODE?: string, VERSION?: string, STATUS?: string }
@@ -158,40 +195,28 @@ async function makePlacement(): Promise<void> {
   }
 
   const placementList = initData.value.placementList ?? []
-  // Remove every existing IM_TEXTAREA binding from this app (any handler) — old
-  // bindings may point at a previous deploy domain. Clear all of ours before
-  // re-binding so we end up with exactly one clean registration.
-  const stale = placementList.filter(item => item.placement === PLACEMENT)
-
-  const calls: { method: string, params: Record<string, unknown> }[] = []
-  for (const s of stale) {
-    calls.push({ method: 'placement.unbind', params: { PLACEMENT, HANDLER: s.handler } })
-  }
-
   const TITLE = t('app.title')
-  calls.push({
-    method: 'placement.bind',
-    params: {
-      PLACEMENT,
-      HANDLER: handlerUrl.value,
-      TITLE,
-      LANG_ALL: buildLangAll(),
-      OPTIONS: {
-        // `iconName` is the chip LABEL in the chat panel. B24 constraints:
-        // ≤50 chars, Latin letters / space / hyphen only. Keep it ASCII so
-        // every portal language renders the same string.
-        iconName: 'Currency',
-        // ALL = USER + CHAT + LINES + CRM (per B24 docs: when ALL is passed
-        // together with other contexts, only ALL takes effect).
-        context: 'ALL',
-        role: 'USER',
-        color: 'AZURE',
-        width: placementBinding.width,
-        height: placementBinding.height,
-        extranet: 'N'
-      }
+  const langAll = buildLangAll()
+
+  // For each placement: remove every existing binding of ours (any handler — old
+  // bindings may point at a previous deploy domain), then bind once. Result: one
+  // clean registration per placement (IM_TEXTAREA + IMMOBILE_CONTEXT_MENU).
+  const calls: { method: string, params: Record<string, unknown> }[] = []
+  for (const p of PLACEMENTS) {
+    for (const s of placementList.filter(item => item.placement === p.code)) {
+      calls.push({ method: 'placement.unbind', params: { PLACEMENT: p.code, HANDLER: s.handler } })
     }
-  })
+    calls.push({
+      method: 'placement.bind',
+      params: {
+        PLACEMENT: p.code,
+        HANDLER: handlerUrl.value,
+        TITLE,
+        LANG_ALL: langAll,
+        OPTIONS: p.options
+      }
+    })
+  }
 
   const result = await $b24.callBatch(calls, false)
   if (import.meta.dev) console.info('[install] placement.bind result:', result.getData())
