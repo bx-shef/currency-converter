@@ -54,8 +54,9 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
 - `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
-  на composables (`useNbrbRates`, `useCopyFeedback`), colorMode и страницу `index.vue`; `$fetch`/`localStorage`
-  мокаются. Разделение проектов — в `vitest.config.ts` (`defineVitestProject`).
+  на composables (`useNbrbRates`, `useCopyFeedback`), colorMode, страницы `index.vue` и
+  `widget/converter.vue` (рендер/ошибка и детект плейсмента Copy↔Insert через мок `useB24`,
+  issue #89); `$fetch`/`localStorage` мокаются. Разделение проектов — в `vitest.config.ts`.
 
 Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие
 Vue-обёртки над ними. Сами composables и `index.vue` покрыты в проекте `nuxt` (см. `tests/nuxt/`).
@@ -92,8 +93,11 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   (`*.bitrix24.*`), иначе iframe-встройка и REST-вызовы install падают. Self-hosted порталы
   на своём домене нужно добавлять туда вручную.
 
-Встройку нельзя проверить автотестами без реального портала — визуально через `pnpm dev`
-(`/install`, `/widget/converter`); чистая логика — тестами в `tests/chatMessage.test.ts`.
+Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
+без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика
+(`tests/chatMessage.test.ts`, `tests/b24Placements.test.ts`, `tests/b24.test.ts`) и поведение
+виджета по плейсменту (Copy↔Insert, мок `useB24` в `tests/nuxt/widget-placement.nuxt.test.ts`) —
+покрыты автотестами.
 
 ## Конвенции
 
