@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import WidgetConverter from '~/pages/widget/converter.vue'
+import { DEFAULT_CURRENCIES } from '~/config/currencies'
 import { MOCK_RATES } from './fixtures'
 
 // The widget runs outside a B24 frame here (no window.name), so useB24().init()
@@ -25,10 +26,11 @@ describe('widget/converter.vue', () => {
       expect(text).toContain(code)
     }
     // #87: the B24 widget is language-neutral — it shows codes, never the RU
-    // currency names (those render only on the RU-only index.vue). If a name
-    // ever leaks into the widget, it must be localized first.
-    expect(text).not.toContain('доллар США')
-    expect(text).not.toContain('российский рубль')
+    // currency names (those render only on the RU-only index.vue). If any name
+    // leaks into the widget, it must be localized first.
+    for (const c of DEFAULT_CURRENCIES) {
+      expect(text, `widget must not render the RU name "${c.name}"`).not.toContain(c.name)
+    }
   })
 
   it('shows the localized fetch error (not the raw error code) when rates fail', async () => {
