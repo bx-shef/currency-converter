@@ -26,6 +26,9 @@ describe('index.vue (converter page)', () => {
     for (const code of ['RUB', 'BYN', 'KZT', 'USD', 'EUR']) {
       expect(text).toContain(code)
     }
+    // #87 (other side of the decision): the RU-only standalone page DOES show the
+    // RU currency name (from config), unlike the language-neutral B24 widget.
+    expect(text).toContain('доллар США')
     // Header shows the parsed rates date and the "sum in words" block renders.
     expect(text).toContain('04.06.2026')
     expect(text).toContain('Сумма прописью')
