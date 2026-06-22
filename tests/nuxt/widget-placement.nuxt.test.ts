@@ -12,22 +12,12 @@ const state = vi.hoisted(() => ({
   writeClip: vi.fn(async () => true)
 }))
 
-// `set` is intentionally omitted — the widget never calls it. A typed shared
-// helper (ReturnType<typeof useB24>) to guard the mock against API drift is a
-// follow-up (lands with the install.vue component tests that also need it).
-vi.mock('~/composables/useB24', () => ({
-  useB24: () => ({
-    init: vi.fn(async () => {}),
-    isInit: () => true,
-    get: () => ({}),
-    getOrThrow: () => ({
-      placement: { placement: state.placement },
-      parent: { message: { send: state.send } }
-    }),
-    targetOrigin: () => 'https://example.bitrix24.by',
-    getRequiredRights: () => []
-  })
-}))
+// Typed shared fake (tests/nuxt/helpers/mockB24) so the mock can't drift from the
+// real useB24 surface. The async factory lets us import the helper past hoisting.
+vi.mock('~/composables/useB24', async () => {
+  const { makeMockB24 } = await import('./helpers/mockB24')
+  return { useB24: () => makeMockB24({ placement: () => state.placement, send: state.send }) }
+})
 
 vi.mock('~/utils/copyFeedback', () => ({
   writeToClipboard: state.writeClip
