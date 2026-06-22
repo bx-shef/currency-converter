@@ -88,6 +88,8 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
   Осиротевшие ключи (в `ru`/`en`, но не используемые через `t()`) ловит ESLint-правило
   `@intlify/vue-i18n/no-unused-keys` (в `eslint.config.mjs`, только оно — без шумного `no-raw-text`).
+  Паритет ключей `ru`↔`en` (чтобы не «добавил в `ru`, забыл в `en`») проверяет
+  `tests/i18nLocaleParity.test.ts` — сравнивает наборы ключей двух полных локалей.
 - `nuxt.config.ts` — `nitro.prerender.routes` явно перечисляет `/install` и `/widget/converter`
   (на них нет ссылок, иначе краулер их пропустит). `runtimeConfig.public`: `siteUrl`, `authorName`,
   `authorUrl` (через build-args, см. Dockerfile/ci).
