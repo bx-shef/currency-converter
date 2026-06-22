@@ -118,7 +118,7 @@ describe('useNbrbRates', () => {
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
 
-    expect(api.fetchError.value).not.toBe('')
+    expect(api.fetchError.value).toBe('load')
     expect(api.loading.value).toBe(false)
   })
 
@@ -170,7 +170,7 @@ describe('useNbrbRates', () => {
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
 
-    expect(api.fetchError.value).not.toBe('')
+    expect(api.fetchError.value).toBe('load')
   })
 
   it('leaves the date label empty when the API Date is invalid', async () => {
