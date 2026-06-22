@@ -38,5 +38,9 @@ describe('widget/converter.vue', () => {
     // t('app.fetchError'). Test locale resolves to the English message — the full
     // sentence proves localization happened rather than the raw 'load' code.
     expect(wrapper.text()).toContain('Failed to load NBRB rates. Please refresh the page.')
+    // UX contract: the primary action is disabled on error (don't push an empty
+    // message to the chat). The refresh button is `:disabled="loading"` → enabled
+    // after the failed load, so the only disabled button is the primary one.
+    expect(wrapper.find('button[disabled]').exists()).toBe(true)
   })
 })
