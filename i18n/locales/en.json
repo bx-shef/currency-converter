@@ -3,7 +3,8 @@
     "title": "Currency Converter",
     "subtitle": "NBRB exchange rates",
     "ratesOn": "on {date}",
-    "refresh": "Refresh rates"
+    "refresh": "Refresh rates",
+    "fetchError": "Failed to load NBRB rates. Please refresh the page."
   },
   "mock": {
     "title": "Demo mode",

@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-06-21
+> Last reviewed: 2026-06-22
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -234,8 +234,19 @@ cp .env.prod.example .env.prod && nano .env.prod
 - [ ] `docker logs watchtower --tail 20` содержит «Session done»
 
 **Диагностика, если что-то не так:**
-- 502 от nginx-proxy → сеть не совпала (грабли #1). Проверить
-  `docker network inspect <netname>`, должен быть и nginx-proxy, и приложение.
+- 502 от nginx-proxy → две частые причины:
+  1. **Сеть не совпала** (грабли #1). Проверить `docker network inspect <netname>` —
+     должны быть и nginx-proxy, и приложение.
+  2. **`VIRTUAL_PORT` ≠ порт, который слушает nginx в образе** (грабли #18). Прокси
+     шлёт на `IP:VIRTUAL_PORT`, а приложение слушает другой порт → connection refused.
+     Посмотреть, куда реально шлёт прокси:
+     `docker exec <proxy> grep -A6 '<domain>' /etc/nginx/conf.d/default.conf`
+     (строки `using port` / `server <IP>:<порт>`). Должно совпадать с `listen` в
+     `nginx.conf` (для `nginx-unprivileged` — `8080`).
+  Частая первопричина второго случая — **серверный `docker-compose.prod.yml` устарел**:
+  после PR, меняющего `VIRTUAL_PORT`/порт/сеть (напр. миграция на non-root `:8080`),
+  файл на сервере нужно **перекачать** (`curl -fsSLO` той же raw-ссылкой, см. выше) и
+  `make prod-up` — иначе на проде остаётся старая маршрутизация на старый порт.
 - Watchtower не обновляет → `docker logs watchtower`. Чаще всего грабли #5.
 - TLS не выдан → `docker logs <acme-companion>`. Проверить, что DNS
   резолвится с публичного IP, не закеширован старый AAAA, и `LETSENCRYPT_EMAIL`
