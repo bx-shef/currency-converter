@@ -15,6 +15,9 @@ export default withNuxt(
       }
     },
     rules: {
+      // Caveat: the rule resolves keys statically, so a dynamic key like
+      // `t(`page.install.step.${s}.caption`)` would be reported as a false
+      // "unused" — add such keys to this rule's `ignores` if that pattern appears.
       '@intlify/vue-i18n/no-unused-keys': ['error', {
         src: './app',
         extensions: ['.ts', '.vue']
