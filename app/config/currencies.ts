@@ -9,6 +9,12 @@
 /** A currency row rendered in the converter. */
 export interface CurrencyRow {
   code: string
+  /**
+   * Russian display name. Rendered only on the RU-only standalone page
+   * (`index.vue`); the multilingual B24 widget shows the `code` only, so these
+   * names stay monolingual by design (issue #87). Localize via i18n only if a
+   * non-RU surface ever displays the name.
+   */
   name: string
   /** BYN per 1 unit of this currency; always 1 for BYN itself. */
   bynRate: number

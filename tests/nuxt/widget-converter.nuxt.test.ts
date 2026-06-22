@@ -24,6 +24,11 @@ describe('widget/converter.vue', () => {
     for (const code of ['USD', 'EUR', 'BYN']) {
       expect(text).toContain(code)
     }
+    // #87: the B24 widget is language-neutral — it shows codes, never the RU
+    // currency names (those render only on the RU-only index.vue). If a name
+    // ever leaks into the widget, it must be localized first.
+    expect(text).not.toContain('доллар США')
+    expect(text).not.toContain('российский рубль')
   })
 
   it('shows the localized fetch error (not the raw error code) when rates fail', async () => {
