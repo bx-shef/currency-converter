@@ -166,7 +166,7 @@ function primaryAction() {
         v-else-if="fetchError"
         class="text-xs text-(--ui-color-accent-main-alert) p-2"
       >
-        {{ fetchError }}
+        {{ t('app.fetchError') }}
       </div>
       <div
         v-for="currency in currencies"

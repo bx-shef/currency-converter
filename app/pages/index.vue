@@ -139,7 +139,9 @@ onMounted(async () => {
         v-else-if="fetchError"
         class="-mx-2 rounded-lg border border-red-200 px-2 py-3 text-sm text-red-500 dark:border-red-800"
       >
-        {{ fetchError }}
+        <!-- Standalone site is RU-only (like the rest of this page's text);
+             the multilingual widget localizes via t('app.fetchError'). -->
+        Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.
       </div>
 
       <!-- Currency rows -->

@@ -27,6 +27,9 @@ export function useNbrbRates() {
   const ratesDate = ref('')
   const loading = ref(true)
   const refreshing = ref(false)
+  // Error *code*, not a user message: empty = no error, 'load' = rates failed to
+  // load. The view maps it to a localized string (t('app.fetchError')) — the
+  // composable stays framework-agnostic (no useI18n).
   const fetchError = ref('')
   const activeCurrency = ref('BYN')
 
@@ -86,7 +89,7 @@ export function useNbrbRates() {
       applyRates(rateMap, date)
       writeCache(date, rateMap)
     } catch {
-      fetchError.value = 'Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.'
+      fetchError.value = 'load'
     }
   }
 
