@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-06-21
+> Last reviewed: 2026-06-22
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -83,6 +83,8 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 - `app/utils/chatMessage.ts` — чистые `buildConversionLines`/`wordsCurrencyCode` (покрыты тестами).
 - `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
   переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
+  Осиротевшие ключи (в `ru`/`en`, но не используемые через `t()`) ловит ESLint-правило
+  `@intlify/vue-i18n/no-unused-keys` (в `eslint.config.mjs`, только оно — без шумного `no-raw-text`).
 - `nuxt.config.ts` — `nitro.prerender.routes` явно перечисляет `/install` и `/widget/converter`
   (на них нет ссылок, иначе краулер их пропустит). `runtimeConfig.public`: `siteUrl`, `authorName`,
   `authorUrl` (через build-args, см. Dockerfile/ci).

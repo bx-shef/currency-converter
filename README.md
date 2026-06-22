@@ -138,7 +138,7 @@ pnpm dev
 Проверки перед пушем (запускаются и в CI):
 
 ```bash
-pnpm lint        # ESLint
+pnpm lint        # ESLint (в т.ч. @intlify/vue-i18n/no-unused-keys — осиротевшие ключи локалей)
 pnpm typecheck   # vue-tsc
 pnpm test        # Vitest
 ```
