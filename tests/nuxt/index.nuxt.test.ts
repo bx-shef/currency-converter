@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import IndexPage from '~/pages/index.vue'
 import { MOCK_RATES } from './fixtures'
+
+// Read the raw JSON via cwd (not an `import` — @nuxtjs/i18n compiles JSON imports
+// into message ASTs in the nuxt env; and import.meta.url isn't a file:// URL here,
+// so readFileSync needs a plain fs path). Tests run from the repo root.
+const ru = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/ru.json'), 'utf-8'))
 
 // Intentionally broad smoke test: it asserts the page wires up (rows + date +
 // "sum in words" render, error state shows) rather than exact content — adding a
@@ -52,7 +59,10 @@ describe('index.vue (converter page)', () => {
     const wrapper = await mountSuspended(IndexPage)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Не удалось загрузить курсы')
+    // #97: index.vue renders the error as a RU literal (the page is RU-only),
+    // which duplicates ru.json's app.fetchError. Assert against that key so the
+    // two can't drift apart silently — if either changes, this fails.
+    expect(wrapper.text()).toContain(ru.app.fetchError)
   })
 
   it('copies a row amount as a plain number (dot, no grouping)', async () => {
