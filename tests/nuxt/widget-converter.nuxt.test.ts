@@ -1,9 +1,14 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import WidgetConverter from '~/pages/widget/converter.vue'
 import { DEFAULT_CURRENCIES } from '~/config/currencies'
 import { MOCK_RATES } from './fixtures'
+
+// Read raw JSON via cwd — @nuxtjs/i18n compiles JSON imports into message ASTs.
+const en = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/en.json'), 'utf-8'))
 
 // The widget runs outside a B24 frame here (no window.name), so useB24().init()
 // is a no-op and the placement stays default — we only exercise the rate/error UI.
@@ -42,9 +47,9 @@ describe('widget/converter.vue', () => {
     await flushPromises()
 
     // useNbrbRates sets fetchError='load' (a code); the widget renders it via
-    // t('app.fetchError'). Test locale resolves to the English message — the full
-    // sentence proves localization happened rather than the raw 'load' code.
-    expect(wrapper.text()).toContain('Failed to load NBRB rates. Please refresh the page.')
+    // t('app.fetchError'). Test locale resolves to English — assert against
+    // en.json's value (not a hardcoded string) so the two can't drift (#97).
+    expect(wrapper.text()).toContain(en.app.fetchError)
     // UX contract: the primary action is disabled on error (don't push an empty
     // message to the chat). The refresh button is `:disabled="loading"` → enabled
     // after the failed load, so the only disabled button is the primary one.
