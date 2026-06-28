@@ -107,6 +107,12 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 виджета по плейсменту (Copy↔Insert, `tests/nuxt/widget-placement.nuxt.test.ts`) и standalone-ветка
 install (редирект на `/` вне фрейма, `tests/nuxt/install.nuxt.test.ts`) — покрыты автотестами.
 
+> **После major-бампа `@bitrix24/b24jssdk`** автотесты рантайм SDK не покрывают (в nuxt-тестах
+> `useB24` мокается через `makeMockB24`) — обязателен ручной прогон в реальном портале:
+> `/install` → bind двух плейсментов → `/widget/converter` (Insert на десктопе, Copy в мобильном
+> контекстном меню). В 2.0 `callBatch`/`callMethod` — deprecated-шим (печатает warning в консоль,
+> делегирует в `actions.v2.batch.make`); миграция на `actions.v2` — issue #85, до следующего major.
+
 ## Конвенции
 
 - Комментарии и JSDoc — на английском; пользовательский текст и README — на русском.
