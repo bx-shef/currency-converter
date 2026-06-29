@@ -5,6 +5,13 @@
  * Does nothing when the meta tag is absent or the id is not numeric.
  */
 (function () {
+  // Skip analytics when embedded in an iframe — notably the Bitrix24 portal,
+  // where the app's dual-mode main page (`/`) opens as a B24 app. Tracking
+  // portal users is unwanted by design (see app/layouts/default.vue), and
+  // Metrika's cross-origin sync pixels (yandex.ru/an/*) are blocked by our CSP,
+  // spamming the console. Comparing window.self/top is safe cross-origin.
+  try { if (window.self !== window.top) return } catch (e) { return }
+
   var meta = document.querySelector('meta[name="yandex-metrika-id"]')
   var id = meta && meta.getAttribute('content')
   if (!id || !/^\d+$/.test(id)) return

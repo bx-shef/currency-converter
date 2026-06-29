@@ -85,20 +85,54 @@ function rowCopyColor(code: string) {
   return rowCopyColorFor(code, 'air-primary-success', 'air-primary-alert', 'air-tertiary-no-accent')
 }
 
-// Inside a B24 frame: set the iframe title so the portal tab/window updates.
+// Root content element — measured to fit the B24 iframe to its content.
+const rootEl = ref<HTMLElement | null>(null)
+// Kept at setup scope so onBeforeUnmount (registered synchronously below) can
+// tear them down even though they're created inside the async onMounted.
+let resizeObserver: ResizeObserver | null = null
+let fitRaf = 0
+
+// Inside a B24 frame: set the iframe title, then keep the frame sized to the
+// app content so the portal provides a single outer scrollbar instead of a
+// double scroll inside the app frame (fitWindow). Re-fit on content changes —
+// rates loading, rows added/removed, the «прописью» block wrapping, theme.
 onMounted(async () => {
   if (!isB24.value) return
+  let $b24: B24Frame
   try {
-    const $b24 = b24Instance.get() as B24Frame
+    $b24 = b24Instance.get() as B24Frame
     await $b24.parent.setTitle(t('page.index.seo.title'))
   } catch {
     // setTitle is best-effort — failure inside the frame is non-fatal
+    return
   }
+
+  // fitWindow runs in the SDK's isSafely mode, so a transient failure is a no-op.
+  const fit = () => {
+    $b24.parent.fitWindow().catch(() => {})
+  }
+  fit()
+  if (rootEl.value && typeof ResizeObserver !== 'undefined') {
+    // Coalesce bursts of layout changes into one fit per frame.
+    resizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(fitRaf)
+      fitRaf = requestAnimationFrame(fit)
+    })
+    resizeObserver.observe(rootEl.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(fitRaf)
+  resizeObserver?.disconnect()
 })
 </script>
 
 <template>
-  <div class="flex justify-center px-3 py-3 sm:px-4 sm:py-6">
+  <div
+    ref="rootEl"
+    class="flex justify-center px-3 py-3 sm:px-4 sm:py-6"
+  >
     <div class="w-full max-w-sm sm:max-w-[464px]">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
