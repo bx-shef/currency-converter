@@ -183,6 +183,16 @@ cp .env.prod.example .env.prod && nano .env.prod
     только на путях без слеша, напр. `/widget/converter`). Относительный `Location`
     заставляет браузер сохранить исходный `https://host:443`.
 
+21. **Статичный обработчик Битрикс24 → `error_page 405 =200 $uri;`.** Б24 открывает
+    install/placement-обработчик через **POST**. nginx-статика (`try_files … /index.html`)
+    разрешает только `GET/HEAD` и отвечает на POST `405 Not Allowed` — iframe-страница не
+    рендерится. У страницы нет серверной логики на запрос: фрейм-SDK (`b24jssdk`) берёт
+    контекст портала из `window.name` («domain|protocol|appSid», см. `app/composables/useB24.ts`)
+    + postMessage-handshake с родителем, тело POST не читается вовсе. Поэтому достаточно
+    отдать ту же пререндеренную HTML и на POST: `error_page 405 =200 $uri;` переотдаёт тот же
+    `$uri` с кодом 200. Симптом: при открытии приложения из портала — белый экран
+    «405 Not Allowed / nginx».
+
 ---
 
 ## Порядок работы агента — ОБЯЗАТЕЛЕН
