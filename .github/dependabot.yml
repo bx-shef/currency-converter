@@ -20,11 +20,22 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # One grouped PR for all action bumps instead of one PR per action.
+    groups:
+      actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    # One grouped PR for all image bumps (today only node; forward-proof if a
+    # second base image is ever added).
+    groups:
+      docker:
+        patterns:
+          - "*"
     # Node 25+ removed corepack from the official images (`RUN corepack enable`
     # → exit 127). Stay on the 22 LTS line; major bumps are done manually with
     # the corepack fix in place. Minor/patch of node:22-alpine still flow through.
