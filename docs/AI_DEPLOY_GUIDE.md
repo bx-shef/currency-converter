@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-06-22
+> Last reviewed: 2026-06-29
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -172,6 +172,16 @@ cp .env.prod.example .env.prod && nano .env.prod
     (после `pnpm generate`, до `COPY` конфига в runner). Любой новый inline-скрипт без
     `src` ломает страницу (CSP заблокирует) — выносить такие скрипты в `public/*.js`
     (как Яндекс.Метрику в `public/metrika.js`) или убедиться, что их хэш попадает в CSP.
+
+20. **За TLS-терминирующим nginx-proxy ставить `absolute_redirect off;`** (следствие
+    граблей #18). Внутренний nginx видит только plain http на `:8080`, поэтому при
+    дефолтном `absolute_redirect on` строит trailing-slash-редиректы (`/path` →
+    `/path/`, ветка `$uri/` в `try_files`) из своих scheme+port и отдаёт
+    `Location: http://host:8080/...` — утечка внутреннего порта и downgrade на http.
+    В HTTPS-iframe Битрикс24 это ловится как Mixed-Content и виджет молча не грузится
+    (главная/`/install/` живут на trailing slash и 200-ят без редиректа — баг виден
+    только на путях без слеша, напр. `/widget/converter`). Относительный `Location`
+    заставляет браузер сохранить исходный `https://host:443`.
 
 ---
 
