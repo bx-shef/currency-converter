@@ -10,6 +10,11 @@ const STAMP_RE = /^> Last reviewed: \d{4}-\d{2}-\d{2}$/m
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
+// `reporting-kit/` is a self-contained vendored bundle with its own conventions
+// and its own CI (see docs/REPORTING_KIT.md). It does not follow our review-stamp
+// convention, so it is excluded here — kept verbatim to stay syncable with source.
+const EXCLUDED_PREFIXES = ['reporting-kit/']
+
 /** .md files tracked by git — naturally excludes node_modules/ and .nuxt/. */
 function trackedMdFiles(): string[] {
   return execSync('git ls-files "*.md"', { cwd: repoRoot })
@@ -17,6 +22,7 @@ function trackedMdFiles(): string[] {
     .trim()
     .split('\n')
     .filter(Boolean)
+    .filter(f => !EXCLUDED_PREFIXES.some(prefix => f.startsWith(prefix)))
 }
 
 describe('Markdown review stamp convention', () => {
