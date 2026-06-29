@@ -21,7 +21,7 @@ export function makeMockB24(opts: MockB24Options = {}): ReturnType<typeof useB24
   const ok = { isSuccess: true } as unknown as Result
   const send = opts.send ?? vi.fn(async () => {})
   // The B24Frame fake is intentionally minimal — only `placement` + `parent.message.send`.
-  // The full install flow (auth.getAuthData / callBatch / installFinish) is portal-only;
+  // The full install flow (auth.getAuthData / actions.v2.batch.make / installFinish) is portal-only;
   // extend `MockB24Options` + `getOrThrow` here if a test ever needs that B24 branch.
   return {
     init: vi.fn(async () => ok),
