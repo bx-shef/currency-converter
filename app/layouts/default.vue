@@ -18,8 +18,12 @@ const currentYear = useState('currentYear', () => new Date().getFullYear())
 // Yandex.Metrika lives in the default (site) layout — NOT app-wide — so it does
 // not load on the `clear`-layout pages (/install, /widget/converter) that run
 // inside the Bitrix24 portal iframe, where third-party analytics on portal users
-// is unwanted. Loaded from a static, CSP-friendly /metrika.js (no inline script);
-// the counter id is passed via a <meta> tag and re-validated inside metrika.js.
+// is unwanted. The main page `/` uses this layout too and CAN open as a B24 app
+// (dual-mode), so metrika.js additionally self-guards: it bails when embedded in
+// an iframe (window.self !== window.top), keeping tracking — and its CSP-blocked
+// sync pixels — off the portal. Loaded from a static, CSP-friendly /metrika.js
+// (no inline script); the counter id is passed via a <meta> tag and re-validated
+// inside metrika.js.
 const rawCounterId = String(config.public.yandexCounterId ?? '')
 const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
 if (yandexCounterId) {

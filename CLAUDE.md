@@ -30,10 +30,15 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/app.vue` — корень: `useHead`/SEO/`theme-init`, рендерит `<NuxtLayout>`.
 - `app/layouts/default.vue` — каркас сайта (шапка с `B24ColorModeButton` и навигацией,
   `B24Footer` с copyright/GitHub и `SiteFooter`) **и Яндекс.Метрика** — здесь, а не в
-  `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`).
+  `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`). Сам `/` тоже
+  на этом layout и может открыться как B24-приложение (dual-mode), поэтому `public/metrika.js`
+  дополнительно глушит себя в iframe (`window.self !== window.top`) — это держит трекинг и
+  его CSP-блокируемые sync-пиксели вне портала.
   `app/layouts/clear.vue` — минимальный layout под `/install` и виджет (только `<B24App>`).
 - `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
-  логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`.
+  логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`, затем
+  `parent.fitWindow()` и держит фрейм по размеру контента (`ResizeObserver` на корне,
+  RAF-коалесинг, teardown в `onBeforeUnmount`) — чтобы у портала был один внешний скролл.
 - `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
