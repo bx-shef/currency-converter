@@ -4,12 +4,15 @@ import { computed, onMounted, ref } from 'vue'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import SendIcon from '@bitrix24/b24icons-vue/outline/SendIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
+import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
+import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
 import { useB24 } from '~/composables/useB24'
 import { useNbrbRates } from '~/composables/useNbrbRates'
-import { writeToClipboard } from '~/utils/copyFeedback'
+import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
 import { rublesAmountInWords } from '~/utils/numberToWords'
-import { capitalizeFirst, numberFormatOptions } from '~/utils/formatters'
-import { buildConversionLines, wordsCurrencyCode } from '~/utils/chatMessage'
+import { capitalizeFirst, formatPlainAmount, numberFormatOptions } from '~/utils/formatters'
+import { buildWordsLines } from '~/utils/chatMessage'
+import { vHoldRepeat } from '~/directives/holdRepeat'
 import { safeHttpUrl } from '~/utils/url'
 import { IMMOBILE_CONTEXT_MENU_PLACEMENT } from '~/config/b24'
 import { MAX_AMOUNT } from '~/config/currencies'
@@ -31,7 +34,9 @@ const {
   activeCurrency,
   refresh,
   onValueUpdate,
-  onRowClick
+  onRowClick,
+  incrementCurrency,
+  decrementCurrency
 } = useNbrbRates()
 
 useHead({ title: t('page.widget.seo.title') })
@@ -39,27 +44,48 @@ useHead({ title: t('page.widget.seo.title') })
 const isBusy = ref(false)
 
 // Which placement opened this widget. IMMOBILE_CONTEXT_MENU (mobile message
-// context menu) opens in a slider with no chat input beneath it, so
-// `im:setImTextareaContent` can't reach a textarea there — offer "Copy" instead
-// of "Insert into chat". Read after init() in onMounted (issue #89).
+// context menu) runs in a WebView where the Clipboard API is unavailable, so the
+// per-row/per-words copy buttons would only fail there — hide them and keep just
+// the «insert into chat» primary, which the parent frame handles either way
+// (issue #89, revised after mobile testing). Read after init() in onMounted.
 const placementCode = ref('')
 const isMobileMenu = computed(() => placementCode.value === IMMOBILE_CONTEXT_MENU_PLACEMENT)
+const showCopy = computed(() => !isMobileMenu.value)
 
 // authorName is operator-controlled (env); trim + clamp so a malformed value
-// can't blow out the 320px footer. Rendered via {{ }} (auto-escaped — not XSS).
+// can't blow out the footer. Rendered via {{ }} (auto-escaped — not XSS).
 const authorName = ((config.public.authorName as string) || 'bx-shef').trim().slice(0, 40) || 'bx-shef'
 const authorUrl = safeHttpUrl(config.public.authorUrl as string, 'https://bx-shef.by')
-const siteUrl = safeHttpUrl(config.public.siteUrl as string, 'https://github.com/bx-shef/currency-converter')
 
-// Sum-in-words preview shown under the insert button and appended to the chat
-// message. Only ruble currencies have a meaningful "amount in words", so we show
-// the active row when it is BYN/RUB, otherwise fall back to BYN (the base).
-const wordsRow = computed(() => {
-  const code = wordsCurrencyCode(activeCurrency.value)
+// Optional capitalisation of the first letter (off by default) — mirrors the
+// аб/Аб toggle on the main page; affects both the on-screen preview and the
+// text inserted into the chat.
+const wordsCapitalized = ref(false)
+
+/** Lowercase «прописью» for a ruble row, or '' when it has no numeric value. */
+function rawWords(code: 'BYN' | 'RUB'): string {
   const row = currencies.value.find(c => c.code === code)
-  const value = row && typeof row.value === 'number' ? row.value : null
-  return { code, words: value === null ? '' : rublesAmountInWords(value) }
-})
+  return row && typeof row.value === 'number' ? rublesAmountInWords(row.value) : ''
+}
+const displayBynWords = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(rawWords('BYN')) : rawWords('BYN'))
+const displayRubWords = computed(() =>
+  wordsCapitalized.value ? capitalizeFirst(rawWords('RUB')) : rawWords('RUB'))
+
+// Clipboard feedback (desktop only): per-row amount + per-currency sum-in-words.
+const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
+const { state: copyStateByn, copy: copyBynWords } = useCopyFeedback()
+const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
+
+/** Copies one row's amount as a plain number (dot, 2 decimals, no grouping). */
+function copyRow(code: string) {
+  const c = currencies.value.find(r => r.code === code)
+  if (!c || typeof c.value !== 'number') return
+  copyRowAmount(code, formatPlainAmount(c.value))
+}
+function rowCopyColor(code: string) {
+  return rowCopyColorFor(code, 'air-primary-success', 'air-primary-alert', 'air-tertiary-no-accent')
+}
 
 onMounted(async () => {
   await b24Instance.init()
@@ -68,19 +94,15 @@ onMounted(async () => {
   }
 })
 
-/** Builds "100.00 USD = 287.50 BYN" lines for every currency with a value,
- *  anchored on the currently active row, and a trailing sum-in-words line.
- *  Plain numbers (dot, no grouping) for a clean chat paste. */
+/** The «прописью» text inserted into the chat: BYN + RUB lines, honouring the
+ *  аб/Аб toggle. Empty when no ruble row has a value. */
 function buildMessage(): string {
-  const lines = buildConversionLines(currencies.value, activeCurrency.value)
-  if (lines.length === 0) return ''
-  const header = ratesDate.value ? `${t('app.subtitle')} · ${t('app.ratesOn', { date: ratesDate.value })}` : t('app.subtitle')
-  if (wordsRow.value.words) {
-    lines.push(`${wordsRow.value.code} ${t('page.widget.inWords')}: ${capitalizeFirst(wordsRow.value.words)}`)
-  }
-  return `${header}\n${lines.join('\n')}`
+  return buildWordsLines(currencies.value, t('page.widget.inWords'), wordsCapitalized.value).join('\n')
 }
 
+/** Inserts the sum-in-words into the chat input — works for both the desktop
+ *  chat panel (IM_TEXTAREA) and the mobile message context menu, which is why we
+ *  no longer fall back to a (WebView-broken) clipboard copy. */
 async function insertIntoChat() {
   if (!isReady.value) {
     toast.add({ title: t('page.widget.notInFrame'), color: 'air-primary-warning' })
@@ -110,31 +132,12 @@ async function insertIntoChat() {
     isBusy.value = false
   }
 }
-
-/** Copies the conversion message to the clipboard — used from the mobile context
- *  menu, where there is no chat textarea to insert into. */
-async function copyMessage() {
-  const text = buildMessage()
-  if (!text) return
-  isBusy.value = true
-  const ok = await writeToClipboard(text)
-  toast.add(ok
-    ? { title: t('page.widget.copied'), color: 'air-primary-success', duration: 1500 }
-    : { title: t('page.widget.copyFailed'), color: 'air-primary-alert' })
-  isBusy.value = false
-}
-
-/** Primary action depends on how the widget was opened: insert into the chat
- *  input (IM_TEXTAREA, web) or copy to clipboard (IMMOBILE_CONTEXT_MENU, mobile). */
-function primaryAction() {
-  return isMobileMenu.value ? copyMessage() : insertIntoChat()
-}
 </script>
 
 <template>
   <div class="h-screen w-screen overflow-hidden bg-(--ui-color-base-bg) flex flex-col p-2">
     <!-- Top bar: rate date + refresh. The widget title lives on the chat chip
-         (placement TITLE), so we don't repeat it here — saves a line in 320px. -->
+         (placement TITLE), so we don't repeat it here — saves a line. -->
     <div class="flex items-center justify-between gap-2 mb-2">
       <p class="text-[11px] text-(--ui-color-base-3) truncate min-w-0">
         {{ t('app.subtitle') }}<span v-if="ratesDate"> · {{ t('app.ratesOn', { date: ratesDate }) }}</span>
@@ -150,7 +153,7 @@ function primaryAction() {
       />
     </div>
 
-    <!-- Currency rows -->
+    <!-- Currency rows: code + (copy) + input + −/+ — same grouping as the main page. -->
     <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1">
       <div
         v-if="loading"
@@ -172,12 +175,22 @@ function primaryAction() {
         v-for="currency in currencies"
         v-else
         :key="currency.code"
-        class="flex items-center gap-2"
+        class="flex items-center gap-1"
         @click="onRowClick(currency.code)"
       >
-        <span class="w-10 shrink-0 text-xs font-semibold text-(--ui-color-base-1)">
+        <span class="w-9 shrink-0 text-xs font-semibold text-(--ui-color-base-1)">
           {{ currency.code }}
         </span>
+        <B24Button
+          v-if="showCopy"
+          :icon="CopyIcon"
+          :color="rowCopyColor(currency.code)"
+          size="xs"
+          class="shrink-0"
+          :disabled="typeof currency.value !== 'number'"
+          :aria-label="`${t('page.widget.copyAmount')} ${currency.code}`"
+          @click.stop="copyRow(currency.code)"
+        />
         <B24InputNumber
           :model-value="currency.value"
           :model-modifiers="{ optional: true }"
@@ -194,37 +207,108 @@ function primaryAction() {
           @update:model-value="onValueUpdate(currency.code, $event)"
           @focus="onRowClick(currency.code)"
         />
+        <B24Button
+          v-hold-repeat="() => decrementCurrency(currency.code)"
+          :icon="MinusIcon"
+          color="air-tertiary-no-accent"
+          size="xs"
+          class="shrink-0"
+          :aria-label="`${t('page.widget.decrease')} ${currency.code}`"
+          :disabled="typeof currency.value !== 'number' || currency.value <= 0"
+          @click.stop="decrementCurrency(currency.code)"
+        />
+        <B24Button
+          v-hold-repeat="() => incrementCurrency(currency.code)"
+          :icon="PlusIcon"
+          color="air-tertiary-no-accent"
+          size="xs"
+          class="shrink-0"
+          :aria-label="`${t('page.widget.increase')} ${currency.code}`"
+          :disabled="typeof currency.value === 'number' && currency.value >= MAX_AMOUNT"
+          @click.stop="incrementCurrency(currency.code)"
+        />
       </div>
     </div>
 
-    <!-- Insert + sum-in-words preview + footer -->
-    <div class="mt-2 flex flex-col gap-1">
+    <!-- Sum-in-words (BYN + RUB) + case toggle, combined with the insert button. -->
+    <div class="mt-2 flex flex-col gap-1.5 border-t border-(--ui-color-base-2) pt-2">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[10px] uppercase tracking-wide text-(--ui-color-base-3)">
+          {{ t('page.widget.sumInWords') }}
+        </span>
+        <div
+          class="flex shrink-0 overflow-hidden rounded-md border border-(--ui-color-base-2)"
+          role="group"
+          :aria-label="t('page.widget.caseGroup')"
+        >
+          <button
+            type="button"
+            class="px-1.5 py-0.5 text-[11px] leading-none transition-colors"
+            :class="!wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)'"
+            :aria-pressed="!wordsCapitalized"
+            :aria-label="t('page.widget.caseLower')"
+            @click="wordsCapitalized = false"
+          >
+            аб
+          </button>
+          <button
+            type="button"
+            class="border-l border-(--ui-color-base-2) px-1.5 py-0.5 text-[11px] leading-none transition-colors"
+            :class="wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)'"
+            :aria-pressed="wordsCapitalized"
+            :aria-label="t('page.widget.caseUpper')"
+            @click="wordsCapitalized = true"
+          >
+            Аб
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="displayBynWords"
+        class="flex items-start gap-1"
+      >
+        <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">BYN</span>
+        <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayBynWords }}</span>
+        <B24Button
+          v-if="showCopy"
+          :icon="CopyIcon"
+          size="xs"
+          class="shrink-0"
+          :aria-label="t('page.widget.copyWords')"
+          :color="copyStateByn === 'ok' ? 'air-primary-success' : copyStateByn === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+          @click="copyBynWords(displayBynWords)"
+        />
+      </div>
+      <div
+        v-if="displayRubWords"
+        class="flex items-start gap-1"
+      >
+        <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">RUB</span>
+        <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayRubWords }}</span>
+        <B24Button
+          v-if="showCopy"
+          :icon="CopyIcon"
+          size="xs"
+          class="shrink-0"
+          :aria-label="t('page.widget.copyWords')"
+          :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
+          @click="copyRubWords(displayRubWords)"
+        />
+      </div>
+
       <B24Button
         block
         size="sm"
         color="air-primary"
-        :icon="isMobileMenu ? CopyIcon : SendIcon"
-        :label="isMobileMenu ? t('page.widget.copy') : t('page.widget.insert')"
+        :icon="SendIcon"
+        :label="t('page.widget.insert')"
         :disabled="isBusy || !isReady || loading || !!fetchError"
-        @click="primaryAction"
+        @click="insertIntoChat"
       />
-      <!-- Passive preview of the sum-in-words that will go into the message. -->
-      <p
-        v-if="wordsRow.words"
-        :title="wordsRow.words"
-        class="text-[10px] text-(--ui-color-base-3) truncate px-1"
-      >
-        {{ wordsRow.code }} {{ t('page.widget.inWords') }}: {{ wordsRow.words }}
-      </p>
-      <div class="flex items-center justify-between text-[10px] text-(--ui-color-base-3) px-1">
-        <a
-          :href="siteUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="hover:underline truncate"
-        >
-          {{ siteUrl.replace(/^https?:\/\//, '') }}
-        </a>
+
+      <!-- Footer: author only (site link removed per portal feedback). -->
+      <div class="flex items-center justify-end text-[10px] text-(--ui-color-base-3) px-1">
         <span class="shrink-0">
           {{ t('footer.by') }}
           <a

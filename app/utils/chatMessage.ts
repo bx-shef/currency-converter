@@ -1,9 +1,11 @@
 /**
- * Pure helpers for the chat-widget message (issue #31).
+ * Pure helper for the chat-widget message (issue #31).
  * No Vue/i18n/state dependencies — directly unit-testable. The widget component
- * wraps these with a localized header and the sum-in-words line.
+ * passes the localized «прописью» label and the capitalise-toggle state; this
+ * builds the lines that get inserted into the chat.
  */
-import { formatPlainAmount } from './formatters'
+import { rublesAmountInWords } from './numberToWords'
+import { capitalizeFirst } from './formatters'
 
 /** Minimal currency row shape the message builder needs. */
 export interface MessageRow {
@@ -11,31 +13,28 @@ export interface MessageRow {
   value: number | undefined
 }
 
-/**
- * Builds "100.00 USD = 287.50 BYN" lines anchored on the active currency — one
- * per other currency that currently has a numeric value. Plain numbers (dot, two
- * decimals, no grouping) so the text pastes cleanly into a chat.
- *
- * @returns one line per convertible row; `[]` when the active row is missing or
- *   has no numeric value (nothing meaningful to insert).
- */
-export function buildConversionLines(rows: readonly MessageRow[], activeCode: string): string[] {
-  const active = rows.find(r => r.code === activeCode)
-  if (!active || typeof active.value !== 'number') return []
+/** Ruble currencies with a meaningful "amount in words": BYN (base) and RUB. */
+export const WORDS_CURRENCIES = ['BYN', 'RUB'] as const
 
+/**
+ * Builds the «прописью» lines inserted into the chat — one per ruble currency
+ * (BYN, RUB) that currently has a numeric value, e.g.
+ * "BYN прописью: сто рублей 00 копеек". `inWordsLabel` is the localized word
+ * ("прописью"/"in words"); `capitalize` mirrors the widget's аб/Аб toggle.
+ *
+ * @returns one line per ruble row with a value; `[]` when neither has one.
+ */
+export function buildWordsLines(
+  rows: readonly MessageRow[],
+  inWordsLabel: string,
+  capitalize: boolean
+): string[] {
   const lines: string[] = []
-  for (const r of rows) {
-    if (r.code === active.code) continue
-    if (typeof r.value !== 'number') continue
-    lines.push(`${formatPlainAmount(active.value)} ${active.code} = ${formatPlainAmount(r.value)} ${r.code}`)
+  for (const code of WORDS_CURRENCIES) {
+    const row = rows.find(r => r.code === code)
+    if (!row || typeof row.value !== 'number') continue
+    const words = rublesAmountInWords(row.value)
+    lines.push(`${code} ${inWordsLabel}: ${capitalize ? capitalizeFirst(words) : words}`)
   }
   return lines
-}
-
-/**
- * Picks the currency whose "amount in words" is worth showing: the active row
- * when it is a ruble currency (BYN/RUB), otherwise BYN (the conversion base).
- */
-export function wordsCurrencyCode(activeCode: string): 'BYN' | 'RUB' {
-  return activeCode === 'RUB' ? 'RUB' : 'BYN'
 }
