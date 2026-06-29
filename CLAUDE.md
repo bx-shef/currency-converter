@@ -111,7 +111,8 @@ install (редирект на `/` вне фрейма, `tests/nuxt/install.nuxt
 > `useB24` мокается через `makeMockB24`) — обязателен ручной прогон в реальном портале:
 > `/install` → bind двух плейсментов → `/widget/converter` (Insert на десктопе, Copy в мобильном
 > контекстном меню). В 2.0 `callBatch`/`callMethod` — deprecated-шим (печатает warning в консоль,
-> делегирует в `actions.v2.batch.make`); миграция на `actions.v2` — issue #85, до следующего major.
+> делегирует в `actions.v2.batch.make`). Батчи install-флоу мигрированы на `actions.v2.batch.make`
+> (issue #85) — `callBatch` в коде больше нет; следить, чтобы новый код не возвращал deprecated-вызовы.
 
 ## Конвенции
 

@@ -155,11 +155,13 @@ async function makeInit(): Promise<void> {
 
   await $b24.parent.setTitle(t('page.install.seo.title'))
 
-  const response = await $b24.callBatch({
-    appInfo: { method: 'app.info' },
-    profile: { method: 'profile' },
-    placementList: { method: 'placement.get' },
-    scope: { method: 'scope' }
+  const response = await $b24.actions.v2.batch.make({
+    calls: {
+      appInfo: { method: 'app.info' },
+      profile: { method: 'profile' },
+      placementList: { method: 'placement.get' },
+      scope: { method: 'scope' }
+    }
   })
 
   initData.value = response.getData() as InitData
@@ -195,14 +197,14 @@ async function makePlacement(): Promise<void> {
 
   // 1) Best-effort cleanup of stale bindings — a missing one is fine, so don't
   //    halt and don't surface its errors.
-  if (unbind.length) await $b24.callBatch(unbind, false)
+  if (unbind.length) await $b24.actions.v2.batch.make({ calls: unbind, options: { isHaltOnError: false } })
 
   // 2) Bind every placement. Surface failures (don't silently finish with a
   //    half-registered app), but don't hard-fail the whole install: a portal that
   //    doesn't yet support IMMOBILE_CONTEXT_MENU must still get the working
   //    desktop IM_TEXTAREA widget. Per-placement required/optional handling is a
   //    follow-up (see issue tracker for #89).
-  const bindResult = await $b24.callBatch(bind, false)
+  const bindResult = await $b24.actions.v2.batch.make({ calls: bind, options: { isHaltOnError: false } })
   if (import.meta.dev) console.info('[install] placement.bind result:', bindResult.getData())
   if (!bindResult.isSuccess) {
     const msg = bindResult.getErrorMessages().join('; ')
@@ -217,7 +219,7 @@ async function makePlacement(): Promise<void> {
 
   // Refresh placement list so the diagnostic panel reflects the new state. Use a
   // named-key batch so getData() has the same shape as in makeInit().
-  const after = await $b24.callBatch({ placementList: { method: 'placement.get' } })
+  const after = await $b24.actions.v2.batch.make({ calls: { placementList: { method: 'placement.get' } } })
   initData.value.placementList = (after.getData() as InitData).placementList ?? []
 }
 
