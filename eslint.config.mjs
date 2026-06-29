@@ -6,6 +6,9 @@ import vueI18n from '@intlify/eslint-plugin-vue-i18n'
 // on the RU-only index.vue). We opt into a single rule: the orphan-key guard
 // (issue #94) — catches keys defined in ru/en but never referenced via t().
 export default withNuxt(
+  // Vendored reporting-kit bundle keeps its own conventions and CI — exclude it
+  // from our ESLint (today it ships only .md/.sh/.py, but guard future JS too).
+  { ignores: ['reporting-kit/**'] },
   ...vueI18n.configs['flat/base'],
   {
     settings: {

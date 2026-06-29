@@ -13,7 +13,7 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 // `reporting-kit/` is a self-contained vendored bundle with its own conventions
 // and its own CI (see docs/REPORTING_KIT.md). It does not follow our review-stamp
 // convention, so it is excluded here — kept verbatim to stay syncable with source.
-const EXCLUDED_PREFIXES = ['reporting-kit/']
+const EXCLUDED_PREFIXES = ['reporting-kit/'] as const
 
 /** .md files tracked by git — naturally excludes node_modules/ and .nuxt/. */
 function trackedMdFiles(): string[] {
