@@ -4,9 +4,12 @@ import { rublesAmountInWords } from '../app/utils/numberToWords'
 import { capitalizeFirst } from '../app/utils/formatters'
 
 describe('buildWordsLines', () => {
+  // RUB deliberately before BYN: the output must still be BYN→RUB (driven by
+  // WORDS_CURRENCIES, not row order), so this makes the "in that order" assertion
+  // load-bearing against an iteration-order regression.
   const rows: MessageRow[] = [
-    { code: 'BYN', value: 100 },
     { code: 'RUB', value: 2670.73 },
+    { code: 'BYN', value: 100 },
     { code: 'USD', value: 35.91 },
     { code: 'KZT', value: undefined }
   ]
