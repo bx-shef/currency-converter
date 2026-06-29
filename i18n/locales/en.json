@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Currency Converter",
+    "title": "Money",
     "subtitle": "NBRB exchange rates",
     "ratesOn": "on {date}",
     "refresh": "Refresh rates",
@@ -19,13 +19,18 @@
     "widget": {
       "seo": { "title": "Currency Converter" },
       "inWords": "in words",
+      "sumInWords": "Amount in words",
       "insert": "Insert into chat",
       "inserted": "Inserted into chat",
       "insertFailed": "Insert failed",
-      "copy": "Copy",
-      "copied": "Copied",
-      "copyFailed": "Copy failed",
-      "notInFrame": "Not running inside Bitrix24"
+      "notInFrame": "Not running inside Bitrix24",
+      "caseGroup": "First letter case",
+      "caseLower": "Lowercase first letter",
+      "caseUpper": "Uppercase first letter",
+      "copyAmount": "Copy amount",
+      "copyWords": "Copy amount in words",
+      "decrease": "Decrease",
+      "increase": "Increase"
     },
     "install": {
       "seo": { "title": "Application installation" },

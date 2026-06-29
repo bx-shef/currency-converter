@@ -84,11 +84,16 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   `IMMOBILE_CONTEXT_MENU` (мобильное контекстное меню сообщения, issue #89) — оба на один
   обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Вне фрейма —
   mock-прогресс с редиректом на `/`. Ошибка показывает retry (с `isRunning`-guard), а не падает.
-  `LANG_ALL` — `app.title` на всех языках портала. Биндит только абсолютный HANDLER
+  `LANG_ALL` — `app.title` на всех языках портала (имя виджета на чип-плейсменте берётся
+  отсюда **в момент install** — после смены `app.title` уже установленным порталам нужна
+  переустановка приложения, чтобы подхватить новое имя). Биндит только абсолютный HANDLER
   (требует `NUXT_PUBLIC_SITE_URL` в проде).
-- `app/pages/widget/converter.vue` (layout `clear`) — компактный конвертер под узкий iframe
-  чата + сумма прописью; «Вставить в чат» шлёт `im:setImTextareaContent` в родительский фрейм.
-- `app/utils/chatMessage.ts` — чистые `buildConversionLines`/`wordsCurrencyCode` (покрыты тестами).
+- `app/pages/widget/converter.vue` (layout `clear`) — компактный конвертер под узкий iframe:
+  строки валют как на главной (код + копировать + поле + −/+), сумма прописью BYN/RUB с
+  переключателем регистра «аб/Аб». Основное действие «Вставить в чат» шлёт `im:setImTextareaContent`
+  (**только прописью**) — для **обоих** плейсментов (десктоп и мобильное меню). Кнопки копирования
+  в буфер — только на десктопе (`IM_TEXTAREA`): в мобильном WebView нет Clipboard API (issue #89).
+- `app/utils/chatMessage.ts` — чистый `buildWordsLines` (строки «прописью» BYN/RUB для вставки; покрыт тестами).
 - `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
   переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
   Осиротевшие ключи (в `ru`/`en`, но не используемые через `t()`) ловит ESLint-правило
@@ -109,7 +114,7 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
 без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика
 (`tests/chatMessage.test.ts`, `tests/b24Placements.test.ts`, `tests/b24.test.ts`), поведение
-виджета по плейсменту (Copy↔Insert, `tests/nuxt/widget-placement.nuxt.test.ts`) и standalone-ветка
+виджета по плейсменту (копирование только на десктопе, вставка на обоих — `tests/nuxt/widget-placement.nuxt.test.ts`) и standalone-ветка
 install (редирект на `/` вне фрейма, `tests/nuxt/install.nuxt.test.ts`) — покрыты автотестами.
 
 > **После major-бампа `@bitrix24/b24jssdk`** автотесты рантайм SDK не покрывают (в nuxt-тестах
