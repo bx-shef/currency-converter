@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { withoutTrailingSlash } from 'ufo'
 import { useB24 } from '~/composables/useB24'
-import { IM_TEXTAREA_PLACEMENT, IMMOBILE_CONTEXT_MENU_PLACEMENT } from '~/config/b24'
+import { IM_TEXTAREA_PLACEMENT } from '~/config/b24'
 import { buildPlacementCalls, type PlacementSpec } from '~/utils/b24Placements'
 import { contentLocales } from '../../i18n/i18n'
 import { sleep } from '~/utils/sleep'
@@ -54,11 +54,10 @@ const placementBinding: PlacementBinding = {
 
 const handlerUrl = computed(() => `${appUrl}${placementBinding.handlerPath}`)
 
-// Placements this app registers. Both reuse the same handler (`/widget/converter`);
-// the widget reads `$b24.placement.placement` to adapt its primary action.
+// The placement this app registers: the panel above the chat message input.
 const PLACEMENTS: readonly PlacementSpec[] = [
   {
-    // Desktop / web chat input panel.
+    // Chat input panel (IM_TEXTAREA).
     code: IM_TEXTAREA_PLACEMENT,
     options: {
       // `iconName` is a Font Awesome class for the chat-panel chip icon
@@ -71,17 +70,6 @@ const PLACEMENTS: readonly PlacementSpec[] = [
       color: 'AZURE',
       width: placementBinding.width,
       height: placementBinding.height,
-      extranet: 'N'
-    }
-  },
-  {
-    // Mobile message context menu (issue #89). Opens in a slider; B24 passes
-    // `dialogId` + `messageId` via `BX24.placement.info().options`. Modeled on the
-    // documented desktop `IM_CONTEXT_MENU` OPTIONS (no width/height/icon — slider).
-    code: IMMOBILE_CONTEXT_MENU_PLACEMENT,
-    options: {
-      context: 'ALL',
-      role: 'USER',
       extranet: 'N'
     }
   }
@@ -199,11 +187,8 @@ async function makePlacement(): Promise<void> {
   //    halt and don't surface its errors.
   if (unbind.length) await $b24.actions.v2.batch.make({ calls: unbind, options: { isHaltOnError: false } })
 
-  // 2) Bind every placement. Surface failures (don't silently finish with a
-  //    half-registered app), but don't hard-fail the whole install: a portal that
-  //    doesn't yet support IMMOBILE_CONTEXT_MENU must still get the working
-  //    desktop IM_TEXTAREA widget. Per-placement required/optional handling is a
-  //    follow-up (see issue tracker for #89).
+  // 2) Bind the placement. Surface failures (don't silently finish with a
+  //    half-registered app), but don't hard-fail the whole install.
   const bindResult = await $b24.actions.v2.batch.make({ calls: bind, options: { isHaltOnError: false } })
   if (import.meta.dev) console.info('[install] placement.bind result:', bindResult.getData())
   if (!bindResult.isSuccess) {
