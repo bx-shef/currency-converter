@@ -42,6 +42,17 @@ useHead({ title: t('page.widget.seo.title') })
 
 const isBusy = ref(false)
 
+// b24ui detects the host from the User-Agent (`BitrixMobile/Version=…`). In the
+// mobile app the widget is full-screen, so use larger, touch-friendly controls
+// and drop the clipboard/insert actions (the mobile WebView has no Clipboard API
+// and chat insert is disabled for now); in the desktop chat panel (IM_TEXTAREA,
+// ~360px) stay compact.
+const { isBitrixMobile } = useDevice()
+const ctrlSize = computed(() => (isBitrixMobile.value ? 'md' : 'xs'))
+// Shared class strings for the BYN/RUB sum-in-words rows, so the two can't drift.
+const wordsLabelClass = computed(() => (isBitrixMobile.value ? 'w-12 text-xs' : 'w-9 text-[10px]'))
+const wordsTextClass = computed(() => (isBitrixMobile.value ? 'text-sm' : 'text-[11px]'))
+
 // authorName is operator-controlled (env); trim + clamp so a malformed value
 // can't blow out the footer. Rendered via {{ }} (auto-escaped — not XSS).
 const authorName = ((config.public.authorName as string) || 'bx-shef').trim().slice(0, 40) || 'bx-shef'
@@ -121,17 +132,22 @@ async function insertIntoChat() {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-hidden bg-(--ui-color-base-bg) flex flex-col p-2">
+  <!-- Natural top-down flow (no flex-1 push), so content isn't stranded with a
+       big gap above a bottom-pinned button on tall mobile screens. -->
+  <div class="min-h-screen w-screen bg-(--ui-color-base-bg) flex flex-col gap-2 p-3">
     <!-- Top bar: rate date + refresh. The widget title lives on the chat chip
          (placement TITLE), so we don't repeat it here — saves a line. -->
-    <div class="flex items-center justify-between gap-2 mb-2">
-      <p class="text-[11px] text-(--ui-color-base-3) truncate min-w-0">
+    <div class="flex items-center justify-between gap-2">
+      <p
+        class="text-(--ui-color-base-3) truncate min-w-0"
+        :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
+      >
         {{ t('app.subtitle') }}<span v-if="ratesDate"> · {{ t('app.ratesOn', { date: ratesDate }) }}</span>
       </p>
       <B24Button
         :aria-label="t('app.refresh')"
         color="air-tertiary-no-accent"
-        size="xs"
+        :size="ctrlSize"
         :icon="RefreshIcon"
         :loading="refreshing"
         :disabled="loading"
@@ -140,7 +156,7 @@ async function insertIntoChat() {
     </div>
 
     <!-- Currency rows: code + (copy) + input + −/+ — same grouping as the main page. -->
-    <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1">
+    <div class="flex flex-col gap-1">
       <div
         v-if="loading"
         class="space-y-1"
@@ -148,7 +164,8 @@ async function insertIntoChat() {
         <div
           v-for="i in 6"
           :key="i"
-          class="h-8 animate-pulse rounded bg-(--ui-color-base-2)"
+          class="animate-pulse rounded bg-(--ui-color-base-2)"
+          :class="isBitrixMobile ? 'h-11' : 'h-8'"
         />
       </div>
       <div
@@ -161,16 +178,21 @@ async function insertIntoChat() {
         v-for="currency in currencies"
         v-else
         :key="currency.code"
-        class="flex items-center gap-1"
+        class="flex items-center gap-1.5"
         @click="onRowClick(currency.code)"
       >
-        <span class="w-9 shrink-0 text-xs font-semibold text-(--ui-color-base-1)">
+        <span
+          class="shrink-0 font-semibold text-(--ui-color-base-1)"
+          :class="isBitrixMobile ? 'w-12 text-base' : 'w-9 text-xs'"
+        >
           {{ currency.code }}
         </span>
+        <!-- Clipboard copy: hidden in the mobile app (no Clipboard API there). -->
         <B24Button
+          v-if="!isBitrixMobile"
           :icon="CopyIcon"
           :color="rowCopyColor(currency.code)"
-          size="xs"
+          :size="ctrlSize"
           class="shrink-0"
           :disabled="typeof currency.value !== 'number'"
           :aria-label="`${t('page.widget.copyAmount')} ${currency.code}`"
@@ -186,7 +208,7 @@ async function insertIntoChat() {
           :decrement="false"
           :highlight="currency.code === activeCurrency"
           :format-options="numberFormatOptions"
-          size="xs"
+          :size="ctrlSize"
           class="min-w-0 flex-1"
           :b24ui="{ base: 'text-right tabular-nums' }"
           @update:model-value="onValueUpdate(currency.code, $event)"
@@ -196,7 +218,7 @@ async function insertIntoChat() {
           v-hold-repeat="() => decrementCurrency(currency.code)"
           :icon="MinusIcon"
           color="air-tertiary-no-accent"
-          size="xs"
+          :size="ctrlSize"
           class="shrink-0"
           :aria-label="`${t('page.widget.decrease')} ${currency.code}`"
           :disabled="typeof currency.value !== 'number' || currency.value <= 0"
@@ -206,7 +228,7 @@ async function insertIntoChat() {
           v-hold-repeat="() => incrementCurrency(currency.code)"
           :icon="PlusIcon"
           color="air-tertiary-no-accent"
-          size="xs"
+          :size="ctrlSize"
           class="shrink-0"
           :aria-label="`${t('page.widget.increase')} ${currency.code}`"
           :disabled="typeof currency.value === 'number' && currency.value >= MAX_AMOUNT"
@@ -215,10 +237,13 @@ async function insertIntoChat() {
       </div>
     </div>
 
-    <!-- Sum-in-words (BYN + RUB) + case toggle, combined with the insert button. -->
-    <div class="mt-2 flex flex-col gap-1.5 border-t border-(--ui-color-base-2) pt-2">
+    <!-- Sum-in-words (BYN + RUB) + case toggle, then the insert button. -->
+    <div class="flex flex-col gap-2 border-t border-(--ui-color-base-2) pt-2">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-[10px] uppercase tracking-wide text-(--ui-color-base-3)">
+        <span
+          class="uppercase tracking-wide text-(--ui-color-base-3)"
+          :class="isBitrixMobile ? 'text-xs' : 'text-[10px]'"
+        >
           {{ t('page.widget.sumInWords') }}
         </span>
         <div
@@ -228,8 +253,8 @@ async function insertIntoChat() {
         >
           <button
             type="button"
-            class="px-1.5 py-0.5 text-[11px] leading-none transition-colors"
-            :class="!wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)'"
+            class="leading-none transition-colors"
+            :class="[isBitrixMobile ? 'px-3 py-2 text-sm' : 'px-1.5 py-0.5 text-[11px]', !wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
             :aria-pressed="!wordsCapitalized"
             :aria-label="t('page.widget.caseLower')"
             @click="wordsCapitalized = false"
@@ -238,8 +263,8 @@ async function insertIntoChat() {
           </button>
           <button
             type="button"
-            class="border-l border-(--ui-color-base-2) px-1.5 py-0.5 text-[11px] leading-none transition-colors"
-            :class="wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)'"
+            class="border-l border-(--ui-color-base-2) leading-none transition-colors"
+            :class="[isBitrixMobile ? 'px-3 py-2 text-sm' : 'px-1.5 py-0.5 text-[11px]', wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
             :aria-pressed="wordsCapitalized"
             :aria-label="t('page.widget.caseUpper')"
             @click="wordsCapitalized = true"
@@ -251,13 +276,20 @@ async function insertIntoChat() {
 
       <div
         v-if="displayBynWords"
-        class="flex items-start gap-1"
+        class="flex items-start gap-1.5"
       >
-        <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">BYN</span>
-        <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayBynWords }}</span>
+        <span
+          class="shrink-0 pt-0.5 font-medium text-(--ui-color-base-3)"
+          :class="wordsLabelClass"
+        >BYN</span>
+        <span
+          class="flex-1 leading-snug text-(--ui-color-base-1)"
+          :class="wordsTextClass"
+        >{{ displayBynWords }}</span>
         <B24Button
+          v-if="!isBitrixMobile"
           :icon="CopyIcon"
-          size="xs"
+          :size="ctrlSize"
           class="shrink-0"
           :aria-label="t('page.widget.copyWords')"
           :color="copyStateByn === 'ok' ? 'air-primary-success' : copyStateByn === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
@@ -266,13 +298,20 @@ async function insertIntoChat() {
       </div>
       <div
         v-if="displayRubWords"
-        class="flex items-start gap-1"
+        class="flex items-start gap-1.5"
       >
-        <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">RUB</span>
-        <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayRubWords }}</span>
+        <span
+          class="shrink-0 pt-0.5 font-medium text-(--ui-color-base-3)"
+          :class="wordsLabelClass"
+        >RUB</span>
+        <span
+          class="flex-1 leading-snug text-(--ui-color-base-1)"
+          :class="wordsTextClass"
+        >{{ displayRubWords }}</span>
         <B24Button
+          v-if="!isBitrixMobile"
           :icon="CopyIcon"
-          size="xs"
+          :size="ctrlSize"
           class="shrink-0"
           :aria-label="t('page.widget.copyWords')"
           :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
@@ -280,7 +319,9 @@ async function insertIntoChat() {
         />
       </div>
 
+      <!-- Insert into chat: hidden in the mobile app for now (per portal feedback). -->
       <B24Button
+        v-if="!isBitrixMobile"
         block
         size="sm"
         color="air-primary"
@@ -291,7 +332,10 @@ async function insertIntoChat() {
       />
 
       <!-- Footer: author only (site link removed per portal feedback). -->
-      <div class="flex items-center justify-end text-[10px] text-(--ui-color-base-3) px-1">
+      <div
+        class="flex items-center justify-end text-(--ui-color-base-3) px-1"
+        :class="isBitrixMobile ? 'text-xs' : 'text-[10px]'"
+      >
         <span class="shrink-0">
           {{ t('footer.by') }}
           <a
