@@ -39,6 +39,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`, затем
   `parent.fitWindow()` и держит фрейм по размеру контента (`ResizeObserver` на корне,
   RAF-коалесинг, teardown в `onBeforeUnmount`) — чтобы у портала был один внешний скролл.
+  В мобильном приложении Б24 (`useDevice().isBitrixMobile` из b24ui — детект по
+  `BitrixMobile/…` User-Agent) прячет кнопки копирования (в WebView нет Clipboard API).
 - `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
@@ -93,6 +95,10 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   переключателем регистра «аб/Аб». Основное действие «Вставить в чат» шлёт `im:setImTextareaContent`
   (**только прописью**) в поле ввода чата — документированный метод мессенджера
   (apidocs: `iframe-messenger-textarea`). Кнопки рядом копируют суммы/прописью в буфер.
+  Адаптивность по `useDevice().isBitrixMobile`: в мобильном приложении контролы крупнее
+  (`ctrlSize`), а кнопки копирования и «Вставить в чат» скрыты (нет Clipboard API; вставка
+  в мобильном пока отключена). Раскладка — естественный поток сверху (без `flex-1`-распора),
+  чтобы не было дыры над прижатой к низу кнопкой.
 - `app/utils/chatMessage.ts` — чистый `buildWordsLines` (строки «прописью» BYN/RUB для вставки; покрыт тестами).
 - `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
   переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).

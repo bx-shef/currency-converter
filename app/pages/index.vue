@@ -15,6 +15,9 @@ import { useB24 } from '~/composables/useB24'
 const { t } = useI18n()
 const b24Instance = useB24()
 const isB24 = computed(() => b24Instance.isInit())
+// In the Bitrix24 mobile app the clipboard API is unavailable — hide the copy
+// buttons there (b24ui detects the host from the `BitrixMobile/…` User-Agent).
+const { isBitrixMobile } = useDevice()
 
 // Rate loading, caching and row state live in the composable (issue #48).
 const {
@@ -205,6 +208,7 @@ onBeforeUnmount(() => {
             </span>
           </div>
           <B24Button
+            v-if="!isBitrixMobile"
             :icon="CopyIcon"
             :color="rowCopyColor(currency.code)"
             size="sm"
@@ -292,6 +296,7 @@ onBeforeUnmount(() => {
                 {{ displayAmountInWords }}
               </div>
               <B24Button
+                v-if="!isBitrixMobile"
                 type="button"
                 :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
                 :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
@@ -307,6 +312,7 @@ onBeforeUnmount(() => {
                 {{ displayAmountInWordsRub }}
               </div>
               <B24Button
+                v-if="!isBitrixMobile"
                 type="button"
                 :aria-label="copyStateRub === 'ok' ? 'Скопировано' : copyStateRub === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью RUB'"
                 :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
@@ -326,6 +332,7 @@ onBeforeUnmount(() => {
               (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
             </div>
             <B24Button
+              v-if="!isBitrixMobile"
               type="button"
               :aria-label="copyStateFormula === 'ok' ? 'Скопировано' : copyStateFormula === 'err' ? 'Не удалось скопировать' : 'Скопировать результат формулы'"
               :color="copyStateFormula === 'ok' ? 'air-primary-success' : copyStateFormula === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
