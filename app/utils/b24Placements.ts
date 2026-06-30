@@ -36,7 +36,7 @@ export interface PlacementCalls {
  *
  * Unbind and bind are returned separately so the caller can run cleanup as a
  * best-effort batch (a missing stale binding is fine) and the binds as a batch
- * whose errors are checked — a failed bind (e.g. missing `mobile` scope) must
+ * whose errors are checked — a failed bind (e.g. missing `placement` scope) must
  * not be swallowed.
  */
 export function buildPlacementCalls(

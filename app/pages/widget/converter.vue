@@ -14,7 +14,6 @@ import { capitalizeFirst, formatPlainAmount, numberFormatOptions } from '~/utils
 import { buildWordsLines } from '~/utils/chatMessage'
 import { vHoldRepeat } from '~/directives/holdRepeat'
 import { safeHttpUrl } from '~/utils/url'
-import { IMMOBILE_CONTEXT_MENU_PLACEMENT } from '~/config/b24'
 import { MAX_AMOUNT } from '~/config/currencies'
 
 definePageMeta({ layout: 'clear' })
@@ -43,15 +42,6 @@ useHead({ title: t('page.widget.seo.title') })
 
 const isBusy = ref(false)
 
-// Which placement opened this widget. IMMOBILE_CONTEXT_MENU (mobile message
-// context menu) runs in a WebView where the Clipboard API is unavailable, so the
-// per-row/per-words copy buttons would only fail there — hide them and keep just
-// the «insert into chat» primary, which the parent frame handles either way
-// (issue #89, revised after mobile testing). Read after init() in onMounted.
-const placementCode = ref('')
-const isMobileMenu = computed(() => placementCode.value === IMMOBILE_CONTEXT_MENU_PLACEMENT)
-const showCopy = computed(() => !isMobileMenu.value)
-
 // authorName is operator-controlled (env); trim + clamp so a malformed value
 // can't blow out the footer. Rendered via {{ }} (auto-escaped — not XSS).
 const authorName = ((config.public.authorName as string) || 'bx-shef').trim().slice(0, 40) || 'bx-shef'
@@ -72,7 +62,7 @@ const displayBynWords = computed(() =>
 const displayRubWords = computed(() =>
   wordsCapitalized.value ? capitalizeFirst(rawWords('RUB')) : rawWords('RUB'))
 
-// Clipboard feedback (desktop only): per-row amount + per-currency sum-in-words.
+// Clipboard feedback: per-row amount + per-currency sum-in-words.
 const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 const { state: copyStateByn, copy: copyBynWords } = useCopyFeedback()
 const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
@@ -89,9 +79,6 @@ function rowCopyColor(code: string) {
 
 onMounted(async () => {
   await b24Instance.init()
-  if (b24Instance.isInit()) {
-    placementCode.value = b24Instance.getOrThrow().placement.placement
-  }
 })
 
 /** The «прописью» text inserted into the chat: BYN + RUB lines, honouring the
@@ -100,9 +87,8 @@ function buildMessage(): string {
   return buildWordsLines(currencies.value, t('page.widget.inWords'), wordsCapitalized.value).join('\n')
 }
 
-/** Inserts the sum-in-words into the chat input — works for both the desktop
- *  chat panel (IM_TEXTAREA) and the mobile message context menu, which is why we
- *  no longer fall back to a (WebView-broken) clipboard copy. */
+/** Inserts the sum-in-words into the chat input via the documented messenger
+ *  method `im:setImTextareaContent` (IM_TEXTAREA placement). */
 async function insertIntoChat() {
   if (!isReady.value) {
     toast.add({ title: t('page.widget.notInFrame'), color: 'air-primary-warning' })
@@ -182,7 +168,6 @@ async function insertIntoChat() {
           {{ currency.code }}
         </span>
         <B24Button
-          v-if="showCopy"
           :icon="CopyIcon"
           :color="rowCopyColor(currency.code)"
           size="xs"
@@ -271,7 +256,6 @@ async function insertIntoChat() {
         <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">BYN</span>
         <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayBynWords }}</span>
         <B24Button
-          v-if="showCopy"
           :icon="CopyIcon"
           size="xs"
           class="shrink-0"
@@ -287,7 +271,6 @@ async function insertIntoChat() {
         <span class="w-9 shrink-0 pt-0.5 text-[10px] font-medium text-(--ui-color-base-3)">RUB</span>
         <span class="flex-1 text-[11px] leading-snug text-(--ui-color-base-1)">{{ displayRubWords }}</span>
         <B24Button
-          v-if="showCopy"
           :icon="CopyIcon"
           size="xs"
           class="shrink-0"

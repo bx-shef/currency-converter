@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-06-29
+> Last reviewed: 2026-06-30
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -60,7 +60,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
 - `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
   на composables (`useNbrbRates`, `useCopyFeedback`), colorMode, страницы `index.vue`,
-  `widget/converter.vue` (рендер/ошибка и детект плейсмента Copy↔Insert, issue #89) и
+  `widget/converter.vue` (рендер/ошибка) и вставку в чат (`im:setImTextareaContent`,
+  `tests/nuxt/widget-insert.nuxt.test.ts`), а также
   `install.vue` (standalone-редирект на `/` вне фрейма, fake timers). `$fetch`/`localStorage`
   мокаются; B24 — через типизированный `tests/nuxt/helpers/mockB24.ts` (`makeMockB24`,
   типизация `ReturnType<typeof useB24>` ловит дрейф мока). Разделение проектов — в `vitest.config.ts`.
@@ -74,14 +75,13 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 внутри портала Б24. SDK — `@bitrix24/b24jssdk` (+ `-nuxt`), i18n — `@nuxtjs/i18n`.
 
 - `app/config/b24.ts` — чистые константы встройки (тестируемы без SDK): `B24_REQUIRED_SCOPES`
-  (`user_brief, im, placement, mobile`) и коды плейсментов `IM_TEXTAREA_PLACEMENT`,
-  `IMMOBILE_CONTEXT_MENU_PLACEMENT`.
+  (`user_brief, im, placement`) и код плейсмента `IM_TEXTAREA_PLACEMENT` (панель над полем
+  ввода чата — единственное место встройки).
 - `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (идемпотентен; молча no-op вне
   фрейма — когда `window.name` отсутствует; парсинг/handshake делает SDK), `isInit()`, `get()`/
   `getOrThrow()`, `getRequiredRights()` (из `config/b24.ts`), `targetOrigin()`.
 - `app/pages/install.vue` (layout `clear`) — обработчик установки: `init → placement.bind`
-  `→ installFinish`. Биндит **два** места: `IM_TEXTAREA` (панель чата, веб) и
-  `IMMOBILE_CONTEXT_MENU` (мобильное контекстное меню сообщения, issue #89) — оба на один
+  `→ installFinish`. Биндит один плейсмент `IM_TEXTAREA` (панель над полем ввода чата) на
   обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Вне фрейма —
   mock-прогресс с редиректом на `/`. Ошибка показывает retry (с `isRunning`-guard), а не падает.
   `LANG_ALL` — `app.title` на всех языках портала (имя виджета на чип-плейсменте берётся
@@ -91,8 +91,8 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 - `app/pages/widget/converter.vue` (layout `clear`) — компактный конвертер под узкий iframe:
   строки валют как на главной (код + копировать + поле + −/+), сумма прописью BYN/RUB с
   переключателем регистра «аб/Аб». Основное действие «Вставить в чат» шлёт `im:setImTextareaContent`
-  (**только прописью**) — для **обоих** плейсментов (десктоп и мобильное меню). Кнопки копирования
-  в буфер — только на десктопе (`IM_TEXTAREA`): в мобильном WebView нет Clipboard API (issue #89).
+  (**только прописью**) в поле ввода чата — документированный метод мессенджера
+  (apidocs: `iframe-messenger-textarea`). Кнопки рядом копируют суммы/прописью в буфер.
 - `app/utils/chatMessage.ts` — чистый `buildWordsLines` (строки «прописью» BYN/RUB для вставки; покрыт тестами).
 - `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
   переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
@@ -113,14 +113,14 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 
 Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
 без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика
-(`tests/chatMessage.test.ts`, `tests/b24Placements.test.ts`, `tests/b24.test.ts`), поведение
-виджета по плейсменту (копирование только на десктопе, вставка на обоих — `tests/nuxt/widget-placement.nuxt.test.ts`) и standalone-ветка
-install (редирект на `/` вне фрейма, `tests/nuxt/install.nuxt.test.ts`) — покрыты автотестами.
+(`tests/chatMessage.test.ts`, `tests/b24Placements.test.ts`, `tests/b24.test.ts`), вставку
+в чат виджетом (`im:setImTextareaContent` — `tests/nuxt/widget-insert.nuxt.test.ts`) и
+standalone-ветка install (редирект на `/` вне фрейма, `tests/nuxt/install.nuxt.test.ts`) — покрыты автотестами.
 
 > **После major-бампа `@bitrix24/b24jssdk`** автотесты рантайм SDK не покрывают (в nuxt-тестах
 > `useB24` мокается через `makeMockB24`) — обязателен ручной прогон в реальном портале:
-> `/install` → bind двух плейсментов → `/widget/converter` (Insert на десктопе, Copy в мобильном
-> контекстном меню). В 2.0 `callBatch`/`callMethod` — deprecated-шим (печатает warning в консоль,
+> `/install` → bind плейсмента `IM_TEXTAREA` → `/widget/converter` (Insert в поле ввода чата).
+> В 2.0 `callBatch`/`callMethod` — deprecated-шим (печатает warning в консоль,
 > делегирует в `actions.v2.batch.make`). Батчи install-флоу мигрированы на `actions.v2.batch.make`
 > (issue #85) — `callBatch` в коде больше нет; следить, чтобы новый код не возвращал deprecated-вызовы.
 
