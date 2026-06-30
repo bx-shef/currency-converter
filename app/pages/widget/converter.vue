@@ -49,6 +49,9 @@ const isBusy = ref(false)
 // ~360px) stay compact.
 const { isBitrixMobile } = useDevice()
 const ctrlSize = computed(() => (isBitrixMobile.value ? 'md' : 'xs'))
+// Shared class strings for the BYN/RUB sum-in-words rows, so the two can't drift.
+const wordsLabelClass = computed(() => (isBitrixMobile.value ? 'w-12 text-xs' : 'w-9 text-[10px]'))
+const wordsTextClass = computed(() => (isBitrixMobile.value ? 'text-sm' : 'text-[11px]'))
 
 // authorName is operator-controlled (env); trim + clamp so a malformed value
 // can't blow out the footer. Rendered via {{ }} (auto-escaped — not XSS).
@@ -251,7 +254,7 @@ async function insertIntoChat() {
           <button
             type="button"
             class="leading-none transition-colors"
-            :class="[isBitrixMobile ? 'px-3 py-1.5 text-sm' : 'px-1.5 py-0.5 text-[11px]', !wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
+            :class="[isBitrixMobile ? 'px-3 py-2 text-sm' : 'px-1.5 py-0.5 text-[11px]', !wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
             :aria-pressed="!wordsCapitalized"
             :aria-label="t('page.widget.caseLower')"
             @click="wordsCapitalized = false"
@@ -261,7 +264,7 @@ async function insertIntoChat() {
           <button
             type="button"
             class="border-l border-(--ui-color-base-2) leading-none transition-colors"
-            :class="[isBitrixMobile ? 'px-3 py-1.5 text-sm' : 'px-1.5 py-0.5 text-[11px]', wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
+            :class="[isBitrixMobile ? 'px-3 py-2 text-sm' : 'px-1.5 py-0.5 text-[11px]', wordsCapitalized ? 'bg-(--ui-color-base-2) font-semibold text-(--ui-color-base-1)' : 'text-(--ui-color-base-3)']"
             :aria-pressed="wordsCapitalized"
             :aria-label="t('page.widget.caseUpper')"
             @click="wordsCapitalized = true"
@@ -277,11 +280,11 @@ async function insertIntoChat() {
       >
         <span
           class="shrink-0 pt-0.5 font-medium text-(--ui-color-base-3)"
-          :class="isBitrixMobile ? 'w-12 text-xs' : 'w-9 text-[10px]'"
+          :class="wordsLabelClass"
         >BYN</span>
         <span
           class="flex-1 leading-snug text-(--ui-color-base-1)"
-          :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
+          :class="wordsTextClass"
         >{{ displayBynWords }}</span>
         <B24Button
           v-if="!isBitrixMobile"
@@ -299,11 +302,11 @@ async function insertIntoChat() {
       >
         <span
           class="shrink-0 pt-0.5 font-medium text-(--ui-color-base-3)"
-          :class="isBitrixMobile ? 'w-12 text-xs' : 'w-9 text-[10px]'"
+          :class="wordsLabelClass"
         >RUB</span>
         <span
           class="flex-1 leading-snug text-(--ui-color-base-1)"
-          :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
+          :class="wordsTextClass"
         >{{ displayRubWords }}</span>
         <B24Button
           v-if="!isBitrixMobile"
