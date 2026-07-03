@@ -14,10 +14,14 @@ export interface CachedRates {
 }
 
 /**
- * Versioned key: bump the suffix on any {@link CachedRates} shape change to
- * drop stale caches written by an older build.
+ * Versioned key: bump the suffix on any {@link CachedRates} shape change — or
+ * when the currency catalogue gains a code — to drop stale caches written by an
+ * older build. Without a bump, a returning visitor whose cache is still within
+ * the 12h TTL keeps seeing the old rate set (missing the new currency) until it
+ * expires. `v2` invalidates pre-RSD caches so the Serbian dinar shows up on the
+ * next visit without a manual refresh.
  */
-export const CACHE_KEY = 'nbrb_rates_v1'
+export const CACHE_KEY = 'nbrb_rates_v2'
 
 /** НБ РБ updates rates once per business day; cache for 12 hours. */
 export const CACHE_TTL_MS = 12 * 60 * 60 * 1000
