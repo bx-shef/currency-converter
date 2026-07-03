@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseNbrbRates } from '../app/utils/nbrb'
-import type { NbrbRate } from '../app/utils/nbrb'
+import { mergeRates, parseNbrbRates } from '../app/utils/nbrb'
+import type { NbrbRate, RateEntry } from '../app/utils/nbrb'
 
 /** Builds a raw НБ РБ record with sensible defaults, overridable per field. */
 function rate(overrides: Partial<NbrbRate> = {}): NbrbRate {
@@ -112,5 +112,37 @@ describe('parseNbrbRates', () => {
     expect(parseNbrbRates(undefined)).toEqual([])
     expect(parseNbrbRates({ error: 'boom' })).toEqual([])
     expect(parseNbrbRates('not-json')).toEqual([])
+  })
+})
+
+describe('mergeRates', () => {
+  const daily: RateEntry[] = [{ code: 'USD', bynRate: 3.2 }, { code: 'EUR', bynRate: 3.5 }]
+  const monthly: RateEntry[] = [{ code: 'RSD', bynRate: 0.028 }, { code: 'USD', bynRate: 9.99 }]
+
+  it('appends fallback-only codes (e.g. RSD) after the primary entries', () => {
+    expect(mergeRates(daily, monthly)).toEqual([
+      { code: 'USD', bynRate: 3.2 },
+      { code: 'EUR', bynRate: 3.5 },
+      { code: 'RSD', bynRate: 0.028 }
+    ])
+  })
+
+  it('keeps the primary (daily) rate when a code exists in both feeds', () => {
+    // USD is in both; the daily 3.2 must win over the monthly 9.99.
+    expect(mergeRates(daily, monthly).find(e => e.code === 'USD')?.bynRate).toBe(3.2)
+  })
+
+  it('preserves primary source order, then fallback source order', () => {
+    const primary: RateEntry[] = [{ code: 'A', bynRate: 1 }, { code: 'B', bynRate: 2 }]
+    const fallback: RateEntry[] = [{ code: 'C', bynRate: 3 }, { code: 'A', bynRate: 9 }, { code: 'D', bynRate: 4 }]
+    expect(mergeRates(primary, fallback).map(e => e.code)).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('returns the fallback unchanged when the primary is empty', () => {
+    expect(mergeRates([], monthly)).toEqual(monthly)
+  })
+
+  it('returns the primary unchanged when the fallback is empty', () => {
+    expect(mergeRates(daily, [])).toEqual(daily)
   })
 })

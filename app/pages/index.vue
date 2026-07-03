@@ -165,7 +165,7 @@ onBeforeUnmount(() => {
         class="flex flex-col gap-2"
       >
         <div
-          v-for="i in 7"
+          v-for="i in currencies.length"
           :key="i"
           class="-mx-2 h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
         />

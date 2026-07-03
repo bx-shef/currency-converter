@@ -6,12 +6,17 @@
  */
 import { onMounted, ref } from 'vue'
 import { applyStep, recalcFrom, resolveRecalcSource } from '~/utils/converter'
-import { parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
+import { mergeRates, parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { CACHE_KEY, parseCache, serializeCache, type CachedRates } from '~/utils/ratesCache'
 import { createCurrencyRows, DEFAULT_AMOUNT, MAX_AMOUNT } from '~/config/currencies'
 
-/** НБ РБ daily-rates endpoint (periodicity=0 → official rates). */
-const RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
+/** НБ РБ daily-rates endpoint (periodicity=0 → official rates, updated daily). */
+const DAILY_RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
+/**
+ * НБ РБ monthly-rates endpoint (periodicity=1). Carries currencies the daily
+ * feed omits — e.g. the Serbian dinar (RSD) — so we merge it in as a fallback.
+ */
+const MONTHLY_RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=1'
 /** Cap the fetch so a hanging endpoint surfaces an error, not an endless spinner. */
 const FETCH_TIMEOUT_MS = 10_000
 
@@ -75,15 +80,23 @@ export function useNbrbRates() {
   async function fetchRates() {
     fetchError.value = ''
     try {
-      const data = await $fetch<NbrbRate[]>(RATES_URL, { timeout: FETCH_TIMEOUT_MS })
+      // The daily feed is authoritative and required; the monthly feed only
+      // fills currencies the daily one omits (e.g. RSD), so it is best-effort —
+      // its failure leaves those rows blank but must not fail the whole load.
+      const [daily, monthly] = await Promise.all([
+        $fetch<NbrbRate[]>(DAILY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }),
+        $fetch<NbrbRate[]>(MONTHLY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }).catch(() => [] as NbrbRate[])
+      ])
       // Guard against a malformed/missing `Date`: `new Date('garbage')` yields an
       // Invalid Date whose `toLocaleDateString` is the literal "Invalid Date",
       // which would otherwise reach the UI. Fall back to an empty label instead.
-      const parsedDate = data[0]?.Date ? new Date(data[0].Date) : null
+      // The label follows the daily feed; a monthly-only rate (RSD) is shown
+      // under that date — an accepted simplification (see CLAUDE.md).
+      const parsedDate = daily[0]?.Date ? new Date(daily[0].Date) : null
       const date = parsedDate && !isNaN(parsedDate.getTime())
         ? parsedDate.toLocaleDateString('ru-RU')
         : ''
-      const rateMap = parseNbrbRates(data)
+      const rateMap = mergeRates(parseNbrbRates(daily), parseNbrbRates(monthly))
       // Empty/garbage response would silently zero out every rate; surface it.
       if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
       applyRates(rateMap, date)

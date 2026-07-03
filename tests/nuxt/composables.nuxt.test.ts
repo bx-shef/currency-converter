@@ -5,7 +5,7 @@ import { defineComponent } from 'vue'
 import { useNbrbRates } from '~/composables/useNbrbRates'
 import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
 import { MAX_AMOUNT } from '~/config/currencies'
-import { CACHE_KEY, MOCK_RATES } from './fixtures'
+import { CACHE_KEY, MOCK_MONTHLY_RATES, MOCK_RATES } from './fixtures'
 
 // `$fetch` is mocked via vi.stubGlobal: in the Nuxt test env it resolves off the
 // global, so stubbing globalThis.$fetch intercepts the composable's calls.
@@ -39,11 +39,43 @@ describe('useNbrbRates', () => {
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2) // daily + monthly feed
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
     expect(api.currencies.value.find(c => c.code === 'RUB')?.bynRate).toBeCloseTo(0.036, 10)
     expect(api.loading.value).toBe(false)
     expect(api.ratesDate.value).not.toBe('')
+  })
+
+  it('merges the monthly feed so RSD (daily-feed-omitted) gets a rate', async () => {
+    // Daily feed lacks RSD; the monthly feed carries it. The composable fetches
+    // both in parallel and merges, so the RSD row must end up with a rate.
+    const fetchMock = vi.fn(async (url: string) =>
+      url.includes('periodicity=1') ? MOCK_MONTHLY_RATES : MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    // 2.8198 per 100 dinars → 0.028198 BYN per dinar.
+    expect(api.currencies.value.find(c => c.code === 'RSD')?.bynRate).toBeCloseTo(0.028198, 10)
+    // Daily currencies still load normally.
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+  })
+
+  it('degrades gracefully when only the monthly feed fails', async () => {
+    // Monthly feed down, daily up: no error, daily rows work, RSD stays blank.
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('periodicity=1')) throw new Error('monthly down')
+      return MOCK_RATES
+    })
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.fetchError.value).toBe('')
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+    expect(api.currencies.value.find(c => c.code === 'RSD')?.value).toBeUndefined()
   })
 
   it('uses a fresh cache without hitting the API', async () => {
@@ -70,11 +102,11 @@ describe('useNbrbRates', () => {
 
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2) // daily + monthly
 
     await api.refresh()
     await flushPromises()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(4) // 2 loads × (daily + monthly)
   })
 
   it('ignores a re-entrant refresh while one is already in flight', async () => {
@@ -83,14 +115,14 @@ describe('useNbrbRates', () => {
 
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
-    expect(fetchMock).toHaveBeenCalledTimes(1) // initial mount load
+    expect(fetchMock).toHaveBeenCalledTimes(2) // initial mount load (daily + monthly)
 
     const first = api.refresh() // sets refreshing=true, fetch in flight
     const second = api.refresh() // guard: refreshing → ignored, no fetch
     await Promise.all([first, second])
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledTimes(2) // only the first refresh fetched
+    expect(fetchMock).toHaveBeenCalledTimes(4) // only the first refresh fetched (daily + monthly)
   })
 
   it('refetches when the cached rates are stale (past the 12h TTL)', async () => {
@@ -105,7 +137,7 @@ describe('useNbrbRates', () => {
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2) // daily + monthly
     // Fresh rate from the API, not the stale cached 1.
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
   })
@@ -194,7 +226,7 @@ describe('useNbrbRates', () => {
     const api = await runComposable(() => useNbrbRates())
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2) // daily + monthly
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
     getItem.mockRestore()
   })

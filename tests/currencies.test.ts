@@ -3,7 +3,7 @@ import { createCurrencyRows, DEFAULT_AMOUNT, DEFAULT_CURRENCIES, MAX_AMOUNT } fr
 
 describe('DEFAULT_CURRENCIES', () => {
   it('lists the expected currencies in display order', () => {
-    expect(DEFAULT_CURRENCIES.map(c => c.code)).toEqual(['BYN', 'RUB', 'KZT', 'CNY', 'TRY', 'USD', 'EUR'])
+    expect(DEFAULT_CURRENCIES.map(c => c.code)).toEqual(['BYN', 'RUB', 'KZT', 'CNY', 'RSD', 'TRY', 'USD', 'EUR'])
   })
 
   it('puts BYN first, then RUB', () => {

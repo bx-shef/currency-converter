@@ -55,3 +55,21 @@ export function parseNbrbRates(data: unknown): RateEntry[] {
     .filter(isUsableRate)
     .map(r => ({ code: r.Cur_Abbreviation, bynRate: r.Cur_OfficialRate / r.Cur_Scale }))
 }
+
+/**
+ * Merges two rate lists by currency code, with `primary` winning on conflicts.
+ *
+ * НБ РБ splits its rates across two feeds: most currencies live in the daily
+ * feed (`periodicity=0`), but a few — e.g. the Serbian dinar (RSD) — are
+ * published only monthly (`periodicity=1`). Overlaying the daily feed
+ * (`primary`) on top of the monthly one (`fallback`) keeps the fresher daily
+ * rate for currencies present in both, while letting the monthly feed fill the
+ * codes the daily feed never carries.
+ *
+ * Order: all `primary` entries first (in source order), then `fallback` entries
+ * whose code is not already in `primary`.
+ */
+export function mergeRates(primary: RateEntry[], fallback: RateEntry[]): RateEntry[] {
+  const primaryCodes = new Set(primary.map(e => e.code))
+  return [...primary, ...fallback.filter(e => !primaryCodes.has(e.code))]
+}
