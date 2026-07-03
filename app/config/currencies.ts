@@ -37,6 +37,7 @@ export const DEFAULT_CURRENCIES: readonly CurrencyRow[] = [
   { code: 'RUB', name: 'российский рубль', bynRate: 0, value: undefined },
   { code: 'KZT', name: 'казахстанский тенге', bynRate: 0, value: undefined },
   { code: 'CNY', name: 'китайский юань', bynRate: 0, value: undefined },
+  { code: 'RSD', name: 'сербский динар', bynRate: 0, value: undefined },
   { code: 'TRY', name: 'турецкая лира', bynRate: 0, value: undefined },
   { code: 'USD', name: 'доллар США', bynRate: 0, value: undefined },
   { code: 'EUR', name: 'евро', bynRate: 0, value: undefined }
