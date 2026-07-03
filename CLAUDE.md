@@ -44,7 +44,7 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
-  (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
+  (TTL 12 ч, ключ `nbrb_rates_v2`), состояние строк и действия ввода (+/−, пересчёт).
   Тянет **два** фида параллельно: дневной (`periodicity=0`, основной) и месячный
   (`periodicity=1`, best-effort — его падение не роняет загрузку). Часть валют НБ РБ
   публикует только помесячно (напр. сербский динар `RSD`), поэтому месячный фид
