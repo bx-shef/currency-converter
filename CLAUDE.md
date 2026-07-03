@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-06-30
+> Last reviewed: 2026-07-03
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -45,6 +45,11 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v1`), состояние строк и действия ввода (+/−, пересчёт).
+  Тянет **два** фида параллельно: дневной (`periodicity=0`, основной) и месячный
+  (`periodicity=1`, best-effort — его падение не роняет загрузку). Часть валют НБ РБ
+  публикует только помесячно (напр. сербский динар `RSD`), поэтому месячный фид
+  мёржится в дневной через `mergeRates` (дневной курс приоритетнее). `ratesDate` берётся
+  из дневного фида — месячный курс показывается под этой датой (осознанное упрощение).
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
@@ -55,7 +60,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   `formatPlainAmount` («чистое» число с точкой для буфера) и `quarterOfDate`/`quarterLabel`
   (текущий календарный квартал для блока формулы, напр. «II квартал 2026»).
 - `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**).
-- `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`).
+- `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`) и `mergeRates`
+  (слияние дневного и месячного фидов по коду валюты, приоритет у первого).
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.

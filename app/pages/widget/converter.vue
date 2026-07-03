@@ -162,7 +162,7 @@ async function insertIntoChat() {
         class="space-y-1"
       >
         <div
-          v-for="i in 6"
+          v-for="i in currencies.length"
           :key="i"
           class="animate-pulse rounded bg-(--ui-color-base-2)"
           :class="isBitrixMobile ? 'h-11' : 'h-8'"
