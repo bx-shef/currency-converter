@@ -90,6 +90,10 @@ function rowCopyColor(code: string) {
 
 // Root content element — measured to fit the B24 iframe to its content.
 const rootEl = ref<HTMLElement | null>(null)
+// The promo below the calculator is standalone-only: hidden inside any iframe
+// embedding (e.g. the Bitrix24 portal), the same guard metrika.js uses. Resolved
+// on the client in onMounted; SSG renders it visible for the standalone site.
+const isEmbedded = ref(false)
 // Kept at setup scope so onBeforeUnmount (registered synchronously below) can
 // tear them down even though they're created inside the async onMounted.
 let resizeObserver: ResizeObserver | null = null
@@ -100,6 +104,7 @@ let fitRaf = 0
 // double scroll inside the app frame (fitWindow). Re-fit on content changes —
 // rates loading, rows added/removed, the «прописью» block wrapping, theme.
 onMounted(async () => {
+  isEmbedded.value = window.self !== window.top
   if (!isB24.value) return
   let $b24: B24Frame
   try {
@@ -134,8 +139,13 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="rootEl"
-    class="flex justify-center px-3 py-3 sm:px-4 sm:py-6"
+    class="flex flex-col items-center px-3 py-3 sm:px-4 sm:py-6"
   >
+    <!-- Document heading for SEO/a11y (the page has no visible title — the tool
+         itself is the hero). sr-only so it stays out of the flex layout. -->
+    <h1 class="sr-only">
+      Конвертер валют по официальному курсу НБ РБ
+    </h1>
     <div class="w-full max-w-sm sm:max-w-[464px]">
       <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
@@ -350,5 +360,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+    <ConverterPromo v-if="!isEmbedded" />
   </div>
 </template>
