@@ -24,6 +24,14 @@ ARG NUXT_PUBLIC_AUTHOR_NAME
 ENV NUXT_PUBLIC_AUTHOR_NAME=$NUXT_PUBLIC_AUTHOR_NAME
 ARG NUXT_PUBLIC_AUTHOR_URL
 ENV NUXT_PUBLIC_AUTHOR_URL=$NUXT_PUBLIC_AUTHOR_URL
+# Git commit of this build — the footer links to it. CI passes ${{ github.sha }}.
+# Baked into the SSG output at `pnpm generate`, so it must be set before it runs.
+ARG NUXT_PUBLIC_COMMIT_SHA
+ENV NUXT_PUBLIC_COMMIT_SHA=$NUXT_PUBLIC_COMMIT_SHA
+# Bitrix24 Marketplace listing URL (empty until published → promo card links to
+# /install instead). Baked at generate time like the other public config.
+ARG NUXT_PUBLIC_MARKETPLACE_URL
+ENV NUXT_PUBLIC_MARKETPLACE_URL=$NUXT_PUBLIC_MARKETPLACE_URL
 # Generate OG image from SVG (DejaVu supports Cyrillic).
 # inkscape 1.x replaces rsvg-convert which was removed in librsvg 2.57+
 RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \

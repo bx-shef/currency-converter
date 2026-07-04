@@ -7,6 +7,8 @@ import ThemeIcon from '@bitrix24/b24icons-vue/outline/ThemeIcon'
 import CodeIcon from '@bitrix24/b24icons-vue/common-service/CodeIcon'
 import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
+import ReceiptIcon from '@bitrix24/b24icons-vue/outline/ReceiptIcon'
+import { CLIENT_BANK_LANDING_URL } from '~/utils/site'
 
 const config = useRuntimeConfig()
 
@@ -45,6 +47,13 @@ if (yandexCounterId) {
 
 const navItems = [
   [
+    {
+      // Sibling product landing (client-bank statement import).
+      label: 'Импорт выписки клиент-банка',
+      icon: ReceiptIcon,
+      to: CLIENT_BANK_LANDING_URL,
+      target: '_blank'
+    },
     {
       label: 'Документация',
       icon: OpenBookIcon,

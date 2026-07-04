@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-03
+> Last reviewed: 2026-07-04
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -33,7 +33,9 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`). Сам `/` тоже
   на этом layout и может открыться как B24-приложение (dual-mode), поэтому `public/metrika.js`
   дополнительно глушит себя в iframe (`window.self !== window.top`) — это держит трекинг и
-  его CSP-блокируемые sync-пиксели вне портала.
+  его CSP-блокируемые sync-пиксели вне портала. Навигация (левое меню/бургер) ведёт на
+  соседний лендинг «Импорт выписки клиент-банка» (`CLIENT_BANK_LANDING_URL` из `utils/site.ts`)
+  и на документацию b24ui/b24jssdk/b24icons/REST.
   `app/layouts/clear.vue` — минимальный layout под `/install` и виджет (только `<B24App>`).
 - `app/pages/index.vue` — экран конвертера (тонкий): разметка строк, прописью, формула;
   логика — в composables ниже. Внутри B24-фрейма зовёт `parent.setTitle`, затем
@@ -41,7 +43,24 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   RAF-коалесинг, teardown в `onBeforeUnmount`) — чтобы у портала был один внешний скролл.
   В мобильном приложении Б24 (`useDevice().isBitrixMobile` из b24ui — детект по
   `BitrixMobile/…` User-Agent) прячет кнопки копирования (в WebView нет Clipboard API).
-- `app/components/SiteFooter.vue` — центральные ссылки подвала (НБ РБ, оферта) для слота `B24Footer`.
+  Под калькулятором — промо-блок `<ConverterPromo>`, показываемый **только standalone**:
+  скрыт внутри любого iframe (`isEmbedded = window.self !== window.top`, тот же приём, что
+  и у metrika.js), чтобы не засорять вид в портале Б24.
+- `app/components/ConverterPromo.vue` — standalone-промо под калькулятором: карточка
+  «Приложение для Bitrix24» (CTA — Маркет Б24, а при пустом `marketplaceUrl` фолбэк на
+  `/install`, чтобы не было битой ссылки) и баннер «Нужна доработка под ваш процесс?»
+  (ведёт на `offer.bx-shef.by`). Тема — нативный b24ui light/dark (не форс-dark: это простой
+  инструмент, а не тёмный брендовый лендинг). Тексты/ссылки — из `utils/site.ts`.
+- `app/utils/site.ts` — единый источник standalone-контента: экосистемные ссылки
+  (`FOOTER_LINKS`, `ECOSYSTEM_TOOLS` — без self-link на сам конвертер), URL соседних
+  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), тексты промо (`PROMO_*`) и чистые
+  резолверы `marketplaceHref`/`isMarketplaceListing` (Маркет → `/install`-фолбэк). Покрыт `tests/site.test.ts`.
+- `app/utils/build.ts` — версия сборки для подвала: `shortSha`/`commitUrl` (ссылка «сборка
+  &lt;sha&gt;» на точный коммит; sha из `NUXT_PUBLIC_COMMIT_SHA`, в CI — `github.sha`, в dev пусто →
+  «сборка dev»). Чистый, покрыт `tests/build.test.ts`.
+- `app/components/SiteFooter.vue` — центральный блок подвала (`B24Footer`): источник/партнёр
+  (`FOOTER_LINKS`), соседние бесплатные инструменты (`ECOSYSTEM_TOOLS` — **без self-link на
+  конвертер**) и ссылка на коммит сборки. Данные — из `utils/site.ts`/`utils/build.ts`.
 - `app/config/currencies.ts` — каталог валют (`DEFAULT_CURRENCIES`, `MAX_AMOUNT`, `DEFAULT_AMOUNT`).
 - `app/composables/useNbrbRates.ts` — загрузка курсов (`api.nbrb.by`), кэш в `localStorage`
   (TTL 12 ч, ключ `nbrb_rates_v2`), состояние строк и действия ввода (+/−, пересчёт).
@@ -65,7 +84,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
-- `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву.
+- `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву (в т.ч. `build.test.ts` —
+  `shortSha`/`commitUrl`, и `site.test.ts` — резолверы Маркета + инвариант «нет self-link на конвертер»).
 - `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
   на composables (`useNbrbRates`, `useCopyFeedback`), colorMode, страницы `index.vue`,
   `widget/converter.vue` (рендер/ошибка) и вставку в чат (`im:setImTextareaContent`,
@@ -118,7 +138,9 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   удаление из обеих локалей) — собирает все статические `t('...')` из `app/` и сверяет с `en.json`.
 - `nuxt.config.ts` — `nitro.prerender.routes` явно перечисляет `/install` и `/widget/converter`
   (на них нет ссылок, иначе краулер их пропустит). `runtimeConfig.public`: `siteUrl`, `authorName`,
-  `authorUrl` (через build-args, см. Dockerfile/ci).
+  `authorUrl`, `commitSha` (коммит сборки — подвал), `marketplaceUrl` (Маркет Б24 — промо-блок)
+  — все через build-args (см. Dockerfile/ci). Значения запекаются в SSG-бандл на `generate`,
+  поэтому build-arg должен присутствовать до сборки.
 - `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
   (`*.bitrix24.*`), иначе iframe-встройка и REST-вызовы install падают. Self-hosted порталы
   на своём домене нужно добавлять туда вручную.

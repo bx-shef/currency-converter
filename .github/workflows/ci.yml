@@ -123,5 +123,7 @@ jobs:
             NUXT_PUBLIC_SITE_URL=${{ vars.NUXT_PUBLIC_SITE_URL }}
             NUXT_PUBLIC_AUTHOR_NAME=${{ vars.NUXT_PUBLIC_AUTHOR_NAME }}
             NUXT_PUBLIC_AUTHOR_URL=${{ vars.NUXT_PUBLIC_AUTHOR_URL }}
+            NUXT_PUBLIC_COMMIT_SHA=${{ github.sha }}
+            NUXT_PUBLIC_MARKETPLACE_URL=${{ vars.NUXT_PUBLIC_MARKETPLACE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

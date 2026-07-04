@@ -25,7 +25,14 @@ export default defineNuxtConfig({
       siteUrl: '',
       // Author shown in the IM_TEXTAREA widget footer.
       authorName: 'bx-shef',
-      authorUrl: 'https://bx-shef.by'
+      authorUrl: 'https://bx-shef.by',
+      // Git commit the build came from — shown in the footer as a link to the
+      // exact commit. CI passes ${{ github.sha }}; empty in dev.
+      commitSha: '',
+      // Bitrix24 Marketplace listing of this app. Empty until published — the
+      // promo card then falls back to the in-app install flow (`/install`)
+      // instead of a dead link. Override via NUXT_PUBLIC_MARKETPLACE_URL.
+      marketplaceUrl: ''
     }
   },
 
