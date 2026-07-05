@@ -52,17 +52,24 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
     `NUXT_PUBLIC_MARKETPLACE_URL`; пустой обеих → карточка скрыта (fail-safe, ссылку на
     `/install` не выдумываем). Константа-дефолт нужна, чтобы карточка показывалась даже без
     заданной CI-переменной (пустой env иначе обнулил бы дефолт runtimeConfig).
-    На мобильном — круглая кнопка-«отпечаток» (hold-to-reveal, issue #30, паттерн визитки
-    из репо `Lp`): удержание сменяет содержимое карточки на QR со ссылкой на Маркет. QR
-    генерит `qrcode` (**динамический импорт** в `onMounted` — грузится только при заданном
-    Маркете), цель Метрики `market_qr_reveal`. Иконка «отпечаток» — inline-SVG (в b24icons
-    2.0.7 её нет);
+    На мобильном — круглая кнопка-«отпечаток» (компонент `<HoldRevealQr>`), цель `market_qr_reveal`;
   - баннер «Нужна доработка под ваш процесс?» — **показывается везде, в т.ч. внутри
     портала** (предложение доработки актуально и там); оформлен премиальной b24ui-карточкой
     `B24Card variant="filled-copilot"` (радиальный copilot-градиент, слоты header/body/footer).
+    На мобильном — такая же кнопка-«отпечаток» (`<HoldRevealQr dark>`), QR ведёт на партнёрский
+    сайт `MAIN_SITE_URL` (`offer.bx-shef.by/` без `#hash` — QR на якорь бессмыслен), цель
+    `custom_dev_qr_reveal`.
+  Обе карточки — `relative overflow-hidden`, чтобы QR-оверлей накрыл всю карточку.
   Iframe детектится как `isEmbedded = window.self !== window.top` (тот же приём, что у
-  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`/`market_qr_reveal`)
-  через `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
+  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`) через
+  `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
+- `app/components/HoldRevealQr.vue` — переиспользуемая кнопка-«отпечаток» с QR
+  (hold-to-reveal, issue #30, паттерн визитки из репо `Lp`): удержание накрывает
+  родительскую карточку (`relative overflow-hidden`) оверлеем с QR. Пропсы `url`/`goal`/
+  `caption`/`hint`/`dark`. Акцент — бренд-токен `--color-accent-primary-ch` (единый по
+  экосистеме). `qrcode` — **динамический импорт**, генерится **только на мобильном**
+  (`matchMedia`, ленивая `ensureQr` и на удержании) → на десктопе не грузится. Иконка —
+  inline-SVG (в b24icons 2.0.7 её нет). Задуман переносимым в `Lp`/`client-bank`.
 - `app/composables/useMetrikaGoal.ts` — обёртка над `ym reachGoal` (тонкая): берёт
   `yandexCounterId` из runtimeConfig и `window.ym`, делегирует в чистое ядро `utils/metrika.ts`
   (`reachMetrikaGoal` — no-op при пустом/невалидном счётчике или незагруженной Метрике; покрыто
