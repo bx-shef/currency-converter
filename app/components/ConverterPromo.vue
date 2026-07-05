@@ -34,6 +34,7 @@ const showMarketplace = computed(() =>
       :text="PROMO_MARKETPLACE.text"
       :cta-label="PROMO_MARKETPLACE.cta"
       :url="marketUrl"
+      click-goal="market_card_click"
     />
 
     <CustomDevCard />

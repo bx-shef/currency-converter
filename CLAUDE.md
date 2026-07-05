@@ -54,7 +54,10 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   URL Маркета конвертера — константа `MARKETPLACE_URL` в `utils/site.ts` (`shef.currencyconverter`),
   переопределяется env `NUXT_PUBLIC_MARKETPLACE_URL`; пустой обеих → карточка скрыта (fail-safe).
   Константа-дефолт нужна, чтобы карточка показывалась без CI-переменной (пустой env иначе обнулил
-  бы дефолт runtimeConfig). Цели `market_click`/`market_qr_reveal`.
+  бы дефолт runtimeConfig). Клик CTA — цель `market_card_click` (передаётся из `ConverterPromo`
+  явно; единое имя цели карточки по экосистеме — ср. hero-ссылку на Маркет в `client-bank`, у
+  которой отдельная `market_click`), показ QR — `market_qr_reveal`. Дефолт пропа `clickGoal` в
+  компоненте — родовой `market_click` (фолбэк, если карточку встроят без явной цели).
 - `app/components/CustomDevCard.vue` — баннер «Нужна доработка под ваш процесс?» (премиальная
   `B24Card variant="filled-copilot"`). **Самодостаточный**: текст и ссылки ИП Шевчик зашиты
   (оффер один на всю экосистему), пропсы — только имена целей. QR (`<HoldRevealQr dark>`) ведёт
