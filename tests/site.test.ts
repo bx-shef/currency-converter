@@ -3,7 +3,6 @@ import {
   FOOTER_LINKS,
   ECOSYSTEM_TOOLS,
   CLIENT_BANK_LANDING_URL,
-  CUSTOM_DEV_URL,
   MARKETPLACE_URL,
   isMarketplaceListing,
   resolveMarketplaceUrl
@@ -72,11 +71,5 @@ describe('footer link lists', () => {
   it('links out to the client-bank landing among the tools', () => {
     expect(ECOSYSTEM_TOOLS.some(t => t.href === CLIENT_BANK_LANDING_URL)).toBe(true)
     expect(CLIENT_BANK_LANDING_URL).toMatch(/^https:\/\//)
-  })
-})
-
-describe('custom-dev CTA', () => {
-  it('points at the partner site brief', () => {
-    expect(CUSTOM_DEV_URL).toMatch(/^https:\/\/offer\.bx-shef\.by/)
   })
 })

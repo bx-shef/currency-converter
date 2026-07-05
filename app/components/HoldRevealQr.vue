@@ -23,7 +23,10 @@ const props = withDefaults(defineProps<{
   hint?: string
   /** True when the enclosing card is always dark (skip the light-theme styling). */
   dark?: boolean
-}>(), { goal: '', caption: '', hint: 'QR', dark: false })
+  /** Trigger layout: 'row' (hint left, button right — the promo cards) or
+   *  'stack' (button on top, hint centered below — the business-card modal). */
+  orientation?: 'row' | 'stack'
+}>(), { goal: '', caption: '', hint: 'QR', dark: false, orientation: 'row' })
 
 const { reachGoal } = useMetrikaGoal()
 
@@ -107,11 +110,20 @@ function stopQr() {
     </div>
   </div>
 
-  <!-- Fingerprint button anchored right (right-thumb zone); hint on the left. -->
-  <div class="relative z-30 flex items-center justify-between gap-3 sm:hidden">
+  <!-- Trigger. 'row': hint left, button right (right-thumb zone). 'stack':
+       button on top, hint centered below (flex-col-reverse keeps DOM order). -->
+  <div
+    class="relative z-30 flex sm:hidden"
+    :class="orientation === 'stack'
+      ? 'flex-col-reverse items-center gap-2'
+      : 'items-center justify-between gap-3'"
+  >
     <span
       class="font-mono text-[11px]"
-      :class="dark ? 'text-white/50' : 'text-gray-500 dark:text-white/50'"
+      :class="[
+        dark ? 'text-white/50' : 'text-gray-500 dark:text-white/50',
+        orientation === 'stack' ? 'text-center' : ''
+      ]"
     >
       {{ showQr ? 'Отпустите' : `Удерживайте — ${hint}` }}
     </span>

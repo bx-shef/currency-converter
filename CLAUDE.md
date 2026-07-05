@@ -44,42 +44,44 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   В мобильном приложении Б24 (`useDevice().isBitrixMobile` из b24ui — детект по
   `BitrixMobile/…` User-Agent) прячет кнопки копирования (в WebView нет Clipboard API).
   Под калькулятором — промо-блок `<ConverterPromo>` (см. ниже).
-- `app/components/ConverterPromo.vue` — промо под калькулятором из двух блоков с **разной
-  видимостью**:
-  - карточка «Приложение для Bitrix24» — **только standalone** (скрыта в iframe: в портале
-    приложение уже стоит). URL Маркета — константа `MARKETPLACE_URL` в `utils/site.ts`
-    (опубликованный листинг `shef.currencyconverter`), переопределяется env
-    `NUXT_PUBLIC_MARKETPLACE_URL`; пустой обеих → карточка скрыта (fail-safe, ссылку на
-    `/install` не выдумываем). Константа-дефолт нужна, чтобы карточка показывалась даже без
-    заданной CI-переменной (пустой env иначе обнулил бы дефолт runtimeConfig).
-    На мобильном — круглая кнопка-«отпечаток» (компонент `<HoldRevealQr>`), цель `market_qr_reveal`;
-  - баннер «Нужна доработка под ваш процесс?» — **показывается везде, в т.ч. внутри
-    портала** (предложение доработки актуально и там); оформлен премиальной b24ui-карточкой
-    `B24Card variant="filled-copilot"` (радиальный copilot-градиент, слоты header/body/footer).
-    На мобильном — такая же кнопка-«отпечаток» (`<HoldRevealQr dark>`), QR ведёт на партнёрский
-    сайт `MAIN_SITE_URL` (`offer.bx-shef.by/` без `#hash` — QR на якорь бессмыслен), цель
-    `custom_dev_qr_reveal`.
-  Обе карточки — `relative overflow-hidden`, чтобы QR-оверлей накрыл всю карточку.
-  Iframe детектится как `isEmbedded = window.self !== window.top` (тот же приём, что у
-  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`) через
-  `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
+- `app/components/ConverterPromo.vue` — **тонкая обёртка**: собирает две вынесенные карточки
+  под калькулятором. `<AppInBitrixCard>` — **только standalone** (скрыта в iframe: в портале
+  приложение уже стоит) и по признаку `showMarketplace`. `<CustomDevCard>` — всегда.
+  Iframe детектится как `isEmbedded = window.self !== window.top` (тот же приём, что у metrika.js).
+- `app/components/AppInBitrixCard.vue` — карточка «Приложение для Bitrix24» (light/dark-auto,
+  cyan). Контент — **через пропсы** (у каждого приложения свой листинг Маркета); на мобильном —
+  кнопка-«отпечаток» `<HoldRevealQr>` (QR листинга). Переносима в `client-bank` (свои тексты).
+  URL Маркета конвертера — константа `MARKETPLACE_URL` в `utils/site.ts` (`shef.currencyconverter`),
+  переопределяется env `NUXT_PUBLIC_MARKETPLACE_URL`; пустой обеих → карточка скрыта (fail-safe).
+  Константа-дефолт нужна, чтобы карточка показывалась без CI-переменной (пустой env иначе обнулил
+  бы дефолт runtimeConfig). Клик CTA — цель `market_card_click` (передаётся из `ConverterPromo`
+  явно; единое имя цели карточки по экосистеме — ср. hero-ссылку на Маркет в `client-bank`, у
+  которой отдельная `market_click`), показ QR — `market_qr_reveal`. Дефолт пропа `clickGoal` в
+  компоненте — родовой `market_click` (фолбэк, если карточку встроят без явной цели).
+- `app/components/CustomDevCard.vue` — баннер «Нужна доработка под ваш процесс?» (премиальная
+  `B24Card variant="filled-copilot"`). **Самодостаточный**: текст и ссылки ИП Шевчик зашиты
+  (оффер один на всю экосистему), пропсы — только имена целей. QR (`<HoldRevealQr dark>`) ведёт
+  на `offer.bx-shef.by/` (без `#hash`), CTA-клик — на `#brief`. Цели `custom_dev_click`/
+  `custom_dev_qr_reveal`. Переносим на **внутренние страницы** `client-bank`.
 - `app/components/HoldRevealQr.vue` — переиспользуемая кнопка-«отпечаток» с QR
   (hold-to-reveal, issue #30, паттерн визитки из репо `Lp`): удержание накрывает
   родительскую карточку (`relative overflow-hidden`) оверлеем с QR. Пропсы `url`/`goal`/
-  `caption`/`hint`/`dark`. Акцент — бренд-токен `--color-accent-primary-ch` (единый по
-  экосистеме). `qrcode` — **динамический импорт**, генерится **только на мобильном**
-  (`matchMedia`, ленивая `ensureQr` и на удержании) → на десктопе не грузится. Иконка —
-  inline-SVG (в b24icons 2.0.7 её нет). Задуман переносимым в `Lp`/`client-bank`.
+  `caption`/`hint`/`dark`/`orientation` (`'row'` — подпись слева, кнопка справа; `'stack'` —
+  кнопка сверху, подпись под ней, для модалки-визитки). Акцент — бренд-токен
+  `--color-accent-primary-ch`, тон-адаптивный (cyan-600 на светлой карточке, токен на тёмной).
+  `qrcode` — **динамический импорт**, генерится **лениво только по удержанию** → на десктопе и
+  у тех, кто не трогает кнопку, не грузится. Иконка — inline-SVG (в b24icons 2.0.7 её нет).
+  Задуман переносимым в `Lp`/`client-bank`.
 - `app/composables/useMetrikaGoal.ts` — обёртка над `ym reachGoal` (тонкая): берёт
   `yandexCounterId` из runtimeConfig и `window.ym`, делегирует в чистое ядро `utils/metrika.ts`
   (`reachMetrikaGoal` — no-op при пустом/невалидном счётчике или незагруженной Метрике; покрыто
   `tests/metrika.test.ts`). Внутри портала Б24 Метрика заглушена (metrika.js) → цели no-op.
 - `app/utils/site.ts` — единый источник standalone-контента: экосистемные ссылки
-  (`FOOTER_LINKS`, `ECOSYSTEM_TOOLS` — без self-link на сам конвертер), URL соседних
-  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), опубликованный листинг Маркета
-  (`MARKETPLACE_URL`), тексты промо (`PROMO_*`), резолвер `resolveMarketplaceUrl` (env-override
-  с `.trim()` → фолбэк на константу) и предикат `isMarketplaceListing` (показ карточки).
-  Покрыт `tests/site.test.ts`.
+  (`FOOTER_LINKS`, `ECOSYSTEM_TOOLS` — без self-link на сам конвертер), URL соседнего
+  проекта (`CLIENT_BANK_LANDING_URL`), опубликованный листинг Маркета (`MARKETPLACE_URL`),
+  тексты карточки Маркета (`PROMO_MARKETPLACE` → `<AppInBitrixCard>`; копия custom-dev-карточки
+  зашита в `<CustomDevCard>`), резолвер `resolveMarketplaceUrl` (env-override с `.trim()` →
+  фолбэк на константу) и предикат `isMarketplaceListing` (показ карточки). Покрыт `tests/site.test.ts`.
 - `app/utils/build.ts` — версия сборки для подвала: `shortSha`/`commitUrl` (ссылка «сборка
   &lt;sha&gt;» на точный коммит; sha из `NUXT_PUBLIC_COMMIT_SHA`, в CI — `github.sha`, в dev пусто →
   «сборка dev»). Чистый, покрыт `tests/build.test.ts`.

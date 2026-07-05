@@ -17,9 +17,6 @@ export const MAIN_SITE_URL = 'https://offer.bx-shef.by/'
 /** Sibling product landing: the client-bank statement import app. */
 export const CLIENT_BANK_LANDING_URL = 'https://bank-import.bx-shef.by/'
 
-/** Custom-development CTA target: the partner site's request brief. */
-export const CUSTOM_DEV_URL = 'https://offer.bx-shef.by/#brief'
-
 /**
  * Bitrix24 Marketplace listing of this app (public, stable). Used as the default
  * for the «app in Bitrix24» card; `NUXT_PUBLIC_MARKETPLACE_URL` can override it
@@ -55,20 +52,14 @@ export const ECOSYSTEM_TOOLS: readonly SiteLink[] = [
   { id: 'bbcode', label: 'BBCode ↔ Markdown', href: 'https://bx-shef.github.io/app-convert-bbocode-md/' }
 ]
 
-/** Copy for the «app in Bitrix24» promo card. */
+/** Copy for the «app in Bitrix24» promo card (passed to <AppInBitrixCard>). The
+ * custom-dev card's copy is baked into <CustomDevCard> — it's the same offer
+ * across the ecosystem. */
 export const PROMO_MARKETPLACE = {
   eyebrow: 'Приложение для Bitrix24',
   title: 'Конвертер прямо в чате Bitrix24',
   text: 'Виджет в панели над полем ввода сообщения: курс НБ РБ, сумма прописью и вставка в сообщение — не выходя из чата.',
   cta: 'Открыть в Маркете Bitrix24'
-} as const
-
-/** Copy for the custom-development banner. */
-export const PROMO_CUSTOM_DEV = {
-  eyebrow: 'ИП Шевчик · Партнёр Bitrix24',
-  title: 'Нужна доработка под ваш процесс?',
-  text: 'Дорабатываем приложения и автоматизируем Bitrix24 под вашу задачу — от небольших правок до интеграций с банками и 1С.',
-  cta: 'Обсудить доработку'
 } as const
 
 /**
