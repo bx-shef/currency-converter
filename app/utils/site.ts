@@ -40,8 +40,7 @@ export const PROMO_MARKETPLACE = {
   eyebrow: 'Приложение для Bitrix24',
   title: 'Конвертер прямо в чате Bitrix24',
   text: 'Виджет в панели над полем ввода сообщения: курс НБ РБ, сумма прописью и вставка в сообщение — не выходя из чата.',
-  ctaMarket: 'Открыть в Маркете Bitrix24',
-  ctaInstall: 'Добавить в свой Bitrix24'
+  cta: 'Открыть в Маркете Bitrix24'
 } as const
 
 /** Copy for the custom-development banner. */
@@ -53,17 +52,10 @@ export const PROMO_CUSTOM_DEV = {
 } as const
 
 /**
- * Resolve the «app in Bitrix24» CTA target: the Marketplace listing when one is
- * configured (`NUXT_PUBLIC_MARKETPLACE_URL`), otherwise the in-app install page
- * `/install` — so the button is never a dead link before the app is published.
- */
-export function marketplaceHref(configured: string | undefined | null): string {
-  return (configured ?? '').trim() || '/install'
-}
-
-/**
- * Whether the configured value points at a real Marketplace listing (vs the
- * `/install` fallback) — drives the CTA label and whether it opens in a new tab.
+ * Whether a real Marketplace listing is configured (`NUXT_PUBLIC_MARKETPLACE_URL`).
+ * When empty the «app in Bitrix24» promo card is hidden entirely — we don't
+ * fabricate a link (e.g. to `/install`), which would be misleading before the
+ * app is actually published to the Marketplace.
  */
 export function isMarketplaceListing(configured: string | undefined | null): boolean {
   return Boolean((configured ?? '').trim())
