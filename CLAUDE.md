@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-04
+> Last reviewed: 2026-07-05
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -48,13 +48,18 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   видимостью**:
   - карточка «Приложение для Bitrix24» — **только standalone** (скрыта в iframe: в портале
     приложение уже стоит) **и только если задан** `marketplaceUrl` (Маркет Б24); пусто →
-    карточка скрыта (ссылку на `/install` не выдумываем — это вводило бы в заблуждение);
+    карточка скрыта (ссылку на `/install` не выдумываем — это вводило бы в заблуждение).
+    На мобильном — круглая кнопка-«отпечаток» (hold-to-reveal, issue #30, паттерн визитки
+    из репо `Lp`): удержание сменяет содержимое карточки на QR со ссылкой на Маркет. QR
+    генерит `qrcode` (**динамический импорт** в `onMounted` — грузится только при заданном
+    Маркете), цель Метрики `market_qr_reveal`. Иконка «отпечаток» — inline-SVG (в b24icons
+    2.0.7 её нет);
   - баннер «Нужна доработка под ваш процесс?» — **показывается везде, в т.ч. внутри
     портала** (предложение доработки актуально и там); оформлен премиальной b24ui-карточкой
     `B24Card variant="filled-copilot"` (радиальный copilot-градиент, слоты header/body/footer).
   Iframe детектится как `isEmbedded = window.self !== window.top` (тот же приём, что у
-  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`) через
-  `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
+  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`/`market_qr_reveal`)
+  через `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
 - `app/composables/useMetrikaGoal.ts` — обёртка над `ym reachGoal` (тонкая): берёт
   `yandexCounterId` из runtimeConfig и `window.ym`, делегирует в чистое ядро `utils/metrika.ts`
   (`reachMetrikaGoal` — no-op при пустом/невалидном счётчике или незагруженной Метрике; покрыто
