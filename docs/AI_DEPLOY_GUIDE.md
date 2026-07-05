@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-06-29
+> Last reviewed: 2026-07-05
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -48,8 +48,8 @@ push в main
    Включается, **только если на сервере nginx-proxy ещё не стоит**.
 7. **`.env.prod.example`** — `DOMAIN`, `LETSENCRYPT_EMAIL` (+ runtime env приложения,
    если есть). Реальный `.env.prod` лежит на сервере, не в git.
-8. **`Makefile`** — `prod-up`, `prod-down`, `prod-pull`, `prod-redeploy`, `logs`,
-   `init-network`, `init-nginxproxy`.
+8. **`Makefile`** — `prod-up`, `prod-down`, `prod-pull`, `prod-redeploy`,
+   `prod-smoke`, `prod-rollback`, `logs`, `init-network`, `init-nginxproxy`.
 9. **`README.md`** — раздел Deploy: ссылки на raw-URL файлов и команды для сервера.
 
 ---
@@ -273,6 +273,28 @@ cp .env.prod.example .env.prod && nano .env.prod
   задан в `.env.prod` nginx-proxy.
 - CI падает на `pnpm install` с cache → грабли #10, нет lockfile.
 - Сборка падает на rsvg/inkscape → грабли #11.
+
+---
+
+## Откат, smoke-тест и SHA-пины (issue #52)
+
+**Smoke-тест после деплоя.** `make prod-redeploy` теперь в конце гоняет
+`make prod-smoke` — опрашивает контейнер (`wget http://localhost:8080/`, ~15 c,
+переживает `start_period` healthcheck). Если приложение не отвечает — команда
+падает с ненулевым кодом (сигнал, а не «молчаливый» деплой битого образа).
+
+**Откат.** CI тегает каждый образ `sha-<коммит>` (`docker/metadata-action`), тег
+**immutable**. Образ в `docker-compose.prod.yml` — `:${APP_IMAGE_TAG:-latest}`,
+поэтому откат = `make prod-rollback TAG=sha-<коммит>` (подставит тег, поднимет,
+прогонит smoke). Watchtower не трогает immutable sha-тег; вернуть авто-обновление
+`latest` — `make prod-redeploy`.
+
+**SHA-пины сторонних GitHub Actions.** В `.github/workflows/ci.yml` все `uses:`
+запинены на полный commit-SHA с комментарием `# vX.Y.Z` (иначе мутабельный тег
+можно переназначить на вредоносный код). Обновляет Dependabot (ecosystem
+`github-actions`, см. `.github/dependabot.yml`) — он бампит и SHA, и комментарий.
+Так же **обязательно** пиновать floating-теги образов с доступом к `docker.sock`
+(Watchtower, nginx-proxy, acme-companion — уже сделано).
 
 ---
 

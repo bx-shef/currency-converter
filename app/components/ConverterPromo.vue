@@ -136,12 +136,17 @@ function stopQr() {
       </B24Button>
 
       <!-- Mobile fingerprint → hold to reveal the Marketplace QR (issue #30).
-           relative z-30 keeps the button above the overlay (z-20) so it stays
-           visible and receives pointerup while held. -->
-      <div class="relative z-30 mt-4 flex items-center gap-3 sm:hidden">
+           Anchored to the row's right edge — the natural right-thumb reach on a
+           phone (the hint sits on the left). relative z-30 keeps the button
+           above the overlay (z-20) so it stays visible and receives pointerup
+           while held. -->
+      <div class="relative z-30 mt-4 flex items-center justify-between gap-3 sm:hidden">
+        <span class="font-mono text-[11px] text-gray-500 dark:text-white/60">
+          {{ showQr ? 'Отпустите' : 'Удерживайте — QR Маркета' }}
+        </span>
         <button
           type="button"
-          class="flex size-14 shrink-0 touch-none select-none items-center justify-center rounded-full border transition-all duration-200 active:scale-95"
+          class="flex size-16 shrink-0 touch-none select-none items-center justify-center rounded-full border transition-all duration-200 active:scale-95"
           :class="showQr
             ? 'border-cyan-400/60 bg-cyan-400/20 text-cyan-600 shadow-[0_0_24px_rgba(34,211,238,0.35)] dark:text-cyan-300'
             : 'border-cyan-400/30 bg-cyan-400/10 text-cyan-600 dark:text-cyan-300'"
@@ -153,7 +158,7 @@ function stopQr() {
         >
           <!-- Fingerprint (inline SVG — not in this b24icons version). -->
           <svg
-            class="size-7"
+            class="size-8"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -173,9 +178,6 @@ function stopQr() {
             <path d="M9 6.8a6 6 0 0 1 9 5.2c0 .47 0 1.17-.02 2" />
           </svg>
         </button>
-        <span class="font-mono text-[11px] text-gray-500 dark:text-white/60">
-          {{ showQr ? 'Отпустите' : 'Удерживайте — QR Маркета' }}
-        </span>
       </div>
     </div>
 
