@@ -4,27 +4,13 @@ import {
   ECOSYSTEM_TOOLS,
   CLIENT_BANK_LANDING_URL,
   CUSTOM_DEV_URL,
-  marketplaceHref,
   isMarketplaceListing
 } from '../app/utils/site'
 
-describe('marketplaceHref', () => {
-  it('returns the configured Marketplace URL when set', () => {
-    const url = 'https://www.bitrix24.ru/apps/app/shef.currency/'
-    expect(marketplaceHref(url)).toBe(url)
-  })
-
-  it('falls back to /install when unset (never a dead link)', () => {
-    expect(marketplaceHref('')).toBe('/install')
-    expect(marketplaceHref('   ')).toBe('/install')
-    expect(marketplaceHref(undefined)).toBe('/install')
-    expect(marketplaceHref(null)).toBe('/install')
-  })
-})
-
 describe('isMarketplaceListing', () => {
-  it('is true only when a non-blank URL is configured', () => {
-    expect(isMarketplaceListing('https://example.com')).toBe(true)
+  it('is true only when a non-blank URL is configured — drives whether the promo card shows', () => {
+    expect(isMarketplaceListing('https://www.bitrix24.ru/apps/app/shef.currency/')).toBe(true)
+    // Empty/blank/nullish → card hidden (we never fabricate an /install link).
     expect(isMarketplaceListing('')).toBe(false)
     expect(isMarketplaceListing('  ')).toBe(false)
     expect(isMarketplaceListing(undefined)).toBe(false)

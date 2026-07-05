@@ -90,10 +90,6 @@ function rowCopyColor(code: string) {
 
 // Root content element — measured to fit the B24 iframe to its content.
 const rootEl = ref<HTMLElement | null>(null)
-// The promo below the calculator is standalone-only: hidden inside any iframe
-// embedding (e.g. the Bitrix24 portal), the same guard metrika.js uses. Resolved
-// on the client in onMounted; SSG renders it visible for the standalone site.
-const isEmbedded = ref(false)
 // Kept at setup scope so onBeforeUnmount (registered synchronously below) can
 // tear them down even though they're created inside the async onMounted.
 let resizeObserver: ResizeObserver | null = null
@@ -104,7 +100,6 @@ let fitRaf = 0
 // double scroll inside the app frame (fitWindow). Re-fit on content changes —
 // rates loading, rows added/removed, the «прописью» block wrapping, theme.
 onMounted(async () => {
-  isEmbedded.value = window.self !== window.top
   if (!isB24.value) return
   let $b24: B24Frame
   try {
@@ -360,6 +355,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <ConverterPromo v-if="!isEmbedded" />
+    <ConverterPromo />
   </div>
 </template>

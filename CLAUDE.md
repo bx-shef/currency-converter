@@ -43,18 +43,27 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   RAF-коалесинг, teardown в `onBeforeUnmount`) — чтобы у портала был один внешний скролл.
   В мобильном приложении Б24 (`useDevice().isBitrixMobile` из b24ui — детект по
   `BitrixMobile/…` User-Agent) прячет кнопки копирования (в WebView нет Clipboard API).
-  Под калькулятором — промо-блок `<ConverterPromo>`, показываемый **только standalone**:
-  скрыт внутри любого iframe (`isEmbedded = window.self !== window.top`, тот же приём, что
-  и у metrika.js), чтобы не засорять вид в портале Б24.
-- `app/components/ConverterPromo.vue` — standalone-промо под калькулятором: карточка
-  «Приложение для Bitrix24» (CTA — Маркет Б24, а при пустом `marketplaceUrl` фолбэк на
-  `/install`, чтобы не было битой ссылки) и баннер «Нужна доработка под ваш процесс?»
-  (ведёт на `offer.bx-shef.by`). Тема — нативный b24ui light/dark (не форс-dark: это простой
-  инструмент, а не тёмный брендовый лендинг). Тексты/ссылки — из `utils/site.ts`.
+  Под калькулятором — промо-блок `<ConverterPromo>` (см. ниже).
+- `app/components/ConverterPromo.vue` — промо под калькулятором из двух блоков с **разной
+  видимостью**:
+  - карточка «Приложение для Bitrix24» — **только standalone** (скрыта в iframe: в портале
+    приложение уже стоит) **и только если задан** `marketplaceUrl` (Маркет Б24); пусто →
+    карточка скрыта (ссылку на `/install` не выдумываем — это вводило бы в заблуждение);
+  - баннер «Нужна доработка под ваш процесс?» — **показывается везде, в т.ч. внутри
+    портала** (предложение доработки актуально и там); оформлен премиальной b24ui-карточкой
+    `B24Card variant="filled-copilot"` (радиальный copilot-градиент, слоты header/body/footer).
+  Iframe детектится как `isEmbedded = window.self !== window.top` (тот же приём, что у
+  metrika.js). Клики CTA шлют цели Метрики (`market_click`/`custom_dev_click`) через
+  `useMetrikaGoal`. Тема — нативный b24ui light/dark. Тексты/ссылки — из `utils/site.ts`.
+- `app/composables/useMetrikaGoal.ts` — обёртка над `ym reachGoal` (тонкая): берёт
+  `yandexCounterId` из runtimeConfig и `window.ym`, делегирует в чистое ядро `utils/metrika.ts`
+  (`reachMetrikaGoal` — no-op при пустом/невалидном счётчике или незагруженной Метрике; покрыто
+  `tests/metrika.test.ts`). Внутри портала Б24 Метрика заглушена (metrika.js) → цели no-op.
 - `app/utils/site.ts` — единый источник standalone-контента: экосистемные ссылки
   (`FOOTER_LINKS`, `ECOSYSTEM_TOOLS` — без self-link на сам конвертер), URL соседних
-  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), тексты промо (`PROMO_*`) и чистые
-  резолверы `marketplaceHref`/`isMarketplaceListing` (Маркет → `/install`-фолбэк). Покрыт `tests/site.test.ts`.
+  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), тексты промо (`PROMO_*`) и чистый
+  предикат `isMarketplaceListing` (задан ли URL Маркета — от него зависит показ карточки).
+  Покрыт `tests/site.test.ts`.
 - `app/utils/build.ts` — версия сборки для подвала: `shortSha`/`commitUrl` (ссылка «сборка
   &lt;sha&gt;» на точный коммит; sha из `NUXT_PUBLIC_COMMIT_SHA`, в CI — `github.sha`, в dev пусто →
   «сборка dev»). Чистый, покрыт `tests/build.test.ts`.
@@ -85,7 +94,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
 - `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву (в т.ч. `build.test.ts` —
-  `shortSha`/`commitUrl`, и `site.test.ts` — резолверы Маркета + инвариант «нет self-link на конвертер»).
+  `shortSha`/`commitUrl`; `site.test.ts` — предикат Маркета + инвариант «нет self-link на
+  конвертер»; `metrika.test.ts` — чистое ядро целей Метрики).
 - `tests/nuxt/**/*.test.ts` — Vitest (проект `nuxt`, `@nuxt/test-utils` + `mountSuspended`)
   на composables (`useNbrbRates`, `useCopyFeedback`), colorMode, страницы `index.vue`,
   `widget/converter.vue` (рендер/ошибка) и вставку в чат (`im:setImTextareaContent`,
