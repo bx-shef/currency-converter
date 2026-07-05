@@ -29,9 +29,10 @@ export default defineNuxtConfig({
       // Git commit the build came from — shown in the footer as a link to the
       // exact commit. CI passes ${{ github.sha }}; empty in dev.
       commitSha: '',
-      // Bitrix24 Marketplace listing of this app. Empty until published — the
-      // promo card is then hidden entirely (we don't fabricate a link).
-      // Override via NUXT_PUBLIC_MARKETPLACE_URL.
+      // Optional override for the «app in Bitrix24» card URL. Default (empty
+      // here) → the promo falls back to the published `MARKETPLACE_URL` constant
+      // in `app/utils/site.ts`; set NUXT_PUBLIC_MARKETPLACE_URL to point at a
+      // different listing (e.g. regional) without a code change.
       marketplaceUrl: ''
     }
   },

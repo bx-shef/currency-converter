@@ -3,6 +3,7 @@ import Bitrix24Icon from '@bitrix24/b24icons-vue/common-service/Bitrix24Icon'
 import ArrowRightLIcon from '@bitrix24/b24icons-vue/outline/ArrowRightLIcon'
 import {
   isMarketplaceListing,
+  resolveMarketplaceUrl,
   PROMO_MARKETPLACE,
   PROMO_CUSTOM_DEV,
   CUSTOM_DEV_URL
@@ -11,19 +12,19 @@ import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
 
 // Promo shown under the calculator. Two blocks with different visibility:
 //  • «app in Bitrix24» card — standalone only (hidden inside the portal iframe,
-//    where the app is already installed) AND only when a Marketplace listing is
-//    configured (NUXT_PUBLIC_MARKETPLACE_URL); empty → the card is hidden, we
-//    don't fabricate a link. On mobile it also carries a round fingerprint
-//    button — hold it to reveal a QR of the Marketplace link (issue #30), the
-//    same hold-to-reveal pattern as the bx-shef business card.
+//    where the app is already installed). Its URL is the published Marketplace
+//    listing (constant, or a NUXT_PUBLIC_MARKETPLACE_URL override), so the card
+//    shows by default. On mobile it also carries a round fingerprint button —
+//    hold it to reveal a QR of the Marketplace link (issue #30), the same
+//    hold-to-reveal pattern as the bx-shef business card.
 //  • custom-development banner — shown everywhere, incl. inside the portal (the
 //    «order a customisation» offer is relevant there too). Styled as a premium
 //    b24ui copilot card. Theme is native b24ui light/dark.
 const { public: { marketplaceUrl } } = useRuntimeConfig()
 const { reachGoal } = useMetrikaGoal()
 
-// Marketplace listing URL (build-time constant baked into the SSG bundle).
-const marketUrl = String(marketplaceUrl ?? '')
+// Env override (NUXT_PUBLIC_MARKETPLACE_URL) if set, else the published constant.
+const marketUrl = resolveMarketplaceUrl(marketplaceUrl)
 
 // Hidden inside any iframe embedding (e.g. the B24 portal) — same guard as
 // metrika.js. Resolved on the client; SSG renders standalone (visible).
