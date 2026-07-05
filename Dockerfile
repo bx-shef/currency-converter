@@ -28,8 +28,9 @@ ENV NUXT_PUBLIC_AUTHOR_URL=$NUXT_PUBLIC_AUTHOR_URL
 # Baked into the SSG output at `pnpm generate`, so it must be set before it runs.
 ARG NUXT_PUBLIC_COMMIT_SHA
 ENV NUXT_PUBLIC_COMMIT_SHA=$NUXT_PUBLIC_COMMIT_SHA
-# Bitrix24 Marketplace listing URL (empty until published → promo card links to
-# /install instead). Baked at generate time like the other public config.
+# Optional override for the «app in Bitrix24» card URL. Empty (the usual case) →
+# the app falls back to the published MARKETPLACE_URL constant in code, so the
+# card still shows. Baked at generate time like the other public config.
 ARG NUXT_PUBLIC_MARKETPLACE_URL
 ENV NUXT_PUBLIC_MARKETPLACE_URL=$NUXT_PUBLIC_MARKETPLACE_URL
 # Generate OG image from SVG (DejaVu supports Cyrillic).

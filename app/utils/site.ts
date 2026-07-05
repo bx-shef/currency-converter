@@ -20,6 +20,26 @@ export const CLIENT_BANK_LANDING_URL = 'https://bank-import.bx-shef.by/'
 /** Custom-development CTA target: the partner site's request brief. */
 export const CUSTOM_DEV_URL = 'https://offer.bx-shef.by/#brief'
 
+/**
+ * Bitrix24 Marketplace listing of this app (public, stable). Used as the default
+ * for the «app in Bitrix24» card; `NUXT_PUBLIC_MARKETPLACE_URL` can override it
+ * without a code change (e.g. a regional listing). Hardcoding the known URL —
+ * like the sibling repos do — means the card shows even if the CI Variable is
+ * unset (an empty env would otherwise blank the runtimeConfig default).
+ */
+export const MARKETPLACE_URL = 'https://www.bitrix24.ru/apps/app/shef.currencyconverter/'
+
+/**
+ * Resolve the marketplace URL for the card: a non-blank env override
+ * (`NUXT_PUBLIC_MARKETPLACE_URL`), else the published constant. Trims first, so a
+ * whitespace-only env value falls back to the constant (rather than becoming a
+ * blank URL that `isMarketplaceListing` would then hide), and a padded override
+ * is cleaned before it reaches the CTA/QR.
+ */
+export function resolveMarketplaceUrl(envValue: unknown): string {
+  return String(envValue ?? '').trim() || MARKETPLACE_URL
+}
+
 /** Data source / partner links shown in the footer (first row). */
 export const FOOTER_LINKS: readonly SiteLink[] = [
   { id: 'nbrb', label: 'api.nbrb.by', href: 'https://api.nbrb.by' },
@@ -52,10 +72,10 @@ export const PROMO_CUSTOM_DEV = {
 } as const
 
 /**
- * Whether a real Marketplace listing is configured (`NUXT_PUBLIC_MARKETPLACE_URL`).
- * When empty the «app in Bitrix24» promo card is hidden entirely — we don't
- * fabricate a link (e.g. to `/install`), which would be misleading before the
- * app is actually published to the Marketplace.
+ * Whether a real Marketplace listing URL is present. Drives whether the «app in
+ * Bitrix24» card renders — a fail-safe: if both the constant and the env are
+ * ever emptied, the card hides rather than showing a dead link. In practice the
+ * constant is set, so the card shows.
  */
 export function isMarketplaceListing(configured: string | undefined | null): boolean {
   return Boolean((configured ?? '').trim())

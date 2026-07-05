@@ -47,8 +47,11 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 - `app/components/ConverterPromo.vue` — промо под калькулятором из двух блоков с **разной
   видимостью**:
   - карточка «Приложение для Bitrix24» — **только standalone** (скрыта в iframe: в портале
-    приложение уже стоит) **и только если задан** `marketplaceUrl` (Маркет Б24); пусто →
-    карточка скрыта (ссылку на `/install` не выдумываем — это вводило бы в заблуждение).
+    приложение уже стоит). URL Маркета — константа `MARKETPLACE_URL` в `utils/site.ts`
+    (опубликованный листинг `shef.currencyconverter`), переопределяется env
+    `NUXT_PUBLIC_MARKETPLACE_URL`; пустой обеих → карточка скрыта (fail-safe, ссылку на
+    `/install` не выдумываем). Константа-дефолт нужна, чтобы карточка показывалась даже без
+    заданной CI-переменной (пустой env иначе обнулил бы дефолт runtimeConfig).
     На мобильном — круглая кнопка-«отпечаток» (hold-to-reveal, issue #30, паттерн визитки
     из репо `Lp`): удержание сменяет содержимое карточки на QR со ссылкой на Маркет. QR
     генерит `qrcode` (**динамический импорт** в `onMounted` — грузится только при заданном
@@ -66,8 +69,9 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
   `tests/metrika.test.ts`). Внутри портала Б24 Метрика заглушена (metrika.js) → цели no-op.
 - `app/utils/site.ts` — единый источник standalone-контента: экосистемные ссылки
   (`FOOTER_LINKS`, `ECOSYSTEM_TOOLS` — без self-link на сам конвертер), URL соседних
-  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), тексты промо (`PROMO_*`) и чистый
-  предикат `isMarketplaceListing` (задан ли URL Маркета — от него зависит показ карточки).
+  проектов (`CLIENT_BANK_LANDING_URL`, `CUSTOM_DEV_URL`), опубликованный листинг Маркета
+  (`MARKETPLACE_URL`), тексты промо (`PROMO_*`), резолвер `resolveMarketplaceUrl` (env-override
+  с `.trim()` → фолбэк на константу) и предикат `isMarketplaceListing` (показ карточки).
   Покрыт `tests/site.test.ts`.
 - `app/utils/build.ts` — версия сборки для подвала: `shortSha`/`commitUrl` (ссылка «сборка
   &lt;sha&gt;» на точный коммит; sha из `NUXT_PUBLIC_COMMIT_SHA`, в CI — `github.sha`, в dev пусто →

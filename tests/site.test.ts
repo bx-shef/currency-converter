@@ -4,7 +4,9 @@ import {
   ECOSYSTEM_TOOLS,
   CLIENT_BANK_LANDING_URL,
   CUSTOM_DEV_URL,
-  isMarketplaceListing
+  MARKETPLACE_URL,
+  isMarketplaceListing,
+  resolveMarketplaceUrl
 } from '../app/utils/site'
 
 describe('isMarketplaceListing', () => {
@@ -15,6 +17,32 @@ describe('isMarketplaceListing', () => {
     expect(isMarketplaceListing('  ')).toBe(false)
     expect(isMarketplaceListing(undefined)).toBe(false)
     expect(isMarketplaceListing(null)).toBe(false)
+  })
+})
+
+describe('MARKETPLACE_URL', () => {
+  it('is the published Bitrix24 Marketplace listing (so the card shows by default)', () => {
+    expect(MARKETPLACE_URL).toBe('https://www.bitrix24.ru/apps/app/shef.currencyconverter/')
+    // The constant is a real listing → isMarketplaceListing is true → card renders.
+    expect(isMarketplaceListing(MARKETPLACE_URL)).toBe(true)
+  })
+})
+
+describe('resolveMarketplaceUrl', () => {
+  it('uses a non-blank env override', () => {
+    const custom = 'https://www.bitrix24.by/apps/app/shef.currencyconverter/'
+    expect(resolveMarketplaceUrl(custom)).toBe(custom)
+  })
+
+  it('trims a padded override', () => {
+    expect(resolveMarketplaceUrl('  https://example.com/x/  ')).toBe('https://example.com/x/')
+  })
+
+  it('falls back to the constant for empty/whitespace/nullish env (never a blank URL)', () => {
+    // Whitespace must fall back too — else it would blank the URL and hide the card.
+    for (const v of ['', '   ', undefined, null]) {
+      expect(resolveMarketplaceUrl(v)).toBe(MARKETPLACE_URL)
+    }
   })
 })
 
