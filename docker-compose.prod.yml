@@ -3,7 +3,9 @@
 
 services:
   app:
-    image: ghcr.io/bx-shef/currency-converter:latest
+    # Обычно `latest` (Watchtower авто-обновляет). Для отката задать конкретный
+    # immutable-тег: `make prod-rollback TAG=sha-<коммит>` (issue #52 P1).
+    image: ghcr.io/bx-shef/currency-converter:${APP_IMAGE_TAG:-latest}
     container_name: currency-converter
     # 8080: the image runs nginx unprivileged (non-root) on 8080.
     expose:

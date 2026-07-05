@@ -192,7 +192,12 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 ## Деплой
 
 GHCR + Watchtower за nginx-proxy. Подробности и «грабли» — в [`docs/AI_DEPLOY_GUIDE.md`](docs/AI_DEPLOY_GUIDE.md),
-пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52.
+пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52
+(частично закрыт: SHA-пины сторонних actions в `ci.yml` + `# vX.Y.Z` для Dependabot; таймауты
+docker-джоб 30→15 мин; откат `make prod-rollback TAG=sha-<коммит>` через `${APP_IMAGE_TAG}` в
+prod-compose + smoke-тест `make prod-smoke` после `prod-redeploy`; healthcheck и пины
+watchtower/nginx-proxy/acme-companion уже были). Остаток #52 (brotli/HTTP2, SSH-деплой вместо
+Watchtower, digest-пин базовых образов) — по решению владельца.
 
 Прод-образ — `nginxinc/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
 **без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt в `index.html` (FOUC-гард
