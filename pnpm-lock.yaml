@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bitrix24/b24icons-vue':
-        specifier: ^2.0.7
-        version: 2.0.7(vue@3.5.35(typescript@6.0.3))
+        specifier: ^2.0.8
+        version: 2.0.8(vue@3.5.35(typescript@6.0.3))
       '@bitrix24/b24jssdk':
         specifier: ^2.0.0
         version: 2.0.0
@@ -248,6 +248,11 @@ packages:
 
   '@bitrix24/b24icons-vue@2.0.7':
     resolution: {integrity: sha512-3IOY6EEiCpcfGTkbfK8Mys8/aGYEjkF1AlehxHo37THDcZnVszyRjqj/KuvxU5sPhJV9/LHcD5RIRx78D3aCiw==}
+    peerDependencies:
+      vue: ^3.5.24
+
+  '@bitrix24/b24icons-vue@2.0.8':
+    resolution: {integrity: sha512-QMOtACVhZh+P8IufpMZi7JHV982UW4PJW1ygR6WZuK47U8yaReeOEp/411y2IIZD8b3VCcYmPmgQ4DhXRSJxDw==}
     peerDependencies:
       vue: ^3.5.24
 
@@ -5500,6 +5505,11 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
+  srvx@0.11.21:
+    resolution: {integrity: sha512-GWTHjKMeekX8CwJf4VU9Oo6mJpSGaflGMddbCvR+Cmmh9sslRMiGbAoqqZacE0r1ncARh6buCEETr2W52F8b1w==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
   stable-hash-x@0.2.0:
     resolution: {integrity: sha512-o3yWv49B/o4QZk5ZcsALc6t0+eCelPc44zZsLtCQnZPDwFpDYSWcDnrv2TtMmMbQ7uKo3J0HTURCqckw23czNQ==}
     engines: {node: '>=12.0.0'}
@@ -6477,6 +6487,10 @@ snapshots:
     dependencies:
       vue: 3.5.35(typescript@6.0.3)
 
+  '@bitrix24/b24icons-vue@2.0.8(vue@3.5.35(typescript@6.0.3))':
+    dependencies:
+      vue: 3.5.35(typescript@6.0.3)
+
   '@bitrix24/b24jssdk-nuxt@2.0.0(magicast@0.5.3)':
     dependencies:
       '@bitrix24/b24jssdk': 2.0.0
@@ -6499,7 +6513,7 @@ snapshots:
   '@bitrix24/b24ui-nuxt@2.9.0(@internationalized/date@3.12.1)(@internationalized/number@3.6.6)(@tiptap/extensions@3.27.1(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1))(@tiptap/y-tiptap@3.0.3(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30))(axios@1.17.0)(change-case@5.4.4)(embla-carousel@8.6.0)(magicast@0.5.3)(qrcode@1.5.4)(tailwindcss@4.3.0)(typescript@6.0.3)(vite@7.3.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(yaml@2.9.0))(vue-router@5.1.0(@vue/compiler-sfc@3.5.35)(vite@7.3.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(yaml@2.9.0))(vue@3.5.35(typescript@6.0.3)))(vue@3.5.35(typescript@6.0.3))(yjs@13.6.30)':
     dependencies:
       '@bitrix24/b24icons-nuxt': 2.0.7(magicast@0.5.3)(vue@3.5.35(typescript@6.0.3))
-      '@bitrix24/b24icons-vue': 2.0.7(vue@3.5.35(typescript@6.0.3))
+      '@bitrix24/b24icons-vue': 2.0.8(vue@3.5.35(typescript@6.0.3))
       '@floating-ui/dom': 1.7.6
       '@nuxt/kit': 4.4.8(magicast@0.5.3)
       '@nuxt/schema': 4.4.8
@@ -10315,7 +10329,7 @@ snapshots:
   h3@2.0.1-rc.20(crossws@0.4.5(srvx@0.11.16)):
     dependencies:
       rou3: 0.8.1
-      srvx: 0.11.16
+      srvx: 0.11.21
     optionalDependencies:
       crossws: 0.4.5(srvx@0.11.16)
 
@@ -11884,6 +11898,8 @@ snapshots:
   spdx-license-ids@3.0.23: {}
 
   srvx@0.11.16: {}
+
+  srvx@0.11.21: {}
 
   stable-hash-x@0.2.0: {}
 
