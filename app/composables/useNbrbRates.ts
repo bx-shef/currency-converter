@@ -9,6 +9,17 @@ import { applyStep, recalcFrom, resolveRecalcSource } from '~/utils/converter'
 import { mergeRates, parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { CACHE_KEY, parseCache, serializeCache, type CachedRates } from '~/utils/ratesCache'
 import { createCurrencyRows, DEFAULT_AMOUNT, MAX_AMOUNT } from '~/config/currencies'
+import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
+
+/** Options for {@link useNbrbRates}. */
+export interface UseNbrbRatesOptions {
+  /**
+   * Telemetry hook fired on rate-load health events (`rates_load_failed`,
+   * `rates_monthly_missing`). Injected so the composable stays testable without
+   * `window.ym` plumbing; defaults to the no-op-safe Metrika goal dispatcher.
+   */
+  onGoal?: (goal: string) => void
+}
 
 /** НБ РБ daily-rates endpoint (periodicity=0 → official rates, updated daily). */
 const DAILY_RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
@@ -27,7 +38,10 @@ const FETCH_TIMEOUT_MS = 10_000
  *   `fetchError`, `activeCurrency`) and actions (`refresh`, `onValueUpdate`,
  *   `onRowClick`, `incrementCurrency`, `decrementCurrency`).
  */
-export function useNbrbRates() {
+export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
+  // Health telemetry: report failures as goals (shape/outcome, never rate values).
+  // Injectable for tests; falls back to the no-op-safe Metrika dispatcher.
+  const onGoal = options.onGoal ?? useMetrikaGoal().reachGoal
   const currencies = ref(createCurrencyRows())
   const ratesDate = ref('')
   const loading = ref(true)
@@ -85,7 +99,11 @@ export function useNbrbRates() {
       // its failure leaves those rows blank but must not fail the whole load.
       const [daily, monthly] = await Promise.all([
         $fetch<NbrbRate[]>(DAILY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }),
-        $fetch<NbrbRate[]>(MONTHLY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }).catch(() => [] as NbrbRate[])
+        $fetch<NbrbRate[]>(MONTHLY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }).catch(() => {
+          // Best-effort feed: note the partial degradation (some rows, e.g. RSD, stay blank).
+          onGoal('rates_monthly_missing')
+          return [] as NbrbRate[]
+        })
       ])
       // Guard against a malformed/missing `Date`: `new Date('garbage')` yields an
       // Invalid Date whose `toLocaleDateString` is the literal "Invalid Date",
@@ -103,6 +121,7 @@ export function useNbrbRates() {
       writeCache(date, rateMap)
     } catch {
       fetchError.value = 'load'
+      onGoal('rates_load_failed')
     }
   }
 

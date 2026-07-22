@@ -230,6 +230,47 @@ describe('useNbrbRates', () => {
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
     getItem.mockRestore()
   })
+
+  it('fires the rates_load_failed goal when the daily feed fails', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('network down')
+    }))
+    const onGoal = vi.fn()
+
+    const api = await runComposable(() => useNbrbRates({ onGoal }))
+    await flushPromises()
+
+    expect(api.fetchError.value).toBe('load')
+    expect(onGoal).toHaveBeenCalledWith('rates_load_failed')
+  })
+
+  it('fires the rates_monthly_missing goal when only the monthly feed fails', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      if (url.includes('periodicity=1')) throw new Error('monthly down')
+      return MOCK_RATES
+    }))
+    const onGoal = vi.fn()
+
+    const api = await runComposable(() => useNbrbRates({ onGoal }))
+    await flushPromises()
+
+    // Daily still loads (no load-failure), but the partial degradation is reported.
+    expect(api.fetchError.value).toBe('')
+    expect(onGoal).toHaveBeenCalledWith('rates_monthly_missing')
+    expect(onGoal).not.toHaveBeenCalledWith('rates_load_failed')
+  })
+
+  it('fires no health goal on a fully successful load', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) =>
+      url.includes('periodicity=1') ? MOCK_MONTHLY_RATES : MOCK_RATES))
+    const onGoal = vi.fn()
+
+    const api = await runComposable(() => useNbrbRates({ onGoal }))
+    await flushPromises()
+
+    expect(api.fetchError.value).toBe('')
+    expect(onGoal).not.toHaveBeenCalled()
+  })
 })
 
 describe('useCopyFeedback wrappers', () => {

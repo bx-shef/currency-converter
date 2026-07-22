@@ -33,12 +33,17 @@
 
 | # | Задача | Файл | Статус |
 |---|--------|------|--------|
-| P0-1 | Корневой `.claude/` SessionStart-хук (corepack + install + nuxt prepare) | `.claude/` | 🧪 |
-| P0-2 | `pnpm check` alias (`lint && typecheck && test`) | `package.json` | 🧪 |
-| P0-3 | `nginx -t` + ассерт CSP-плейсхолдера на сборке | `Dockerfile` | 🧪 |
-| P0-4 | Лог-ротация json-file (10m×3) | `docker-compose.prod.yml` | 🧪 |
-| P0-5 | `concurrency:` на deploy-джобе | `.github/workflows/ci.yml` | 🧪 |
-| P0-6 | Метрика-цели на сбои (`rates_load_failed`/`cache_fallback`) + JS-errors | `useNbrbRates`, Метрика | 📝 |
+| P0-1 | Корневой `.claude/` SessionStart-хук (corepack + install + nuxt prepare) | `.claude/` | ✅ |
+| P0-2 | `pnpm check` alias (`lint && typecheck && test`) | `package.json` | ✅ |
+| P0-3 | `nginx -t` + ассерт CSP-плейсхолдера на сборке | `Dockerfile` | ✅ |
+| P0-4 | Лог-ротация json-file (10m×3) | `docker-compose.prod.yml` | ✅ |
+| P0-5 | `concurrency:` на deploy-джобе | `.github/workflows/ci.yml` | ✅ |
+| P0-6 | Метрика-цели на сбои загрузки: `rates_load_failed`, `rates_monthly_missing` (DI-репортер) | `useNbrbRates` | 🧪 |
+
+> P0-6: цели через инъекцию `onGoal` (тестируемо, без `window.ym`-плюмбинга); PII-инвариант
+> «shape/outcome, never content» — шлём факт сбоя, не значения курсов. Отброшено: `cache_fallback`
+> (кэш — штатный happy-path, цель на каждую загрузку = шум) и клиентский трекинг JS-ошибок
+> (в Метрике это настройка счётчика в дашборде, не флаг инициализации в `public/metrika.js`).
 
 ## Фаза P1 — фичи ценности (без сервера)
 
