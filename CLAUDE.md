@@ -102,10 +102,13 @@ pnpm check        # алиас: lint && typecheck && test (прогон пере
   публикует только помесячно (напр. сербский динар `RSD`), поэтому месячный фид
   мёржится в дневной через `mergeRates` (дневной курс приоритетнее). `ratesDate` берётся
   из дневного фида — месячный курс показывается под этой датой (осознанное упрощение).
-  Health-телеметрия: при сбое дневного фида шлёт цель `rates_load_failed`, при падении
-  месячного (best-effort) — `rates_monthly_missing`. Репортер целей инъектируется опцией
-  `onGoal` (дефолт — `useMetrikaGoal().reachGoal`, no-op-safe) → тестируемо без `window.ym`;
-  PII-инвариант «shape/outcome, never content» — шлём факт сбоя, не значения курсов.
+  Health-телеметрия: при сбое дневного (основного) фида шлёт цель `rates_load_failed`;
+  `rates_monthly_missing` — **только если дневной успешен**, а месячный упал (частичная
+  деградация, напр. пустой RSD), чтобы тотальный отказ не слал обе цели. Отправка через
+  `reportGoal` в try/catch — сбой телеметрии не может уронить загрузку курсов. Репортер
+  инъектируется опцией `onGoal` (тип `RatesHealthGoal`; дефолт `useMetrikaGoal().reachGoal`,
+  no-op-safe) как test-seam → тестируемо без `window.ym`. PII: «shape/outcome, never content» —
+  шлём факт сбоя, не значения курсов.
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
