@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-07-05
+> Last reviewed: 2026-07-22
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -192,6 +192,20 @@ cp .env.prod.example .env.prod && nano .env.prod
     отдать ту же пререндеренную HTML и на POST: `error_page 405 =200 $uri;` переотдаёт тот же
     `$uri` с кодом 200. Симптом: при открытии приложения из портала — белый экран
     «405 Not Allowed / nginx».
+
+22. **json-file логи без cap растут бесконечно.** Сервису приложения задать
+    `logging: { driver: json-file, options: { max-size, max-file } }` (у нас `10m×3`),
+    иначе nginx access-log за месяцы забьёт диск VM. `json-file` — правильный драйвер:
+    диагностика в этом гайде опирается на `docker logs`, который его сохраняет.
+
+23. **Два быстрых пуша в main = гонка двух GHCR-push.** На deploy-джобе
+    `concurrency: { group: deploy-${{ github.ref }}, cancel-in-progress: false }` —
+    сериализует деплои, **не отменяя** in-flight push (полу-запушенный тег хуже ожидания).
+
+24. **Ассерт подстановки CSP-хэшей + `nginx -t` на сборке.** В runner-стейдж Dockerfile
+    после `COPY nginx.conf`: `grep -q '__CSP_SCRIPT_HASHES__' … && exit 1 || nginx -t` —
+    валит сборку (в CI-джобе `docker-build`), если `csp-hashes.mjs` не подставил плейсхолдер
+    (грабли #19) или конфиг синтаксически битый. Ловит до старта контейнера, а не в проде.
 
 ---
 

@@ -8,6 +8,8 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
 fi
 
 corepack enable >/dev/null 2>&1 || true
+# Prefer a reproducible install; if the lockfile is out of sync, fall back to a
+# plain install so the session still starts (this fallback can dirty pnpm-lock.yaml).
 pnpm install --frozen-lockfile >/dev/null 2>&1 || pnpm install >/dev/null 2>&1 || true
 pnpm nuxt prepare >/dev/null 2>&1 || true
 echo "session-start: deps installed, nuxt prepared"

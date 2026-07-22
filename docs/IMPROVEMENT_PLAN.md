@@ -1,6 +1,6 @@
 # План улучшения (по образцу ai-price-import)
 
-> Last reviewed: 2026-06-30
+> Last reviewed: 2026-07-22
 
 План приведения `currency-converter` к практикам full-stack-проекта `ai-price-import`.
 `ai-price-import` — full-stack (Nitro + Postgres + Redis/BullMQ + OTel/Grafana + AI-агент);
@@ -16,7 +16,7 @@
 
 ## Легенда статуса
 
-`✅` сделано/в проде · `🧪` код+тесты, не гонялось live · `📝` спроектировано · `⛔` блокер · `⏳` в работе
+`✅` сделано/в проде · `🧪` код на ветке, не гонялось live/не смёржено · `📝` спроектировано · `⛔` блокер · `⏳` в работе
 
 ---
 
@@ -24,11 +24,11 @@
 
 | # | Задача | Файл | Статус |
 |---|--------|------|--------|
-| P0-1 | Корневой `.claude/` SessionStart-хук (corepack + install + nuxt prepare) | `.claude/` | ⏳ |
-| P0-2 | `pnpm check` alias (`lint && typecheck && test`) | `package.json` | ⏳ |
-| P0-3 | `nginx -t` + ассерт CSP-плейсхолдера на сборке | `Dockerfile` | ⏳ |
-| P0-4 | Лог-ротация json-file (10m×3) | `docker-compose.prod.yml` | ⏳ |
-| P0-5 | `concurrency:` на deploy-джобе | `.github/workflows/ci.yml` | ⏳ |
+| P0-1 | Корневой `.claude/` SessionStart-хук (corepack + install + nuxt prepare) | `.claude/` | 🧪 |
+| P0-2 | `pnpm check` alias (`lint && typecheck && test`) | `package.json` | 🧪 |
+| P0-3 | `nginx -t` + ассерт CSP-плейсхолдера на сборке | `Dockerfile` | 🧪 |
+| P0-4 | Лог-ротация json-file (10m×3) | `docker-compose.prod.yml` | 🧪 |
+| P0-5 | `concurrency:` на deploy-джобе | `.github/workflows/ci.yml` | 🧪 |
 | P0-6 | Метрика-цели на сбои (`rates_load_failed`/`cache_fallback`) + JS-errors | `useNbrbRates`, Метрика | 📝 |
 
 ## Фаза P1 — фичи ценности (без сервера)
