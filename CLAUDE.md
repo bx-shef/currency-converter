@@ -24,7 +24,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
 ```
 
-Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — это же гоняет CI.
+Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
+(в CI шаги идут отдельными джоб-степами: lint → test → typecheck → generate).
 
 > В web/agent-сессиях Claude Code репозиторий готовит SessionStart-хук
 > `.claude/hooks/session-start.sh` (гейт `CLAUDE_CODE_REMOTE`): ставит зависимости и
