@@ -22,6 +22,7 @@
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "screenshots": "node scripts/screenshots.mjs",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "eslint": "^10.4.1",
     "happy-dom": "^20.10.1",
     "jsonc-eslint-parser": "^3.1.0",
+    "playwright-core": "^1.61.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8",
     "vue-tsc": "^3.3.3",

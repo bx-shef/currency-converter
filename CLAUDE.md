@@ -22,6 +22,7 @@ pnpm typecheck    # vue-tsc --noEmit
 pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
+pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/VISUAL_VERIFICATION.md
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
