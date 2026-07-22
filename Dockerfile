@@ -46,5 +46,11 @@ RUN node scripts/csp-hashes.mjs .output/public nginx.conf nginx.conf
 FROM nginxinc/nginx-unprivileged:1.31-alpine AS runner
 COPY --from=builder /app/.output/public /usr/share/nginx/html
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Fail the build on a bad nginx.conf or an un-substituted CSP-hash placeholder —
+# catches config syntax errors and a broken csp-hashes.mjs run at CI (docker-build
+# job), not at container start.
+RUN grep -q '__CSP_SCRIPT_HASHES__' /etc/nginx/conf.d/default.conf \
+      && { echo 'CSP hash placeholder not substituted'; exit 1; } \
+      || nginx -t
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

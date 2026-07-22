@@ -25,6 +25,12 @@ services:
       - proxy-net
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    # Cap nginx access logs so json-file doesn't fill the disk over time.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   watchtower:
     # Pinned tag: floating `latest` would let a compromised upstream image
