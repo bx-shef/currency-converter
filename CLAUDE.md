@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-05
+> Last reviewed: 2026-07-22
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -21,9 +21,15 @@ pnpm lint         # ESLint
 pnpm typecheck    # vue-tsc --noEmit
 pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
+pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
 ```
 
-Перед пушем прогоняй `pnpm lint && pnpm typecheck && pnpm test` — это же гоняет CI.
+Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
+(в CI шаги идут отдельными джоб-степами: lint → test → typecheck → generate).
+
+> В web/agent-сессиях Claude Code репозиторий готовит SessionStart-хук
+> `.claude/hooks/session-start.sh` (гейт `CLAUDE_CODE_REMOTE`): ставит зависимости и
+> гоняет `nuxt prepare`, чтобы lint/typecheck/test работали с первого хода.
 
 ## Архитектура
 
@@ -217,7 +223,9 @@ Watchtower, digest-пин базовых образов) — по решению
 `theme-init` и `window.__NUXT__.config` с меняющимся `buildId`) разрешаются по sha256-хэшам,
 которые `scripts/csp-hashes.mjs` вычисляет из собранного HTML и подставляет в `nginx.conf`
 (плейсхолдер `__CSP_SCRIPT_HASHES__`) на этапе сборки. Яндекс.Метрика грузится из статического
-`public/metrika.js` (id — через `<meta>`), поэтому inline-скриптов под неё нет.
+`public/metrika.js` (id — через `<meta>`), поэтому inline-скриптов под неё нет. Dockerfile валит
+сборку (в CI-джобе `docker-build`), если плейсхолдер `__CSP_SCRIPT_HASHES__` не подставлен или
+`nginx -t` не проходит — ловит битый конфиг/сломанный `csp-hashes.mjs` до старта контейнера.
 
 ## Отчётность (reporting-kit)
 

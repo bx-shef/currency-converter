@@ -25,6 +25,12 @@ services:
       - proxy-net
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    # Cap nginx access logs so json-file doesn't fill the disk over time.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   watchtower:
     # Pinned tag: floating `latest` would let a compromised upstream image
@@ -40,6 +46,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 300 --cleanup --label-enable
     restart: unless-stopped
+    # Cap Watchtower's own logs too — it polls every 5 min forever (same
+    # disk-fill risk the app's json-file cap addresses).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   proxy-net:
