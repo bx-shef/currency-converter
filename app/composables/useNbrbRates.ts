@@ -9,6 +9,23 @@ import { applyStep, recalcFrom, resolveRecalcSource } from '~/utils/converter'
 import { mergeRates, parseNbrbRates, type NbrbRate, type RateEntry } from '~/utils/nbrb'
 import { CACHE_KEY, parseCache, serializeCache, type CachedRates } from '~/utils/ratesCache'
 import { createCurrencyRows, DEFAULT_AMOUNT, MAX_AMOUNT } from '~/config/currencies'
+import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
+
+/** Health-telemetry goal names fired by the rate loader (shape/outcome, never values). */
+export type RatesHealthGoal = 'rates_load_failed' | 'rates_monthly_missing'
+
+/** Options for {@link useNbrbRates}. */
+export interface UseNbrbRatesOptions {
+  /**
+   * Test seam for health telemetry: overrides the goal reporter. Production
+   * callers omit it — it defaults to the no-op-safe Metrika dispatcher
+   * (`useMetrikaGoal().reachGoal`). A DI param (not a module `vi.mock`) is a
+   * deliberate divergence from the repo's `useB24` mocking pattern: it lets a
+   * test assert *which* goal fired without module mocking. The narrow union
+   * also lets the compiler catch a mistyped goal name.
+   */
+  onGoal?: (goal: RatesHealthGoal) => void
+}
 
 /** НБ РБ daily-rates endpoint (periodicity=0 → official rates, updated daily). */
 const DAILY_RATES_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
@@ -23,11 +40,26 @@ const FETCH_TIMEOUT_MS = 10_000
 /**
  * Converter state for the page: reactive currency rows, load status and input
  * actions. Loads rates from cache or the API on mount.
+ * @param options - see {@link UseNbrbRatesOptions} (`onGoal` is a test seam for
+ *   health telemetry; production omits it).
  * @returns status refs (`currencies`, `ratesDate`, `loading`, `refreshing`,
  *   `fetchError`, `activeCurrency`) and actions (`refresh`, `onValueUpdate`,
  *   `onRowClick`, `incrementCurrency`, `decrementCurrency`).
  */
-export function useNbrbRates() {
+export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
+  // Health telemetry: report failures as goals (shape/outcome, never rate values).
+  // Injectable for tests; falls back to the no-op-safe Metrika dispatcher.
+  const onGoal = options.onGoal ?? useMetrikaGoal().reachGoal
+
+  /** Fires a health goal, isolating any telemetry failure from the load flow. */
+  function reportGoal(goal: RatesHealthGoal) {
+    try {
+      onGoal(goal)
+    } catch {
+      // A failing analytics call must never break rate loading.
+    }
+  }
+
   const currencies = ref(createCurrencyRows())
   const ratesDate = ref('')
   const loading = ref(true)
@@ -79,13 +111,21 @@ export function useNbrbRates() {
 
   async function fetchRates() {
     fetchError.value = ''
+    let monthlyMissing = false
     try {
       // The daily feed is authoritative and required; the monthly feed only
       // fills currencies the daily one omits (e.g. RSD), so it is best-effort —
       // its failure leaves those rows blank but must not fail the whole load.
       const [daily, monthly] = await Promise.all([
         $fetch<NbrbRate[]>(DAILY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }),
-        $fetch<NbrbRate[]>(MONTHLY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }).catch(() => [] as NbrbRate[])
+        $fetch<NbrbRate[]>(MONTHLY_RATES_URL, { timeout: FETCH_TIMEOUT_MS }).catch(() => {
+          // Remember the miss but don't report it here: only a *successful* daily
+          // load makes a monthly gap a genuine partial degradation. Reporting from
+          // inside the catch would also fire on a total outage (daily down too),
+          // blurring that signal with `rates_load_failed`.
+          monthlyMissing = true
+          return [] as NbrbRate[]
+        })
       ])
       // Guard against a malformed/missing `Date`: `new Date('garbage')` yields an
       // Invalid Date whose `toLocaleDateString` is the literal "Invalid Date",
@@ -101,8 +141,11 @@ export function useNbrbRates() {
       if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
       applyRates(rateMap, date)
       writeCache(date, rateMap)
+      // Daily load succeeded → a monthly gap is a real partial degradation.
+      if (monthlyMissing) reportGoal('rates_monthly_missing')
     } catch {
       fetchError.value = 'load'
+      reportGoal('rates_load_failed')
     }
   }
 
