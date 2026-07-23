@@ -38,6 +38,17 @@ describe('widget/converter.vue', () => {
     }
   })
 
+  it('sizes the root with w-full, not w-screen (100vw caused a few-px h-scroll, #135)', async () => {
+    const wrapper = await mountSuspended(WidgetConverter)
+    await flushPromises()
+
+    const rootClasses = wrapper.find('div').classes()
+    expect(rootClasses).toContain('w-full')
+    // w-screen (=100vw) includes the vertical scrollbar width → a horizontal
+    // scrollbar that shifted the layout right during copy-selection.
+    expect(rootClasses).not.toContain('w-screen')
+  })
+
   it('shows the localized fetch error (not the raw error code) when rates fail', async () => {
     vi.stubGlobal('$fetch', vi.fn(async () => {
       throw new Error('network down')

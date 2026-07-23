@@ -133,8 +133,11 @@ async function insertIntoChat() {
 
 <template>
   <!-- Natural top-down flow (no flex-1 push), so content isn't stranded with a
-       big gap above a bottom-pinned button on tall mobile screens. -->
-  <div class="min-h-screen w-screen bg-(--ui-color-base-bg) flex flex-col gap-2 p-3">
+       big gap above a bottom-pinned button on tall mobile screens.
+       w-full (not w-screen): 100vw includes the vertical scrollbar width, so on a
+       tall popup it forced a few-px horizontal scrollbar that shifted the layout
+       right during copy-selection (issue #135). 100% of the frame fixes it. -->
+  <div class="min-h-screen w-full bg-(--ui-color-base-bg) flex flex-col gap-2 p-3">
     <!-- Top bar: rate date + refresh. The widget title lives on the chat chip
          (placement TITLE), so we don't repeat it here — saves a line. -->
     <div class="flex items-center justify-between gap-2">
