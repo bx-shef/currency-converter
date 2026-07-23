@@ -1,6 +1,6 @@
 # План улучшения (по образцу ai-price-import)
 
-> Last reviewed: 2026-07-22
+> Last reviewed: 2026-07-23
 
 План приведения `currency-converter` к практикам full-stack-проекта `ai-price-import`.
 `ai-price-import` — full-stack (Nitro + Postgres + Redis/BullMQ + OTel/Grafana + AI-агент);
@@ -51,7 +51,7 @@
 |---|--------|--------|
 | P1-1 | 🖼 Скриншот-харнесс (Playwright-core: роут × {375,1280} × {light,dark}) + `VISUAL_VERIFICATION.md` | 🧪 |
 | P1-2 | Рейтинг-nudge на Маркет (localStorage-троттлинг, `MARKETPLACE_URL`, слайдер фрейма) | 📝 |
-| P1-3 | 👍/👎 «Помог курс?» → Метрика-цели (`converter_helpful_yes/no`) | 📝 |
+| P1-3 | 👍/👎 «Помог курс?» → Метрика-цели (`converter_helpful_yes/no`) | 🧪 |
 | P1-4 | web-vitals (LCP/CLS/INP) → Метрика | 📝 |
 | P1-5 | `docs/MANUAL_TEST_PLAN.md` (сценарий→шаги→ожидание→✓/✗) | 📝 |
 | P1-6 | Внешний smoke (`curl https://<domain>/ → 200`) | 📝 |

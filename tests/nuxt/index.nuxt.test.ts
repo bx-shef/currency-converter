@@ -6,6 +6,20 @@ import { join } from 'node:path'
 import IndexPage from '~/pages/index.vue'
 import { MOCK_RATES } from './fixtures'
 
+// Spy the Metrika goal dispatcher so the "was it helpful?" nudge can be asserted
+// without window.ym (mirrors the useB24 module-mock pattern used elsewhere).
+const { reachGoalMock } = vi.hoisted(() => ({ reachGoalMock: vi.fn() }))
+vi.mock('~/composables/useMetrikaGoal', () => ({
+  useMetrikaGoal: () => ({ reachGoal: reachGoalMock })
+}))
+
+// Control whether the page believes it's inside a B24 frame (default: standalone).
+const { b24State } = vi.hoisted(() => ({ b24State: { inFrame: false } }))
+vi.mock('~/composables/useB24', async () => {
+  const { makeMockB24 } = await import('./helpers/mockB24')
+  return { useB24: () => makeMockB24({ isInit: () => b24State.inFrame }) }
+})
+
 // Read the raw JSON via cwd (not an `import` — @nuxtjs/i18n compiles JSON imports
 // into message ASTs in the nuxt env; and import.meta.url isn't a file:// URL here,
 // so readFileSync needs a plain fs path). Tests run from the repo root.
@@ -17,6 +31,8 @@ const ru = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/ru.json'), 
 describe('index.vue (converter page)', () => {
   beforeEach(() => {
     localStorage.clear()
+    reachGoalMock.mockClear()
+    b24State.inFrame = false
     vi.stubGlobal('$fetch', vi.fn(async () => MOCK_RATES))
   })
 
@@ -76,5 +92,49 @@ describe('index.vue (converter page)', () => {
     await wrapper.get('[aria-label="Скопировать сумму USD"]').trigger('click')
     await flushPromises()
     expect(writeText).toHaveBeenCalledWith('31.25')
+  })
+
+  it('shows the "helpful?" nudge and fires converter_helpful_yes on 👍', async () => {
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Помог курс?')
+    expect(reachGoalMock).not.toHaveBeenCalled() // nothing fires before interaction
+    await wrapper.get('[aria-label="Да, курс помог"]').trigger('click')
+
+    expect(reachGoalMock).toHaveBeenCalledWith('converter_helpful_yes')
+    expect(localStorage.getItem('converter_helpful_v1')).toBe('1')
+    await flushPromises()
+    // Prompt is replaced by a thank-you and no longer asks.
+    expect(wrapper.text()).toContain('Спасибо за отзыв')
+    expect(wrapper.text()).not.toContain('Помог курс?')
+  })
+
+  it('fires converter_helpful_no on 👎 and records the answer', async () => {
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    await wrapper.get('[aria-label="Нет, курс не помог"]').trigger('click')
+    expect(reachGoalMock).toHaveBeenCalledWith('converter_helpful_no')
+    expect(localStorage.getItem('converter_helpful_v1')).toBe('1')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Спасибо за отзыв')
+  })
+
+  it('does not show the nudge once it was already answered', async () => {
+    localStorage.setItem('converter_helpful_v1', '1')
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Помог курс?')
+    expect(reachGoalMock).not.toHaveBeenCalled()
+  })
+
+  it('hides the nudge inside the B24 portal (telemetry is suppressed there)', async () => {
+    b24State.inFrame = true
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Помог курс?')
   })
 })
