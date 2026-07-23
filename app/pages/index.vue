@@ -4,6 +4,8 @@ import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
 import MinusIcon from '@bitrix24/b24icons-vue/actions/Minus30Icon'
+import LikeIcon from '@bitrix24/b24icons-vue/outline/LikeIcon'
+import DislikeIcon from '@bitrix24/b24icons-vue/outline/DislikeIcon'
 import { rublesAmountInWords } from '~/utils/numberToWords'
 import { applyFormula, capitalizeFirst, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel } from '~/utils/formatters'
 import { vHoldRepeat } from '~/directives/holdRepeat'
@@ -11,6 +13,7 @@ import { MAX_AMOUNT } from '~/config/currencies'
 import { useNbrbRates } from '~/composables/useNbrbRates'
 import { useCopyFeedback, useKeyedCopyFeedback } from '~/composables/useCopyFeedback'
 import { useB24 } from '~/composables/useB24'
+import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
 
 const { t } = useI18n()
 const b24Instance = useB24()
@@ -56,6 +59,26 @@ const displayAmountInWords = computed(() =>
   wordsCapitalized.value ? capitalizeFirst(amountInWords.value) : amountInWords.value)
 const displayAmountInWordsRub = computed(() =>
   wordsCapitalized.value ? capitalizeFirst(amountInWordsRub.value) : amountInWordsRub.value)
+
+// "Was the rate helpful?" — a one-time 👍/👎 nudge shown standalone only (Metrika
+// is suppressed inside the B24 portal, so the goal would no-op there). The answer
+// is remembered in localStorage so a returning visitor isn't asked again.
+// 'idle' = ask · 'thanks' = just answered this visit · 'hidden' = answered before.
+const HELPFUL_KEY = 'converter_helpful_v1'
+const helpful = ref<'idle' | 'thanks' | 'hidden'>('idle')
+onMounted(() => {
+  try {
+    if (localStorage.getItem(HELPFUL_KEY) === '1') helpful.value = 'hidden'
+  } catch { /* localStorage blocked (private mode) — just show the prompt */ }
+})
+const { reachGoal: reachHelpfulGoal } = useMetrikaGoal()
+function rateHelpful(yes: boolean) {
+  reachHelpfulGoal(yes ? 'converter_helpful_yes' : 'converter_helpful_no')
+  try {
+    localStorage.setItem(HELPFUL_KEY, '1')
+  } catch { /* ignore — feedback is best-effort */ }
+  helpful.value = 'thanks'
+}
 
 const formulaResult = computed(() => applyFormula(activeBynAmount.value))
 const formattedFormulaY = computed(() => formatAmount(formulaResult.value))
@@ -352,6 +375,33 @@ onBeforeUnmount(() => {
           <div class="mt-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">
             {{ currentQuarter }}
           </div>
+        </div>
+
+        <!-- One-time "was it helpful?" nudge → Metrika goal. Standalone only:
+             telemetry is suppressed inside the B24 portal (metrika.js), so the
+             prompt is hidden there rather than shown with a no-op click. -->
+        <div
+          v-if="!isB24 && helpful !== 'hidden'"
+          class="-mx-2 flex items-center justify-center gap-2 pt-1 text-xs text-gray-400 dark:text-gray-500"
+        >
+          <template v-if="helpful === 'idle'">
+            <span>Помог курс?</span>
+            <B24Button
+              size="xs"
+              color="air-tertiary-no-accent"
+              :icon="LikeIcon"
+              aria-label="Да, курс помог"
+              @click="rateHelpful(true)"
+            />
+            <B24Button
+              size="xs"
+              color="air-tertiary-no-accent"
+              :icon="DislikeIcon"
+              aria-label="Нет, курс не помог"
+              @click="rateHelpful(false)"
+            />
+          </template>
+          <span v-else>Спасибо за отзыв 🙌</span>
         </div>
       </div>
     </div>
