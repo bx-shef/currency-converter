@@ -60,8 +60,8 @@
 
 | # | Задача | Статус |
 |---|--------|--------|
-| P2-1 | `docs/OPERATIONS.md` (TLS<14д, uptime, prune, rollback) | 📝 |
-| P2-2 | `docs/MARKETPLACE_RELEASE.md` (гейты публикации) | 📝 |
+| P2-1 | `docs/OPERATIONS.md` (TLS<14д, uptime, prune, rollback) | 🧪 |
+| P2-2 | `docs/MARKETPLACE_RELEASE.md` (гейты публикации) | 🧪 |
 | P2-3 | `docs/DATA_POLICY.md` (потоки данных, privacy) | 🧪 |
 | P2-4 | Диагностика (что трекаем, инвариант «значения не покидают браузер») — **сведено в `DATA_POLICY.md` §3** (отдельный док не плодим) | 🧪 |
 | P2-5 | Свободный текст фидбэка → Б24-форма/`mailto` | 📝 |
