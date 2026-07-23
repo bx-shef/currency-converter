@@ -52,9 +52,11 @@ prod-smoke:
 ## из .env.prod (без исполнения файла — grep). curl валидирует TLS по умолчанию.
 prod-smoke-external:
 	@test -f .env.prod || { echo "нет .env.prod (нужен DOMAIN)"; exit 1; }
-	@DOMAIN=$$(grep -E '^DOMAIN=' .env.prod | head -1 | cut -d= -f2- | tr -d '\r'); \
+	@DOMAIN=$$(grep -E '^DOMAIN=' .env.prod | head -1 | cut -d= -f2- | tr -d '\r' \
+		| sed -e 's/[[:space:]]*#.*$$//' -e 's/^"//' -e 's/"$$//' -e 's/[[:space:]]*$$//'); \
 	test -n "$$DOMAIN" || { echo "DOMAIN не задан в .env.prod"; exit 1; }; \
-	code=$$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$$DOMAIN/" || echo 000); \
+	code=$$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$$DOMAIN/" 2>/dev/null); \
+	code=$${code:-000}; \
 	if [ "$$code" = "200" ]; then echo "✓ внешний smoke OK — https://$$DOMAIN/ → 200"; else \
 		echo "✗ внешний smoke FAILED — https://$$DOMAIN/ → $$code (DNS/TLS/proxy? см. make logs)"; exit 1; fi
 

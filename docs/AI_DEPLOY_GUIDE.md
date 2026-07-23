@@ -49,7 +49,7 @@ push в main
 7. **`.env.prod.example`** — `DOMAIN`, `LETSENCRYPT_EMAIL` (+ runtime env приложения,
    если есть). Реальный `.env.prod` лежит на сервере, не в git.
 8. **`Makefile`** — `prod-up`, `prod-down`, `prod-pull`, `prod-redeploy`,
-   `prod-smoke`, `prod-rollback`, `logs`, `init-network`, `init-nginxproxy`.
+   `prod-smoke`, `prod-smoke-external`, `prod-rollback`, `logs`, `init-network`, `init-nginxproxy`.
 9. **`README.md`** — раздел Deploy: ссылки на raw-URL файлов и команды для сервера.
 
 ---
