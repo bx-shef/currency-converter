@@ -111,6 +111,7 @@
 | 8.3 | `converter_helpful_yes` / `_no` | Клик 👍/👎 в блоке «Помог курс?» | |
 | 8.4 | `market_card_click` / `market_qr_reveal` | Клик CTA карточки Маркета / показ QR | |
 | 8.5 | `custom_dev_click` / `custom_dev_qr_reveal` | Клик CTA custom-dev / показ QR | |
+| 8.6 | `web_vitals_<lcp\|cls\|inp>_<good\|ni\|poor>` | Открыть `/` standalone, взаимодействовать (для INP), закрыть/скрыть вкладку → смотреть цели в отчёте Метрики | |
 
 Инвариант приватности: цели несут **только факт** (shape/outcome), без сумм/курсов/значений.
 
