@@ -1,4 +1,5 @@
 import { webVitalGoal } from '~/utils/webVitals'
+import { isEmbedded } from '~/utils/isEmbedded'
 import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
 
 // Reports Core Web Vitals (LCP / CLS / INP) to Metrika as rating-bucket goals.
@@ -7,18 +8,18 @@ import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
 // and we skip loading the web-vitals lib entirely. The lib is a dynamic import
 // so it never sits on the initial critical path.
 export default defineNuxtPlugin(() => {
-  let embedded = false
-  try {
-    embedded = window.self !== window.top
-  } catch {
-    embedded = true // cross-origin access threw → we're framed
-  }
-  if (embedded) return
+  if (isEmbedded()) return
 
   const { reachGoal } = useMetrikaGoal()
+  // web-vitals' on* callbacks can fire more than once per visit (e.g. a final
+  // flush on tab hide); report each metric at most once so goal counts stay
+  // «one bucket per metric per visit».
+  const reported = new Set<string>()
   const report = (name: string, rating: string) => {
     const goal = webVitalGoal(name, rating)
-    if (goal) reachGoal(goal)
+    if (!goal || reported.has(name)) return
+    reported.add(name)
+    reachGoal(goal)
   }
 
   import('web-vitals')

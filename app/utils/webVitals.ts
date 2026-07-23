@@ -6,10 +6,8 @@
 // numeric value — "shape/outcome, never content" (same privacy stance as the
 // rate-health and helpful goals).
 
-/** Core Web Vitals we track. */
-export type WebVitalName = 'LCP' | 'CLS' | 'INP'
 /** web-vitals' own rating for a sample. */
-export type WebVitalRating = 'good' | 'needs-improvement' | 'poor'
+type WebVitalRating = 'good' | 'needs-improvement' | 'poor'
 
 /** Short, stable suffix per rating for the goal name. */
 const RATING_SUFFIX: Record<WebVitalRating, string> = {
@@ -18,15 +16,19 @@ const RATING_SUFFIX: Record<WebVitalRating, string> = {
   'poor': 'poor'
 }
 
+/** Core Web Vitals we report (others from web-vitals — FID/TTFB/FCP — are ignored). */
+const TRACKED = new Set(['lcp', 'cls', 'inp'])
+
 /**
  * Metrika goal name for a web-vital sample, e.g. `web_vitals_lcp_good`. Returns
- * `null` for an unknown name/rating so the caller can skip it (defensive — a
- * future web-vitals version could add a rating).
+ * `null` for an untracked metric or unknown rating so the caller can skip it
+ * (defensive — a future web-vitals version could add a rating). Both `name` and
+ * `rating` are normalised to lower-case before matching.
  */
 export function webVitalGoal(name: string, rating: string): string | null {
-  const suffix = RATING_SUFFIX[rating as WebVitalRating]
-  if (!suffix) return null
   const metric = String(name).toLowerCase()
-  if (metric !== 'lcp' && metric !== 'cls' && metric !== 'inp') return null
+  if (!TRACKED.has(metric)) return null
+  const suffix = RATING_SUFFIX[String(rating).toLowerCase() as WebVitalRating]
+  if (!suffix) return null
   return `web_vitals_${metric}_${suffix}`
 }

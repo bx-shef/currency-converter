@@ -7,11 +7,14 @@ describe('webVitalGoal', () => {
     expect(webVitalGoal('LCP', 'needs-improvement')).toBe('web_vitals_lcp_ni')
     expect(webVitalGoal('LCP', 'poor')).toBe('web_vitals_lcp_poor')
     expect(webVitalGoal('CLS', 'good')).toBe('web_vitals_cls_good')
+    expect(webVitalGoal('CLS', 'needs-improvement')).toBe('web_vitals_cls_ni')
+    expect(webVitalGoal('INP', 'needs-improvement')).toBe('web_vitals_inp_ni')
     expect(webVitalGoal('INP', 'poor')).toBe('web_vitals_inp_poor')
   })
 
-  it('lower-cases the metric name (web-vitals reports upper-case)', () => {
+  it('lower-cases the metric name and rating (defensive vs case drift)', () => {
     expect(webVitalGoal('inp', 'good')).toBe('web_vitals_inp_good')
+    expect(webVitalGoal('LCP', 'POOR')).toBe('web_vitals_lcp_poor')
   })
 
   it('returns null for an unknown rating (a future rating must not send a broken goal)', () => {

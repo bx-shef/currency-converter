@@ -25,6 +25,9 @@ export default defineConfig(async () => ({
         test: {
           name: 'nuxt',
           include: ['tests/nuxt/**/*.test.ts'],
+          // Stub web-vitals so the client plugin can't register real
+          // PerformanceObservers that leak across mounted tests.
+          setupFiles: ['./tests/nuxt/setup.ts'],
           // Nuxt cold start + happy-dom can exceed the 5s default on CI.
           testTimeout: 30_000
         }
