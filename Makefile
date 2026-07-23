@@ -1,5 +1,5 @@
-.PHONY: dev prod-up prod-down prod-pull prod-redeploy prod-smoke prod-rollback \
-        logs init-network init-nginxproxy
+.PHONY: dev prod-up prod-down prod-pull prod-redeploy prod-smoke prod-smoke-external \
+        prod-rollback logs init-network init-nginxproxy
 
 # ─── Локальная разработка ────────────────────────────────────────────
 
@@ -45,6 +45,18 @@ prod-smoke:
 		echo "…ждём приложение ($$i/5)"; sleep 3; \
 	done; \
 	echo "✗ smoke FAILED — см. make logs"; exit 1
+
+## Внешний smoke: публичный домен реально отвечает 200 по HTTPS — проверяет весь
+## путь снаружи (DNS → nginx-proxy → TLS → app), в отличие от prod-smoke (тот
+## опрашивает контейнер изнутри и не ловит проблемы прокси/TLS/DNS). DOMAIN берётся
+## из .env.prod (без исполнения файла — grep). curl валидирует TLS по умолчанию.
+prod-smoke-external:
+	@test -f .env.prod || { echo "нет .env.prod (нужен DOMAIN)"; exit 1; }
+	@DOMAIN=$$(grep -E '^DOMAIN=' .env.prod | head -1 | cut -d= -f2- | tr -d '\r'); \
+	test -n "$$DOMAIN" || { echo "DOMAIN не задан в .env.prod"; exit 1; }; \
+	code=$$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$$DOMAIN/" || echo 000); \
+	if [ "$$code" = "200" ]; then echo "✓ внешний smoke OK — https://$$DOMAIN/ → 200"; else \
+		echo "✗ внешний smoke FAILED — https://$$DOMAIN/ → $$code (DNS/TLS/proxy? см. make logs)"; exit 1; fi
 
 ## Откат на конкретный immutable-образ: make prod-rollback TAG=sha-<коммит> (issue #52 P1).
 ## Тег sha-<коммит> пишет CI (docker/metadata-action). Watchtower не трогает
