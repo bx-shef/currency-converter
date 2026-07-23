@@ -49,7 +49,7 @@
 
 | # | Задача | Статус |
 |---|--------|--------|
-| P1-1 | 🖼 Скриншот-харнесс (Playwright-core: роут × {375,1280} × {light,dark}) + `VISUAL_VERIFICATION.md` | 📝 |
+| P1-1 | 🖼 Скриншот-харнесс (Playwright-core: роут × {375,1280} × {light,dark}) + `VISUAL_VERIFICATION.md` | 🧪 |
 | P1-2 | Рейтинг-nudge на Маркет (localStorage-троттлинг, `MARKETPLACE_URL`, слайдер фрейма) | 📝 |
 | P1-3 | 👍/👎 «Помог курс?» → Метрика-цели (`converter_helpful_yes/no`) | 📝 |
 | P1-4 | web-vitals (LCP/CLS/INP) → Метрика | 📝 |

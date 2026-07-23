@@ -22,6 +22,7 @@ pnpm typecheck    # vue-tsc --noEmit
 pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
+pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/VISUAL_VERIFICATION.md
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
@@ -137,6 +138,10 @@ pnpm check        # алиас: lint && typecheck && test (прогон пере
 
 Чистая логика вынесена в `app/utils/*` (+ конфиг) и покрыта тестами; composables — тонкие
 Vue-обёртки над ними. Сами composables и `index.vue` покрыты в проекте `nuxt` (см. `tests/nuxt/`).
+
+- `scripts/screenshots.mjs` — dev-харнесс визуальной проверки (`pnpm screenshots`): снимает
+  роут × вьюпорт × тема (12 PNG) с предустановленного Chromium через `playwright-core`. **Не в CI**
+  (нет baseline/diff — только «глазами свериться»), прод не трогает. Детали — `docs/VISUAL_VERIFICATION.md`.
 
 ## Встройка в Bitrix24 (issue #31)
 
