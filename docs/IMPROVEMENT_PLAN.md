@@ -54,7 +54,7 @@
 | P1-3 | 👍/👎 «Помог курс?» → Метрика-цели (`converter_helpful_yes/no`) | 🧪 |
 | P1-4 | web-vitals (LCP/CLS/INP) → Метрика | 📝 |
 | P1-5 | `docs/MANUAL_TEST_PLAN.md` (сценарий→шаги→ожидание→✓/✗) | 🧪 |
-| P1-6 | Внешний smoke (`curl https://<domain>/ → 200`) | 📝 |
+| P1-6 | Внешний smoke `make prod-smoke-external` (`curl https://<domain>/ → 200`) | 🧪 |
 
 ## Фаза P2 — доки/полировка
 

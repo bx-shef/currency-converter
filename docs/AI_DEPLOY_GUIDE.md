@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-07-22
+> Last reviewed: 2026-07-23
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -49,7 +49,7 @@ push в main
 7. **`.env.prod.example`** — `DOMAIN`, `LETSENCRYPT_EMAIL` (+ runtime env приложения,
    если есть). Реальный `.env.prod` лежит на сервере, не в git.
 8. **`Makefile`** — `prod-up`, `prod-down`, `prod-pull`, `prod-redeploy`,
-   `prod-smoke`, `prod-rollback`, `logs`, `init-network`, `init-nginxproxy`.
+   `prod-smoke`, `prod-smoke-external`, `prod-rollback`, `logs`, `init-network`, `init-nginxproxy`.
 9. **`README.md`** — раздел Deploy: ссылки на raw-URL файлов и команды для сервера.
 
 ---
@@ -296,6 +296,12 @@ cp .env.prod.example .env.prod && nano .env.prod
 `make prod-smoke` — опрашивает контейнер (`wget http://localhost:8080/`, ~15 c,
 переживает `start_period` healthcheck). Если приложение не отвечает — команда
 падает с ненулевым кодом (сигнал, а не «молчаливый» деплой битого образа).
+
+**Внешний smoke.** `make prod-smoke-external` проверяет публичный домен снаружи
+(`curl https://$DOMAIN/ → 200`, `DOMAIN` из `.env.prod`) — весь путь DNS → nginx-proxy
+→ TLS → app, чего внутренний `prod-smoke` не ловит (мисконфиг прокси/сети/TLS,
+устаревший `docker-compose.prod.yml` на сервере — см. грабли #1/#18). curl валидирует
+TLS по умолчанию. Запускать после `prod-redeploy`/`prod-rollback` для полной проверки.
 
 **Откат.** CI тегает каждый образ `sha-<коммит>` (`docker/metadata-action`), тег
 **immutable**. Образ в `docker-compose.prod.yml` — `:${APP_IMAGE_TAG:-latest}`,
