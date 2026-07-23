@@ -38,6 +38,21 @@ describe('widget/converter.vue', () => {
     }
   })
 
+  it('the widget page and its clear layout use w-full, never w-screen (#135)', () => {
+    // happy-dom has no layout engine and mountSuspended doesn't render the
+    // NuxtLayout, so the real culprit (the `clear` wrapper) never appears in the
+    // mounted tree — guard on source instead. w-screen (=100vw) includes the
+    // reserved scrollbar gutter (b24ui sets `scrollbar-gutter: stable` on body),
+    // so it forced a few-px horizontal scrollbar in the narrow chat popup.
+    // Match w-screen only where it's used as a class, not the word in the
+    // explanatory comments that reference it.
+    const asClass = /class="[^"]*\bw-screen\b/
+    for (const f of ['app/pages/widget/converter.vue', 'app/layouts/clear.vue']) {
+      const src = readFileSync(join(process.cwd(), f), 'utf-8')
+      expect(asClass.test(src), `${f} must not use w-screen (100vw) — see #135`).toBe(false)
+    }
+  })
+
   it('shows the localized fetch error (not the raw error code) when rates fail', async () => {
     vi.stubGlobal('$fetch', vi.fn(async () => {
       throw new Error('network down')
