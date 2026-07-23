@@ -1,6 +1,6 @@
 # План улучшения (по образцу ai-price-import)
 
-> Last reviewed: 2026-07-22
+> Last reviewed: 2026-07-23
 
 План приведения `currency-converter` к практикам full-stack-проекта `ai-price-import`.
 `ai-price-import` — full-stack (Nitro + Postgres + Redis/BullMQ + OTel/Grafana + AI-агент);

@@ -73,6 +73,9 @@ onMounted(() => {
 })
 const { reachGoal: reachHelpfulGoal } = useMetrikaGoal()
 function rateHelpful(yes: boolean) {
+  // Ignore a second click landing before the re-render removes the buttons —
+  // otherwise a quick double-tap could send both goals in one visit.
+  if (helpful.value !== 'idle') return
   reachHelpfulGoal(yes ? 'converter_helpful_yes' : 'converter_helpful_no')
   try {
     localStorage.setItem(HELPFUL_KEY, '1')
@@ -382,19 +385,21 @@ onBeforeUnmount(() => {
              prompt is hidden there rather than shown with a no-op click. -->
         <div
           v-if="!isB24 && helpful !== 'hidden'"
-          class="-mx-2 flex items-center justify-center gap-2 pt-1 text-xs text-gray-400 dark:text-gray-500"
+          role="status"
+          aria-live="polite"
+          class="flex items-center justify-center gap-2 pt-1 text-xs text-gray-500 dark:text-gray-400"
         >
           <template v-if="helpful === 'idle'">
             <span>Помог курс?</span>
             <B24Button
-              size="xs"
+              size="sm"
               color="air-tertiary-no-accent"
               :icon="LikeIcon"
               aria-label="Да, курс помог"
               @click="rateHelpful(true)"
             />
             <B24Button
-              size="xs"
+              size="sm"
               color="air-tertiary-no-accent"
               :icon="DislikeIcon"
               aria-label="Нет, курс не помог"
