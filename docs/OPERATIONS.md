@@ -39,6 +39,9 @@ TLS продлевается автоматически (`acme-companion`); ру
 
 ## Инциденты
 
+Быстрая триаж-таблица; **детальные команды и первопричины** — в
+[`AI_DEPLOY_GUIDE.md`](AI_DEPLOY_GUIDE.md) (раздел «Диагностика» + «грабли», номера в скобках).
+
 | Симптом | Первая гипотеза | Что делать |
 |---|---|---|
 | `502` от nginx-proxy | сеть не совпала (грабли #1) или `VIRTUAL_PORT`≠порт (#18) | `docker network inspect <net>` (оба контейнера?); перекачать `docker-compose.prod.yml` (`curl -fsSLO`), `make prod-up` |
@@ -56,6 +59,7 @@ Health-сигналы уходят в Яндекс.Метрику (только 
 
 ## Что НЕ трогать без нужды
 
-- Пины образов (watchtower/nginx-proxy/acme-companion) — supply-chain (грабли #6).
+- Пины образов (watchtower/nginx-proxy/acme-companion) — supply-chain (грабли #6 про Watchtower
+  + пины в `docker-compose.nginxproxy.yml`).
 - SHA-пины actions в `ci.yml` — обновляет Dependabot.
 - `.env.prod` на сервере — не в git; при смене домена/портов перекачать compose и `make prod-up`.

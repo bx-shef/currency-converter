@@ -234,7 +234,9 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 
 ## Деплой
 
-GHCR + Watchtower за nginx-proxy. Подробности и «грабли» — в [`docs/AI_DEPLOY_GUIDE.md`](docs/AI_DEPLOY_GUIDE.md),
+GHCR + Watchtower за nginx-proxy. Первичная настройка и «грабли» — в
+[`docs/AI_DEPLOY_GUIDE.md`](docs/AI_DEPLOY_GUIDE.md); рутина/мониторинг/инциденты уже в проде —
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md); гейты публикации в Маркет — [`docs/MARKETPLACE_RELEASE.md`](docs/MARKETPLACE_RELEASE.md);
 пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52
 (частично закрыт: SHA-пины сторонних actions в `ci.yml` + `# vX.Y.Z` для Dependabot; таймауты
 docker-джоб 30→15 мин; откат `make prod-rollback TAG=sha-<коммит>` через `${APP_IMAGE_TAG}` в
