@@ -46,6 +46,24 @@ describe('useNbrbRates', () => {
     expect(api.ratesDate.value).not.toBe('')
   })
 
+  it('normalises scaled currencies (KZT/CNY/TRY) and leaves rate-less rows blank (#83)', async () => {
+    const fetchMock = vi.fn(async () => MOCK_RATES)
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    // Every Cur_Scale shape normalises as bynRate = Cur_OfficialRate / Cur_Scale.
+    expect(api.currencies.value.find(c => c.code === 'KZT')?.bynRate).toBeCloseTo(0.005, 10) // 5.0 / 1000
+    expect(api.currencies.value.find(c => c.code === 'CNY')?.bynRate).toBeCloseTo(0.44, 10) // 4.4 / 10
+    expect(api.currencies.value.find(c => c.code === 'TRY')?.bynRate).toBeCloseTo(0.08, 10) // 0.8 / 10
+    // RSD is monthly-only (absent from MOCK_RATES) → its row keeps the seed
+    // bynRate 0 and an empty value, i.e. renders blank until a rate arrives.
+    const rsd = api.currencies.value.find(c => c.code === 'RSD')
+    expect(rsd?.bynRate).toBe(0)
+    expect(rsd?.value).toBeUndefined()
+  })
+
   it('merges the monthly feed so RSD (daily-feed-omitted) gets a rate', async () => {
     // Daily feed lacks RSD; the monthly feed carries it. The composable fetches
     // both in parallel and merges, so the RSD row must end up with a rate.

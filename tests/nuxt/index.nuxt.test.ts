@@ -59,6 +59,19 @@ describe('index.vue (converter page)', () => {
     expect(text).toContain('квартал')
   })
 
+  it('leaves a rate-less currency row blank until its rate loads (#83)', async () => {
+    // MOCK_RATES omits RSD (it is monthly-only), and the single $fetch mock feeds
+    // it for both periodicities, so RSD never gets a rate → its input stays empty.
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    const rsdInput = wrapper.get('[aria-label="Сумма в RSD (сербский динар)"]')
+    expect((rsdInput.element as HTMLInputElement).value).toBe('')
+    // A loaded currency (KZT, scale 1000) does show a computed value.
+    const kztInput = wrapper.get('[aria-label="Сумма в KZT (казахстанский тенге)"]')
+    expect((kztInput.element as HTMLInputElement).value).not.toBe('')
+  })
+
   it('shows the loading skeleton before the rates resolve', async () => {
     vi.stubGlobal('$fetch', vi.fn(() => new Promise(() => {}))) // never resolves → stays loading
     const wrapper = await mountSuspended(IndexPage)

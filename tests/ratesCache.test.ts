@@ -77,4 +77,26 @@ describe('serializeCache', () => {
   it('stamps the provided timestamp', () => {
     expect(JSON.parse(serializeCache('d', rates, 42)).timestamp).toBe(42)
   })
+
+  it('drops entries whose bynRate is Infinity/NaN after the JSON round-trip (#83)', () => {
+    // JSON.stringify turns Infinity and NaN into null, so a rate that was
+    // non-finite in memory reaches parseCache as an invalid entry and must be
+    // dropped — never resurrected as a usable 0/null rate. Lock that contract.
+    const withBad: RateEntry[] = [
+      { code: 'USD', bynRate: 3.2 },
+      { code: 'INF', bynRate: Infinity },
+      { code: 'NAN', bynRate: NaN }
+    ]
+    const serialized = serializeCache('04.06.2026', withBad, NOW)
+    // Sanity: the bad rates really are null in the serialized JSON.
+    const parsedJson = JSON.parse(serialized)
+    expect(parsedJson.rates[1].bynRate).toBeNull()
+    expect(parsedJson.rates[2].bynRate).toBeNull()
+    // parseCache keeps only the finite, positive entry.
+    expect(parseCache(serialized, NOW)).toEqual({
+      date: '04.06.2026',
+      timestamp: NOW,
+      rates: [{ code: 'USD', bynRate: 3.2 }]
+    })
+  })
 })
