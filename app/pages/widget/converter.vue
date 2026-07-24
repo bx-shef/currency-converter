@@ -32,6 +32,7 @@ const {
   fetchError,
   refreshError,
   dismissRefreshError,
+  usingFallback,
   activeCurrency,
   refresh,
   onValueUpdate,
@@ -148,6 +149,17 @@ async function insertIntoChat() {
         :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
       >
         {{ t('app.subtitle') }}<span v-if="ratesDate"> · {{ t('app.ratesOn', { date: ratesDate }) }}</span>
+        <!-- Static fallback snapshot in use (issue #80): API was unreachable.
+             B24Badge (not a raw span) per the b24ui-first UI convention. -->
+        <B24Badge
+          v-if="usingFallback"
+          color="air-primary-warning"
+          size="xss"
+          class="ms-1"
+          :title="t('app.fallbackNotice.hint')"
+        >
+          {{ t('app.fallbackNotice.label') }}
+        </B24Badge>
       </p>
       <B24Button
         :aria-label="t('app.refresh')"

@@ -130,6 +130,13 @@ pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×�
   экран-заглушка); `refreshError` — мягкий сбой ручного обновления при уже загруженных курсах
   (флаг `hasRates`): старые строки остаются, показывается закрываемый баннер `B24Alert`
   (`dismissRefreshError`), экран не гасится. `rates_load_failed` шлётся в обоих случаях.
+  **Fallback-снапшот (issue #80):** при провале *холодной* загрузки (кэша нет, API недоступен)
+  вместо экрана-заглушки грузится статический `public/rates-fallback.json` (`loadFallback`,
+  короткий таймаут) — `api.nbrb.by` перестаёт быть SPOF для первого визита. Флаг `usingFallback`
+  → UI помечает курсы как «резервная копия» (с датой снапшота); успешная живая загрузка сбрасывает
+  флаг. Шлётся цель `rates_fallback_used`. Снапшот генерит `scripts/gen-rates-fallback.mjs`
+  (`pnpm rates:snapshot`) — парс/мёрж зеркалят `utils/nbrb.ts`. Автообновление снапшота (cron) —
+  остаток #80 (см. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §3).
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль

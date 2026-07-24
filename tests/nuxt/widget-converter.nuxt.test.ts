@@ -53,6 +53,24 @@ describe('widget/converter.vue', () => {
     }
   })
 
+  it('shows the localized fallback badge when a cold load falls back to the snapshot (#80)', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      if (url.includes('rates-fallback.json')) {
+        return { date: '2026-06-04T00:00:00', rates: [{ code: 'USD', bynRate: 3.5 }] }
+      }
+      throw new Error('nbrb down') // both live feeds fail
+    }))
+
+    const wrapper = await mountSuspended(WidgetConverter)
+    await flushPromises()
+
+    // Snapshot rows render and the localized "Backup" badge is shown (via t()).
+    expect(wrapper.text()).toContain('USD')
+    expect(wrapper.text()).toContain(en.app.fallbackNotice.label)
+    // No hard error — there is snapshot data to show.
+    expect(wrapper.text()).not.toContain(en.app.fetchError)
+  })
+
   it('shows the localized fetch error (not the raw error code) when rates fail', async () => {
     vi.stubGlobal('$fetch', vi.fn(async () => {
       throw new Error('network down')
