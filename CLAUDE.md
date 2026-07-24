@@ -224,11 +224,13 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   — все через build-args (см. Dockerfile/ci). Значения запекаются в SSG-бандл на `generate`,
   поэтому build-arg должен присутствовать до сборки.
 - `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
-  (`*.bitrix24.<tld>`, включая `.net` — issue #88), иначе iframe-встройка и REST-вызовы install
-  падают. Список TLD **зеркалится** между двумя директивами (инвариант проверяет
-  `tests/nginxCsp.test.ts`) и держится в синхроне с зонами Б24. `frame-ancestors` намеренно НЕ
+  (`*.bitrix24.<tld>`, ~22 зоны — issue #88), иначе iframe-встройка и REST-вызовы install падают.
+  Список **зеркалится** между двумя директивами (инвариант + точный набор проверяет
+  `tests/nginxCsp.test.ts`); международные зоны — из сабпроцессор-доки Б24, плюс CIS-зоны
+  (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется **вручную** (best-effort — Б24
+  добавляет регионы; self-hosted на своём домене добавляют сами). `frame-ancestors` намеренно НЕ
   сужается по location: `/` — dual-mode (Application URL, открывается в портале), поэтому ему нужен
-  тот же allow-list, что `/install`/`/widget`. Self-hosted порталы на своём домене добавляют вручную.
+  тот же allow-list, что `/install`/`/widget`.
   Security-заголовки повторены в `location /_nuxt/` (`nosniff`+HSTS), т.к. nginx не наследует
   `add_header` в location со своим `add_header` (issue #46).
 
