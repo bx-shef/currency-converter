@@ -4,7 +4,11 @@
     "subtitle": "NBRB exchange rates",
     "ratesOn": "on {date}",
     "refresh": "Refresh rates",
-    "fetchError": "Failed to load NBRB rates. Please refresh the page."
+    "fetchError": "Failed to load NBRB rates. Please refresh the page.",
+    "refreshError": {
+      "title": "Couldn’t refresh rates",
+      "description": "Showing the last loaded values."
+    }
   },
   "mock": {
     "title": "Demo mode",

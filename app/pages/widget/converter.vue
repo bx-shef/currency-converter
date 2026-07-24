@@ -30,6 +30,8 @@ const {
   loading,
   refreshing,
   fetchError,
+  refreshError,
+  dismissRefreshError,
   activeCurrency,
   refresh,
   onValueUpdate,
@@ -157,6 +159,18 @@ async function insertIntoChat() {
         @click="refresh"
       />
     </div>
+
+    <!-- Soft refresh error (issue #156): a failed manual refresh keeps the stale
+         rows visible and shows this dismissible banner instead of blanking them. -->
+    <B24Alert
+      v-if="refreshError"
+      color="air-primary-warning"
+      size="sm"
+      :close="true"
+      :title="t('app.refreshError.title')"
+      :description="t('app.refreshError.description')"
+      @update:open="dismissRefreshError"
+    />
 
     <!-- Currency rows: code + (copy) + input + −/+ — same grouping as the main page. -->
     <div class="flex flex-col gap-1">

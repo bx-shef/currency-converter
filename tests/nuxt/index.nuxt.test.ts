@@ -94,6 +94,31 @@ describe('index.vue (converter page)', () => {
     expect(writeText).toHaveBeenCalledWith('31.25')
   })
 
+  it('keeps rows and shows a dismissible refresh banner when a manual refresh fails (#156)', async () => {
+    let calls = 0
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      calls++
+      // Initial load (daily+monthly) succeeds; the refresh's daily feed fails.
+      if (calls > 2 && !url.includes('periodicity=1')) throw new Error('down')
+      return MOCK_RATES
+    }))
+
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+    expect(wrapper.text()).toContain('Сумма прописью') // rows loaded
+
+    await wrapper.get('[aria-label="Обновить курсы"]').trigger('click')
+    await flushPromises()
+
+    // Rows are NOT blanked, and the soft banner shows.
+    expect(wrapper.text()).toContain('Сумма прописью')
+    expect(wrapper.text()).toContain(ru.app.refreshError.title)
+    // Drift guard (mirrors #97): the in-template RU literal equals ru.json.
+    expect(ru.app.refreshError.title).toBe('Не удалось обновить курсы')
+    // fetchError's full-screen message must NOT be shown.
+    expect(wrapper.text()).not.toContain(ru.app.fetchError)
+  })
+
   it('shows the "helpful?" nudge and fires converter_helpful_yes on 👍', async () => {
     const wrapper = await mountSuspended(IndexPage)
     await flushPromises()
