@@ -271,6 +271,13 @@ Watchtower, digest-пин базовых образов) — по решению
 `public/metrika.js` (id — через `<meta>`), поэтому inline-скриптов под неё нет. Dockerfile валит
 сборку (в CI-джобе `docker-build`), если плейсхолдер `__CSP_SCRIPT_HASHES__` не подставлен или
 `nginx -t` не проходит — ловит битый конфиг/сломанный `csp-hashes.mjs` до старта контейнера.
+Прочие security-заголовки в `nginx.conf`: `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, HSTS и `X-XSS-Protection: 0` (issue #46 — легаси-аудитор явно выключен,
+защита от XSS — на CSP). `X-Frame-Options` намеренно нет (нужна встройка в iframe Б24 — покрыто
+`frame-ancestors`). `nuxt.config.ts` при сборке fail-fast, если `NUXT_PUBLIC_YANDEX_COUNTER_ID`
+задан, но не число (issue #46) — чтобы битый id не запёкся в SSG-бандл. Runtime-валидация ответа
+НБ РБ отдельным zod не заводится: `isUsableRate` (`utils/nbrb.ts`) уже отбрасывает записи с
+не-финитными/непозитивными `Cur_Scale`/`Cur_OfficialRate`, а пустой результат роняет `fetchError`.
 
 ## Отчётность (reporting-kit)
 

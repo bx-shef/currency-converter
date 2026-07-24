@@ -4,6 +4,20 @@ const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   ? process.env.NUXT_ALLOWED_HOSTS.split(',').map((h: string) => h.trim())
   : []
 
+// Fail-fast on a malformed analytics counter id (issue #46). The id is baked into
+// the SSG bundle at `nuxt generate`, so a typo would silently ship a broken
+// Metrika init. Empty/unset is fine (analytics simply off). This build-time check
+// is deliberately stricter than the runtime one in utils/metrika.ts (which
+// leniently no-ops via Number()) — here we reject anything but plain digits so a
+// bad value can't reach the bundle in the first place.
+const yandexCounterId = (process.env.NUXT_PUBLIC_YANDEX_COUNTER_ID ?? '').trim()
+if (yandexCounterId !== '' && !/^\d+$/.test(yandexCounterId)) {
+  throw new Error(
+    `NUXT_PUBLIC_YANDEX_COUNTER_ID must be digits only (got "${yandexCounterId}"). `
+    + 'Leave it unset to disable analytics.'
+  )
+}
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -19,7 +33,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      yandexCounterId: '',
+      // Validated above; empty disables analytics. (Nuxt also maps the
+      // NUXT_PUBLIC_YANDEX_COUNTER_ID env here — this seeds the same value.)
+      yandexCounterId,
       // Public URL where this app is hosted. Used by the Bitrix24 install
       // handler to compose the placement HANDLER. Override via NUXT_PUBLIC_SITE_URL.
       siteUrl: '',
