@@ -4,7 +4,7 @@ import type { NbrbRate } from '~/utils/nbrb'
 // when the version suffix is bumped in ratesCache.ts.
 export { CACHE_KEY } from '~/utils/ratesCache'
 
-// Daily feed fixture. Covers the three Cur_Scale shapes the app must normalise:
+// Daily feed fixture. Covers the four Cur_Scale shapes the app must normalise:
 // 1 (USD/EUR), 100 (RUB), 10 (CNY/TRY) and 1000 (KZT) — so `bynRate =
 // Cur_OfficialRate / Cur_Scale` is exercised for each (issue #83). RSD is
 // intentionally absent here (it is monthly-only, see MOCK_MONTHLY_RATES) so a
