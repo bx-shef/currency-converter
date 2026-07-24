@@ -310,6 +310,43 @@ describe('useNbrbRates', () => {
     expect(onGoal).toHaveBeenCalledWith('rates_load_failed')
   })
 
+  it('keeps rows and raises refreshError (not fetchError) when a refresh fails after a healthy load (#156)', async () => {
+    let calls = 0
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      calls++
+      if (calls > 2 && !url.includes('periodicity=1')) throw new Error('down')
+      return MOCK_RATES
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+
+    await api.refresh()
+    await flushPromises()
+
+    // Soft error: existing rates stay, fetchError is NOT set (UI not blanked).
+    expect(api.refreshError.value).toBe(true)
+    expect(api.fetchError.value).toBe('')
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+
+    // Dismiss clears the banner; a subsequent successful refresh also clears it.
+    api.dismissRefreshError()
+    expect(api.refreshError.value).toBe(false)
+  })
+
+  it('a failed FIRST load sets fetchError, not refreshError (nothing to show)', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('network down')
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.fetchError.value).toBe('load')
+    expect(api.refreshError.value).toBe(false)
+  })
+
   it('does not throw when the default (uninjected) goal reporter is used', async () => {
     // No onGoal passed → defaults to useMetrikaGoal().reachGoal, which is
     // no-op-safe here (no window.ym / blank counter). Load must still fail cleanly.

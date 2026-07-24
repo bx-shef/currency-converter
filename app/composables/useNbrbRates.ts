@@ -68,6 +68,15 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
   // load. The view maps it to a localized string (t('app.fetchError')) — the
   // composable stays framework-agnostic (no useI18n).
   const fetchError = ref('')
+  // A *manual refresh* that failed while rows already hold rates: we keep the
+  // stale-but-usable data on screen and raise this non-blocking flag instead of
+  // fetchError, so the view shows a dismissible banner over the rows rather than
+  // blanking everything (issue #156). Distinct from fetchError, which means
+  // "nothing to show" (initial load failed).
+  const refreshError = ref(false)
+  // True once rows hold real rates (from cache or a successful fetch) — decides
+  // whether a later failure is a blank initial error or a soft refresh error.
+  const hasRates = ref(false)
   const activeCurrency = ref('BYN')
 
   /**
@@ -111,6 +120,7 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
 
   async function fetchRates() {
     fetchError.value = ''
+    refreshError.value = false
     let monthlyMissing = false
     try {
       // The daily feed is authoritative and required; the monthly feed only
@@ -140,13 +150,22 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
       // Empty/garbage response would silently zero out every rate; surface it.
       if (!rateMap.length) throw new Error('NBRB API returned no usable rates')
       applyRates(rateMap, date)
+      hasRates.value = true
       writeCache(date, rateMap)
       // Daily load succeeded → a monthly gap is a real partial degradation.
       if (monthlyMissing) reportGoal('rates_monthly_missing')
     } catch {
-      fetchError.value = 'load'
       reportGoal('rates_load_failed')
+      // Keep already-shown rates: a failed manual refresh is a soft error, not a
+      // blank screen (issue #156). Only a first-load failure has nothing to show.
+      if (hasRates.value) refreshError.value = true
+      else fetchError.value = 'load'
     }
+  }
+
+  /** Dismisses the soft refresh-error banner (issue #156). */
+  function dismissRefreshError() {
+    refreshError.value = false
   }
 
   /** Clears the cache and refetches; ignored while a load is already running. */
@@ -205,6 +224,7 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
     const cached = readCache()
     if (cached) {
       applyRates(cached.rates, cached.date)
+      hasRates.value = true
       loading.value = false
       return
     }
@@ -218,6 +238,8 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
     loading,
     refreshing,
     fetchError,
+    refreshError,
+    dismissRefreshError,
     activeCurrency,
     refresh,
     onValueUpdate,

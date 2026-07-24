@@ -28,6 +28,8 @@ const {
   loading,
   refreshing,
   fetchError,
+  refreshError,
+  dismissRefreshError,
   activeCurrency,
   refresh,
   onValueUpdate,
@@ -225,6 +227,21 @@ onBeforeUnmount(() => {
         v-else
         class="flex flex-col gap-2"
       >
+        <!-- Soft refresh error (issue #156): a failed manual refresh keeps the
+             already-loaded rows on screen and shows this dismissible banner
+             instead of blanking them. RU literals mirror ru.json's
+             app.refreshError (this standalone page is RU-only, see #87/#97);
+             index.nuxt.test.ts asserts they equal ru.json so they can't drift. -->
+        <B24Alert
+          v-if="refreshError"
+          color="air-primary-warning"
+          size="sm"
+          :close="true"
+          title="Не удалось обновить курсы"
+          description="Показаны последние загруженные значения."
+          class="-mx-2"
+          @update:open="dismissRefreshError"
+        />
         <div
           v-for="currency in currencies"
           :key="currency.code"
