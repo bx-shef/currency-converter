@@ -1,6 +1,6 @@
 # Конвертер валют НБ РБ
 
-> Last reviewed: 2026-07-05
+> Last reviewed: 2026-07-24
 
 Конвертер валют по официальному курсу Национального банка Республики Беларусь.
 
@@ -79,30 +79,41 @@ UI виджета и страницы установки переведены ч
 
 ## Структура
 
+> Полная карта архитектуры (разбор по файлам, конвенции) — в [`CLAUDE.md`](CLAUDE.md);
+> точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md). Ниже — общий обзор.
+
 ```
 app/
-  app.vue                  — каркас (шапка, тема, навигация, подвал, SEO, Метрика)
+  app.vue                  — тонкий корень: useHead/SEO, theme-init (FOUC-гард), <NuxtLayout>
+  layouts/default.vue      — каркас сайта: шапка (тема, навигация), подвал и Яндекс.Метрика
+  layouts/clear.vue        — минимальный layout для /install и /widget/converter
   app.config.ts            — включает colorMode b24ui (без него переключатель темы — no-op)
   assets/css/main.css      — глобальные стили (подключается в nuxt.config.ts)
-  pages/index.vue          — экран конвертера (тонкий): строки, прописью, формула
+  pages/index.vue          — экран конвертера (тонкий): строки, прописью, формула, nudge «Помог курс?»
   config/currencies.ts     — каталог валют (состав, MAX_AMOUNT, дефолт)
   composables/
-    useNbrbRates.ts        — загрузка курсов, кэш, состояние строк, ввод
+    useNbrbRates.ts        — загрузка курсов, кэш, состояние строк, ввод, health-цели
     useCopyFeedback.ts     — копирование в буфер с вспышкой ok/err
+    useMetrikaGoal.ts      — обёртка над Яндекс.Метрикой (цели, no-op вне standalone)
   utils/                   — чистые функции, покрыты тестами:
     converter.ts           — конвертация и адаптивный шаг
     formatters.ts          — формат чисел, формула, «чистое» число для буфера, метка квартала
     numberToWords.ts       — сумма прописью на русском
-    nbrb.ts                — парсинг ответа НБ РБ
+    nbrb.ts                — парсинг ответа НБ РБ, слияние дневного/месячного фидов
     ratesCache.ts          — валидация/сериализация кэша курсов
     copyFeedback.ts        — clipboard + флеш-машина + выбор цвета
+    site.ts / build.ts     — ссылки экосистемы, промо-карточки, версия сборки для подвала
   directives/holdRepeat.ts — автоповтор +/− при удержании
-  components/SiteFooter.vue  — центральные ссылки подвала (НБ РБ, оферта); copyright/GitHub — в app.vue
+  components/              — SiteFooter, ConverterPromo (промо-карточки под калькулятором) и др.
+  plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
 public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
 scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```
+
+Диагностика/приватность (цели Метрики, инвариант «shape/outcome, never content») —
+[`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
 
 Курсы берутся из публичного API НБ РБ:
 `https://api.nbrb.by/exrates/rates?periodicity=0` (поля `Cur_Abbreviation`,
