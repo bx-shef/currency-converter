@@ -98,9 +98,13 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
    * before any input).
    */
   function applyRates(rateMap: RateEntry[], date: string) {
-    for (const { code, bynRate } of rateMap) {
-      const c = currencies.value.find(r => r.code === code)
-      if (c) c.bynRate = bynRate
+    // Index the incoming rates by code once, then walk our rows — O(n) instead of
+    // a find() per rate (issue #82). Duplicate codes keep the last, matching the
+    // prior find-and-overwrite order (mergeRates already yields unique codes).
+    const byCode = new Map(rateMap.map(r => [r.code, r.bynRate]))
+    for (const c of currencies.value) {
+      const bynRate = byCode.get(c.code)
+      if (bynRate !== undefined) c.bynRate = bynRate
     }
     ratesDate.value = date
     const { code, amount } = resolveRecalcSource(currencies.value, activeCurrency.value, DEFAULT_AMOUNT)

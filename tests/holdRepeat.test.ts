@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Directive, DirectiveBinding } from 'vue'
-import { DEFAULT_HOLD_TIMING, nextHoldInterval, vHoldRepeat } from '../app/directives/holdRepeat'
+import { DEFAULT_HOLD_TIMING, nextHoldInterval, vHoldRepeat, __resetHoldRepeatGlobals } from '../app/directives/holdRepeat'
 
 describe('nextHoldInterval', () => {
   const timing = { initialDelay: 400, interval: 120, minInterval: 25, acceleration: 0.5 }
@@ -74,7 +74,12 @@ function mount(el: MockElement, cb: () => void) {
 
 describe('vHoldRepeat directive', () => {
   beforeEach(() => vi.useFakeTimers())
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => {
+    // Shared blur/visibility registry is module-level (#82) — clear it so mounts
+    // in one case don't leak registrations into the next.
+    __resetHoldRepeatGlobals()
+    vi.useRealTimers()
+  })
 
   it('does not fire before the initial delay (a tap stays a single click)', () => {
     const el = new MockElement()
@@ -295,6 +300,9 @@ describe('vHoldRepeat — window blur / tab visibility', () => {
   })
 
   afterEach(() => {
+    // Reset the shared registry BEFORE unstubbing so removeEventListener still
+    // targets the stubbed win/doc, leaving the module clean for the next case.
+    __resetHoldRepeatGlobals()
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -347,5 +355,39 @@ describe('vHoldRepeat — window blur / tab visibility', () => {
     directive.beforeUnmount(el as unknown as HTMLElement, null as never, null as never, null as never)
     expect(win.listenerCount('blur')).toBe(0)
     expect(doc.listenerCount('visibilitychange')).toBe(0)
+  })
+
+  it('shares one global blur/visibility listener across elements, ref-counted (#82)', () => {
+    const el1 = new MockElement()
+    const el2 = new MockElement()
+    const d1 = mount(el1, vi.fn())
+    const d2 = mount(el2, vi.fn())
+
+    // Two bound elements, but only ONE global listener of each type.
+    expect(win.listenerCount('blur')).toBe(1)
+    expect(doc.listenerCount('visibilitychange')).toBe(1)
+
+    // Unmounting one keeps the shared listener (el2 still needs it)…
+    d1.beforeUnmount(el1 as unknown as HTMLElement, null as never, null as never, null as never)
+    expect(win.listenerCount('blur')).toBe(1)
+    expect(doc.listenerCount('visibilitychange')).toBe(1)
+
+    // …only removed when the LAST element unregisters.
+    d2.beforeUnmount(el2 as unknown as HTMLElement, null as never, null as never, null as never)
+    expect(win.listenerCount('blur')).toBe(0)
+    expect(doc.listenerCount('visibilitychange')).toBe(0)
+  })
+
+  it('a shared blur stops every active hold, not just one (#82)', () => {
+    const h1 = startHold()
+    const h2 = startHold()
+    // Clear here: the second startHold's timer-advance also ticks the first hold.
+    // We only care about calls AFTER the blur.
+    h1.cb.mockClear()
+    h2.cb.mockClear()
+    win.dispatch('blur')
+    vi.advanceTimersByTime(5000)
+    expect(h1.cb).not.toHaveBeenCalled()
+    expect(h2.cb).not.toHaveBeenCalled()
   })
 })

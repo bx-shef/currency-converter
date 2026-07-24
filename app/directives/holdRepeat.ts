@@ -59,6 +59,51 @@ interface HoldRepeatState {
 
 const stateByElement = new WeakMap<HTMLElement, HoldRepeatState>()
 
+/**
+ * Shared global listeners (window blur / tab hidden) that stop every active hold,
+ * attached once with ref-counting instead of once per bound element (issue #82).
+ * Each mounted directive registers its `stop`; the two listeners are wired on the
+ * first registration and torn down when the last element unregisters — so N
+ * buttons cost one blur + one visibilitychange listener, not N of each.
+ */
+const activeStops = new Set<() => void>()
+
+function stopAllHolds() {
+  for (const stop of activeStops) stop()
+}
+
+function onGlobalVisibilityChange() {
+  if (typeof document !== 'undefined' && document.hidden) stopAllHolds()
+}
+
+function registerGlobalStop(stop: () => void) {
+  if (activeStops.size === 0) {
+    if (typeof window !== 'undefined') window.addEventListener('blur', stopAllHolds)
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onGlobalVisibilityChange)
+  }
+  activeStops.add(stop)
+}
+
+function unregisterGlobalStop(stop: () => void) {
+  if (!activeStops.delete(stop)) return
+  if (activeStops.size === 0) {
+    if (typeof window !== 'undefined') window.removeEventListener('blur', stopAllHolds)
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onGlobalVisibilityChange)
+  }
+}
+
+/**
+ * @internal Test-only: detaches the shared listeners and clears the registry.
+ * The registry is module-level (a real singleton in the browser), so tests that
+ * swap `window`/`document` via stubs must reset it between cases to avoid leaking
+ * registrations across the fresh globals.
+ */
+export function __resetHoldRepeatGlobals() {
+  if (typeof window !== 'undefined') window.removeEventListener('blur', stopAllHolds)
+  if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onGlobalVisibilityChange)
+  activeStops.clear()
+}
+
 /** True when the element is disabled and should not auto-repeat. */
 function isDisabled(el: HTMLElement): boolean {
   return el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true'
@@ -137,10 +182,6 @@ export const vHoldRepeat: Directive<HTMLElement, (() => void) | undefined> = {
       timer = setTimeout(tick, timing.initialDelay)
     }
 
-    function onVisibilityChange() {
-      if (typeof document !== 'undefined' && document.hidden) stop()
-    }
-
     function cleanup() {
       stop()
       removeClickSuppressor()
@@ -148,12 +189,7 @@ export const vHoldRepeat: Directive<HTMLElement, (() => void) | undefined> = {
       el.removeEventListener('pointerup', stop)
       el.removeEventListener('pointerleave', stop)
       el.removeEventListener('pointercancel', stop)
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('blur', stop)
-      }
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVisibilityChange)
-      }
+      unregisterGlobalStop(stop)
     }
 
     const state: HoldRepeatState = { callback: binding.value, start, stop, cleanup }
@@ -164,12 +200,8 @@ export const vHoldRepeat: Directive<HTMLElement, (() => void) | undefined> = {
     // implicitly captured, so release is handled by pointerup/pointercancel instead.
     el.addEventListener('pointerleave', stop)
     el.addEventListener('pointercancel', stop)
-    if (typeof window !== 'undefined') {
-      window.addEventListener('blur', stop)
-    }
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', onVisibilityChange)
-    }
+    // Global blur / tab-hidden handling is shared across all bound elements (#82).
+    registerGlobalStop(stop)
 
     stateByElement.set(el, state)
   },

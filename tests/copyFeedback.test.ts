@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createFlash, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
+import { copyButtonProps, createFlash, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
 
 describe('writeToClipboard', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -80,5 +80,19 @@ describe('pickColor', () => {
     expect(pickColor('USD', 'idle', 'USD', 'g', 'r', 'n')).toBe('n') // reset → neutral
     expect(pickColor('USD', 'ok', 'EUR', 'g', 'r', 'n')).toBe('n') // other row
     expect(pickColor(null, 'ok', 'USD', 'g', 'r', 'n')).toBe('n') // nothing copied yet
+  })
+})
+
+describe('copyButtonProps', () => {
+  it('idle → neutral colour + the caller-supplied label', () => {
+    expect(copyButtonProps('idle', 'Скопировать сумму прописью')).toEqual({
+      color: 'air-tertiary-no-accent',
+      ariaLabel: 'Скопировать сумму прописью'
+    })
+  })
+
+  it('ok/err → status colour + fixed RU feedback label (ignores idle label)', () => {
+    expect(copyButtonProps('ok', 'X')).toEqual({ color: 'air-primary-success', ariaLabel: 'Скопировано' })
+    expect(copyButtonProps('err', 'X')).toEqual({ color: 'air-primary-alert', ariaLabel: 'Не удалось скопировать' })
   })
 })

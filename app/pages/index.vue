@@ -360,14 +360,10 @@ onBeforeUnmount(() => {
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
                 {{ displayAmountInWords }}
               </div>
-              <B24Button
+              <CopyButton
                 v-if="!isBitrixMobile"
-                type="button"
-                :aria-label="copyState === 'ok' ? 'Скопировано' : copyState === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью'"
-                :color="copyState === 'ok' ? 'air-primary-success' : copyState === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-                size="sm"
-                :icon="CopyIcon"
-                class="shrink-0 me-[3px]"
+                :state="copyState"
+                label="Скопировать сумму прописью"
                 @click="copyBynWords(displayAmountInWords)"
               />
             </div>
@@ -376,14 +372,10 @@ onBeforeUnmount(() => {
               <div class="flex-1 text-sm leading-snug text-gray-900 dark:text-gray-100">
                 {{ displayAmountInWordsRub }}
               </div>
-              <B24Button
+              <CopyButton
                 v-if="!isBitrixMobile"
-                type="button"
-                :aria-label="copyStateRub === 'ok' ? 'Скопировано' : copyStateRub === 'err' ? 'Не удалось скопировать' : 'Скопировать сумму прописью RUB'"
-                :color="copyStateRub === 'ok' ? 'air-primary-success' : copyStateRub === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-                size="sm"
-                :icon="CopyIcon"
-                class="shrink-0 me-[3px]"
+                :state="copyStateRub"
+                label="Скопировать сумму прописью RUB"
                 @click="copyRubWords(displayAmountInWordsRub)"
               />
             </div>
@@ -396,14 +388,10 @@ onBeforeUnmount(() => {
             <div class="font-mono text-gray-700 tabular-nums dark:text-gray-200">
               (BYN − 20%) × 20% = <span class="font-semibold text-gray-900 dark:text-white">{{ formattedFormulaY }}</span>
             </div>
-            <B24Button
+            <CopyButton
               v-if="!isBitrixMobile"
-              type="button"
-              :aria-label="copyStateFormula === 'ok' ? 'Скопировано' : copyStateFormula === 'err' ? 'Не удалось скопировать' : 'Скопировать результат формулы'"
-              :color="copyStateFormula === 'ok' ? 'air-primary-success' : copyStateFormula === 'err' ? 'air-primary-alert' : 'air-tertiary-no-accent'"
-              size="sm"
-              :icon="CopyIcon"
-              class="shrink-0 me-[3px]"
+              :state="copyStateFormula"
+              label="Скопировать результат формулы"
               @click="copyFormulaText(formulaPlain)"
             />
           </div>

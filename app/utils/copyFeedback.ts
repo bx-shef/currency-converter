@@ -70,3 +70,18 @@ export function pickColor<T extends string>(
   if (activeKey !== key || state === 'idle') return idle
   return state === 'ok' ? ok : err
 }
+
+/**
+ * Presentation props for a single-flash copy button given its state: the b24ui
+ * colour and the aria-label. Extracted so the BYN/RUB/formula copy buttons stop
+ * repeating the same `state → {color, aria}` ternary (issue #82). The ok/err
+ * labels are RU literals — these buttons live on the RU-only index.vue (#87);
+ * the idle label is supplied by the caller.
+ */
+export type CopyButtonColor = 'air-primary-success' | 'air-primary-alert' | 'air-tertiary-no-accent'
+
+export function copyButtonProps(state: CopyState, idleLabel: string): { color: CopyButtonColor, ariaLabel: string } {
+  if (state === 'ok') return { color: 'air-primary-success', ariaLabel: 'Скопировано' }
+  if (state === 'err') return { color: 'air-primary-alert', ariaLabel: 'Не удалось скопировать' }
+  return { color: 'air-tertiary-no-accent', ariaLabel: idleLabel }
+}
