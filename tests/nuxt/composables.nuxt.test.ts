@@ -311,10 +311,10 @@ describe('useNbrbRates', () => {
   })
 
   it('keeps rows and raises refreshError (not fetchError) when a refresh fails after a healthy load (#156)', async () => {
-    let calls = 0
+    // Toggle the daily feed's health so the same mock can fail and recover.
+    let failDaily = false
     vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
-      calls++
-      if (calls > 2 && !url.includes('periodicity=1')) throw new Error('down')
+      if (failDaily && !url.includes('periodicity=1')) throw new Error('down')
       return MOCK_RATES
     }))
 
@@ -322,17 +322,27 @@ describe('useNbrbRates', () => {
     await flushPromises()
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
 
+    // A manual refresh that fails: soft error, rows stay, fetchError NOT set.
+    failDaily = true
     await api.refresh()
     await flushPromises()
-
-    // Soft error: existing rates stay, fetchError is NOT set (UI not blanked).
     expect(api.refreshError.value).toBe(true)
     expect(api.fetchError.value).toBe('')
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
 
-    // Dismiss clears the banner; a subsequent successful refresh also clears it.
+    // dismiss() clears the banner.
     api.dismissRefreshError()
     expect(api.refreshError.value).toBe(false)
+
+    // Raise it again, then a subsequent SUCCESSFUL refresh clears it on its own.
+    await api.refresh()
+    await flushPromises()
+    expect(api.refreshError.value).toBe(true)
+    failDaily = false
+    await api.refresh()
+    await flushPromises()
+    expect(api.refreshError.value).toBe(false)
+    expect(api.fetchError.value).toBe('')
   })
 
   it('a failed FIRST load sets fetchError, not refreshError (nothing to show)', async () => {
@@ -345,6 +355,45 @@ describe('useNbrbRates', () => {
 
     expect(api.fetchError.value).toBe('load')
     expect(api.refreshError.value).toBe(false)
+  })
+
+  it('a refresh that fails after a failed first load stays a hard fetchError (still nothing to show)', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('down')
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(api.fetchError.value).toBe('load')
+
+    // hasRates never became true → the failed refresh must stay a hard error,
+    // not degrade into the soft banner (there is genuinely nothing to show).
+    await api.refresh()
+    await flushPromises()
+    expect(api.fetchError.value).toBe('load')
+    expect(api.refreshError.value).toBe(false)
+  })
+
+  it('a failed refresh after a cache hit shows the soft banner (hasRates came from cache)', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      date: '04.06.2026',
+      rates: [{ code: 'USD', bynRate: 9.99 }],
+      timestamp: Date.now()
+    }))
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('down')
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(9.99) // from cache, no network
+
+    // Cache set hasRates → a failed manual refresh is soft, cached rows stay.
+    await api.refresh()
+    await flushPromises()
+    expect(api.refreshError.value).toBe(true)
+    expect(api.fetchError.value).toBe('')
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(9.99)
   })
 
   it('does not throw when the default (uninjected) goal reporter is used', async () => {

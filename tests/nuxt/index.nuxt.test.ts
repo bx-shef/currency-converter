@@ -110,11 +110,14 @@ describe('index.vue (converter page)', () => {
     await wrapper.get('[aria-label="Обновить курсы"]').trigger('click')
     await flushPromises()
 
-    // Rows are NOT blanked, and the soft banner shows.
+    // Rows are NOT blanked, and the soft banner (title + description) shows.
     expect(wrapper.text()).toContain('Сумма прописью')
     expect(wrapper.text()).toContain(ru.app.refreshError.title)
-    // Drift guard (mirrors #97): the in-template RU literal equals ru.json.
+    expect(wrapper.text()).toContain(ru.app.refreshError.description)
+    // Drift guard (mirrors #97): the in-template RU literals equal ru.json, so
+    // the hardcoded page text and the locale string can't silently diverge.
     expect(ru.app.refreshError.title).toBe('Не удалось обновить курсы')
+    expect(ru.app.refreshError.description).toBe('Показаны последние загруженные значения.')
     // fetchError's full-screen message must NOT be shown.
     expect(wrapper.text()).not.toContain(ru.app.fetchError)
   })

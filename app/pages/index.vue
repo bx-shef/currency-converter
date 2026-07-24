@@ -240,7 +240,7 @@ onBeforeUnmount(() => {
           title="Не удалось обновить курсы"
           description="Показаны последние загруженные значения."
           class="-mx-2"
-          @update:open="dismissRefreshError"
+          @update:open="(open: boolean) => { if (!open) dismissRefreshError() }"
         />
         <div
           v-for="currency in currencies"

@@ -169,7 +169,7 @@ async function insertIntoChat() {
       :close="true"
       :title="t('app.refreshError.title')"
       :description="t('app.refreshError.description')"
-      @update:open="dismissRefreshError"
+      @update:open="(open: boolean) => { if (!open) dismissRefreshError() }"
     />
 
     <!-- Currency rows: code + (copy) + input + −/+ — same grouping as the main page. -->

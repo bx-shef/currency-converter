@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-23
+> Last reviewed: 2026-07-24
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -126,6 +126,10 @@ pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×�
   инъектируется опцией `onGoal` (тип `RatesHealthGoal`; дефолт `useMetrikaGoal().reachGoal`,
   no-op-safe) как test-seam → тестируемо без `window.ym`. PII: «shape/outcome, never content» —
   шлём факт сбоя, не значения курсов.
+  Ошибки различаются (issue #156): `fetchError` — «нечего показать» (упал первичный фид →
+  экран-заглушка); `refreshError` — мягкий сбой ручного обновления при уже загруженных курсах
+  (флаг `hasRates`): старые строки остаются, показывается закрываемый баннер `B24Alert`
+  (`dismissRefreshError`), экран не гасится. `rates_load_failed` шлётся в обоих случаях.
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
