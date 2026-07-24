@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { reachMetrikaGoal } from '../app/utils/metrika'
+import { isValidCounterId, reachMetrikaGoal } from '../app/utils/metrika'
 
 describe('reachMetrikaGoal', () => {
   it('calls ym(id, "reachGoal", goal) with a valid numeric counter', () => {
@@ -29,5 +29,22 @@ describe('reachMetrikaGoal', () => {
     expect(reachMetrikaGoal(undefined, '123', 'g')).toBe(false)
     expect(reachMetrikaGoal(null, '123', 'g')).toBe(false)
     expect(reachMetrikaGoal({}, '123', 'g')).toBe(false)
+  })
+})
+
+describe('isValidCounterId', () => {
+  it('accepts a non-empty string of digits', () => {
+    expect(isValidCounterId('12345')).toBe(true)
+    expect(isValidCounterId('0')).toBe(true) // digits only; runtime still no-ops a 0 counter
+    expect(isValidCounterId('007')).toBe(true)
+  })
+
+  it('rejects anything that is not pure digits (incl. spaces, so the build guard catches typos)', () => {
+    expect(isValidCounterId('')).toBe(false)
+    expect(isValidCounterId(' 12345 ')).toBe(false) // surrounding spaces → build fails, not silent-off
+    expect(isValidCounterId('12a')).toBe(false)
+    expect(isValidCounterId('1.5')).toBe(false)
+    expect(isValidCounterId('-5')).toBe(false)
+    expect(isValidCounterId('1e5')).toBe(false)
   })
 })

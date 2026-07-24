@@ -9,6 +9,7 @@ import AppsIcon from '@bitrix24/b24icons-vue/solid/AppsIcon'
 import DeveloperResourcesIcon from '@bitrix24/b24icons-vue/solid/DeveloperResourcesIcon'
 import ReceiptIcon from '@bitrix24/b24icons-vue/outline/ReceiptIcon'
 import { CLIENT_BANK_LANDING_URL } from '~/utils/site'
+import { isValidCounterId } from '~/utils/metrika'
 
 const config = useRuntimeConfig()
 
@@ -27,7 +28,7 @@ const currentYear = useState('currentYear', () => new Date().getFullYear())
 // (no inline script); the counter id is passed via a <meta> tag and re-validated
 // inside metrika.js.
 const rawCounterId = String(config.public.yandexCounterId ?? '')
-const yandexCounterId = /^\d+$/.test(rawCounterId) ? rawCounterId : ''
+const yandexCounterId = isValidCounterId(rawCounterId) ? rawCounterId : ''
 if (yandexCounterId) {
   useHead({
     meta: [
