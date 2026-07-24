@@ -188,12 +188,16 @@ onBeforeUnmount(() => {
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
         <!-- Rates come from the static fallback snapshot (issue #80): api.nbrb.by
-             was unreachable on load. Flag it so users know they aren't live. -->
-        <span
+             was unreachable on load. Flag it so users know they aren't live.
+             B24Badge (not a raw span) per the b24ui-first UI convention. -->
+        <B24Badge
           v-if="usingFallback"
-          class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+          color="air-primary-warning"
+          size="xss"
           title="API НБ РБ недоступен — показаны последние сохранённые курсы"
-        >резервная копия</span>
+        >
+          резервная копия
+        </B24Badge>
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"

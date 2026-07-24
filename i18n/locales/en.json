@@ -10,7 +10,7 @@
       "description": "Showing the last loaded values."
     },
     "fallbackNotice": {
-      "label": "backup copy",
+      "label": "Backup",
       "hint": "NBRB API is unavailable — showing the last saved rates"
     }
   },

@@ -1,6 +1,6 @@
 # Эксплуатация (runbook)
 
-> Last reviewed: 2026-07-23
+> Last reviewed: 2026-07-24
 
 Что делать после того, как приложение уже в проде. Первоначальная настройка деплоя —
 в [`AI_DEPLOY_GUIDE.md`](AI_DEPLOY_GUIDE.md) (там же «грабли» #1–#24); здесь — рутина и инциденты.
@@ -48,7 +48,7 @@ TLS продлевается автоматически (`acme-companion`); ру
 | Белый экран в портале Б24, `405/Mixed-Content` | `error_page 405`/`absolute_redirect` (#20/#21) | проверить `nginx.conf` в образе; пересобрать |
 | TLS не выдан/не продлён | DNS/rate-limit (#14) | `docker logs <acme-companion>`; проверить `dig +short $DOMAIN`, `LETSENCRYPT_EMAIL` |
 | Watchtower не обновляет | `DOCKER_API_VERSION` (#5) / нет label | `docker logs watchtower`; label `com.centurylinklabs.watchtower.enable=true` |
-| Курсы не грузятся у всех | `api.nbrb.by` недоступен (SPOF, issue #80) | внешняя проблема НБ РБ; кэш `localStorage` спасает вернувшихся, но не первую загрузку |
+| Курсы не грузятся у всех | `api.nbrb.by` недоступен | внешняя проблема НБ РБ; холодную загрузку теперь спасает снапшот `public/rates-fallback.json` (бейдж «резервная копия» с датой), кэш `localStorage` — вернувшихся. Рост цели `rates_fallback_used` = API НБ РБ лежит. Снапшот статичен (обновляется `pnpm rates:snapshot` / при пересборке; авто-обновление — остаток #80) |
 | Сборка/деплой красные | см. CI (`ci`→`deploy`); красный `ci` блокирует пуш образа | смотреть Actions; грабли #10 (lockfile), #11 (inkscape), #17 (node major) |
 
 ## Здоровье приложения (телеметрия)

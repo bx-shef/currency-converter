@@ -8,7 +8,7 @@
 // The parse/merge logic mirrors app/utils/nbrb.ts (kept in sync by hand — this
 // is a plain .mjs tool, it can't import the TS source without a build step).
 import { writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const DAILY_URL = 'https://api.nbrb.by/exrates/rates?periodicity=0'
 const MONTHLY_URL = 'https://api.nbrb.by/exrates/rates?periodicity=1'
@@ -66,8 +66,9 @@ async function main() {
 }
 
 // Run main() only when invoked directly — imports (seeding, tests) get the pure
-// helpers above without triggering a network fetch.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+// helpers above without triggering a network fetch. pathToFileURL handles paths
+// with spaces/special chars (and Windows) that a raw `file://` template misses.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error('rates-fallback generation failed:', err.message)
     process.exit(1)

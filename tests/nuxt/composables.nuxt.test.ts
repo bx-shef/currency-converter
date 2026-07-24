@@ -413,9 +413,14 @@ describe('useNbrbRates', () => {
     expect(api.fetchError.value).toBe('')
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.5)
     expect(api.ratesDate.value).toBe('04.06.2026') // ISO formatted like the live feed
-    // Telemetry: both the outage and the fallback engagement are reported.
+    // Telemetry: both the outage and the fallback engagement are reported, but
+    // NOT rates_monthly_missing (we're in a total-outage catch, not a partial one).
     expect(onGoal).toHaveBeenCalledWith('rates_load_failed')
     expect(onGoal).toHaveBeenCalledWith('rates_fallback_used')
+    expect(onGoal).not.toHaveBeenCalledWith('rates_monthly_missing')
+    // The snapshot must NOT be persisted to the cache — otherwise the next visit
+    // would show stale fallback data silently, without retrying the live API.
+    expect(localStorage.getItem(CACHE_KEY)).toBeNull()
   })
 
   it('shows a hard fetchError when both the API and the fallback snapshot fail (#80)', async () => {

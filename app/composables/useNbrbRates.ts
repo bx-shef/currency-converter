@@ -134,7 +134,7 @@ export function useNbrbRates(options: UseNbrbRatesOptions = {}) {
   function isValidEntry(e: unknown): e is RateEntry {
     if (typeof e !== 'object' || e === null) return false
     const r = e as Record<string, unknown>
-    return typeof r.code === 'string'
+    return typeof r.code === 'string' && r.code !== ''
       && typeof r.bynRate === 'number' && Number.isFinite(r.bynRate) && r.bynRate > 0
   }
 
