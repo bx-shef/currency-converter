@@ -150,8 +150,14 @@ pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×�
 - `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`) и `mergeRates`
   (слияние дневного и месячного фидов по коду валюты, приоритет у первого).
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
-- `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета (чистые функции).
-- `app/directives/holdRepeat.ts` — автоповтор +/− при удержании.
+- `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета + `copyButtonProps`
+  (state → `{color, ariaLabel}` для copy-кнопки; чистые функции).
+- `app/components/CopyButton.vue` — микрокомпонент copy-кнопки с ok/err-вспышкой (обёртка над
+  `B24Button` + `copyButtonProps`); убирает дубль трёх кнопок BYN/RUB/формула на главной (issue #82).
+  Клик пробрасывается родителю (каждая кнопка копирует своё).
+- `app/directives/holdRepeat.ts` — автоповтор +/− при удержании. Глобальные слушатели
+  (`window.blur` / `document.visibilitychange`, останавливают удержание) — **общие, с ref-counting**
+  (issue #82): один набор на все кнопки, а не по паре на каждую.
 - `tests/*.test.ts` — Vitest (node) на утилиты, конфиг и директиву (в т.ч. `build.test.ts` —
   `shortSha`/`commitUrl`; `site.test.ts` — предикат Маркета + инвариант «нет self-link на
   конвертер»; `metrika.test.ts` — чистое ядро целей Метрики).

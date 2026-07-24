@@ -140,6 +140,21 @@ describe('index.vue (converter page)', () => {
     expect(wrapper.text()).not.toContain(ru.app.fetchError)
   })
 
+  it('copies the BYN sum-in-words via the extracted CopyButton (#82 @click fallthrough)', async () => {
+    const writeText = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    // The CopyButton wraps B24Button; the parent's @click must still fire and
+    // copy the sum-in-words (guards the component-extraction refactor #82).
+    await wrapper.get('[aria-label="Скопировать сумму прописью"]').trigger('click')
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledTimes(1)
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/рубл|копе/)) // ru words, not empty
+  })
+
   it('shows the "helpful?" nudge and fires converter_helpful_yes on 👍', async () => {
     const wrapper = await mountSuspended(IndexPage)
     await flushPromises()
