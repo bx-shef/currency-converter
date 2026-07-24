@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { B24Frame } from '@bitrix24/b24jssdk'
 import RefreshIcon from '@bitrix24/b24icons-vue/solid/RefreshIcon'
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import PlusIcon from '@bitrix24/b24icons-vue/actions/Plus30Icon'
@@ -121,15 +120,21 @@ const rootEl = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 let fitRaf = 0
 
+// Dual-mode: `/` is also the B24 Application URL, so it can open inside the
+// portal. init() establishes the B24Frame (idempotent; a no-op standalone —
+// there's no window.name), which flips isB24 → hides the standalone-only nudge
+// and enables the fit-to-content flow below. Without it, isB24 stays false even
+// inside the portal and this whole block never ran.
+//
 // Inside a B24 frame: set the iframe title, then keep the frame sized to the
 // app content so the portal provides a single outer scrollbar instead of a
 // double scroll inside the app frame (fitWindow). Re-fit on content changes —
 // rates loading, rows added/removed, the «прописью» block wrapping, theme.
 onMounted(async () => {
-  if (!isB24.value) return
-  let $b24: B24Frame
+  await b24Instance.init()
+  const $b24 = b24Instance.get()
+  if (!$b24) return
   try {
-    $b24 = b24Instance.get() as B24Frame
     await $b24.parent.setTitle(t('page.index.seo.title'))
   } catch {
     // setTitle is best-effort — failure inside the frame is non-fatal

@@ -217,8 +217,11 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 > `useB24` мокается через `makeMockB24`) — обязателен ручной прогон в реальном портале:
 > `/install` → bind плейсмента `IM_TEXTAREA` → `/widget/converter` (Insert в поле ввода чата).
 > В 2.0 `callBatch`/`callMethod` — deprecated-шим (печатает warning в консоль,
-> делегирует в `actions.v2.batch.make`). Батчи install-флоу мигрированы на `actions.v2.batch.make`
-> (issue #85) — `callBatch` в коде больше нет; следить, чтобы новый код не возвращал deprecated-вызовы.
+> делегирует в `actions.v2.batch.make`). Батчи install-флоу переведены на `actions.v2.batch.make`
+> (промежуточная мера в рамках SDK 2.0) — `callBatch` в коде больше нет; следить, чтобы новый код
+> не возвращал deprecated-вызовы. **issue #85 остаётся открытым**: это переход на `actions.v3.batch.make`
+> + runtime-валидация ответа портала + обработка ошибок `placement.unbind` — не выполнен (бэклог,
+> «под решение владельца» — см. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §3).
 
 ## Конвенции
 
