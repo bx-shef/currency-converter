@@ -115,6 +115,9 @@ async function insertIntoChat() {
   try {
     const $b24 = b24Instance.getOrThrow()
     const requestId = Text.getUuidRfc4122()
+    // targetOrigin is safe (issue #88): the SDK's message.send posts to
+    // `getTargetOrigin()` — the portal's real origin from the handshake, never
+    // '*' — and its signature takes no origin arg, so nothing to pass explicitly.
     await $b24.parent.message.send('im:setImTextareaContent', {
       text,
       requestId,
