@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-// Review-stamp convention (see CLAUDE.md › Конвенции): every tracked .md carries
+// Review-stamp convention (see docs/PROCESS.md §4): every tracked .md carries
 // `> Last reviewed: YYYY-MM-DD` (ISO date) as a blockquote right under its H1.
 const STAMP_RE = /^> Last reviewed: \d{4}-\d{2}-\d{2}$/m
 
