@@ -1,0 +1,341 @@
+{
+  "date": "2026-07-24T00:00:00",
+  "rates": [
+    {
+      "code": "AUD",
+      "bynRate": 2.0192
+    },
+    {
+      "code": "AMD",
+      "bynRate": 0.0085258
+    },
+    {
+      "code": "BRL",
+      "bynRate": 0.5707099999999999
+    },
+    {
+      "code": "UAH",
+      "bynRate": 0.064579
+    },
+    {
+      "code": "DKK",
+      "bynRate": 0.44047000000000003
+    },
+    {
+      "code": "AED",
+      "bynRate": 0.78565
+    },
+    {
+      "code": "USD",
+      "bynRate": 2.8853
+    },
+    {
+      "code": "VND",
+      "bynRate": 0.00010963800000000001
+    },
+    {
+      "code": "EUR",
+      "bynRate": 3.2928
+    },
+    {
+      "code": "PLN",
+      "bynRate": 0.76129
+    },
+    {
+      "code": "JPY",
+      "bynRate": 0.017662
+    },
+    {
+      "code": "INR",
+      "bynRate": 0.029832
+    },
+    {
+      "code": "IRR",
+      "bynRate": 0.000002098
+    },
+    {
+      "code": "ISK",
+      "bynRate": 0.022964000000000002
+    },
+    {
+      "code": "CAD",
+      "bynRate": 2.0489
+    },
+    {
+      "code": "CNY",
+      "bynRate": 0.42752999999999997
+    },
+    {
+      "code": "KWD",
+      "bynRate": 9.3164
+    },
+    {
+      "code": "MDL",
+      "bynRate": 0.16384
+    },
+    {
+      "code": "NZD",
+      "bynRate": 1.6728
+    },
+    {
+      "code": "NOK",
+      "bynRate": 0.30091999999999997
+    },
+    {
+      "code": "RUB",
+      "bynRate": 0.036854
+    },
+    {
+      "code": "XDR",
+      "bynRate": 3.9165
+    },
+    {
+      "code": "SGD",
+      "bynRate": 2.2358
+    },
+    {
+      "code": "KGS",
+      "bynRate": 0.032993999999999996
+    },
+    {
+      "code": "KZT",
+      "bynRate": 0.0061712
+    },
+    {
+      "code": "TRY",
+      "bynRate": 0.06108
+    },
+    {
+      "code": "GBP",
+      "bynRate": 3.8581
+    },
+    {
+      "code": "CZK",
+      "bynRate": 0.136103
+    },
+    {
+      "code": "SEK",
+      "bynRate": 0.29696
+    },
+    {
+      "code": "CHF",
+      "bynRate": 3.5418
+    },
+    {
+      "code": "AZN",
+      "bynRate": 1.7083
+    },
+    {
+      "code": "DZD",
+      "bynRate": 0.021798
+    },
+    {
+      "code": "ARS",
+      "bynRate": 0.00196
+    },
+    {
+      "code": "AFN",
+      "bynRate": 0.045377
+    },
+    {
+      "code": "THB",
+      "bynRate": 0.087425
+    },
+    {
+      "code": "BHD",
+      "bynRate": 7.7022
+    },
+    {
+      "code": "KRW",
+      "bynRate": 0.0018722
+    },
+    {
+      "code": "HKD",
+      "bynRate": 0.37034
+    },
+    {
+      "code": "MKD",
+      "bynRate": 0.053704999999999996
+    },
+    {
+      "code": "NAD",
+      "bynRate": 0.17751999999999998
+    },
+    {
+      "code": "EGP",
+      "bynRate": 0.05899
+    },
+    {
+      "code": "NIO",
+      "bynRate": 0.078814
+    },
+    {
+      "code": "JOD",
+      "bynRate": 4.0961
+    },
+    {
+      "code": "IQD",
+      "bynRate": 0.0022141
+    },
+    {
+      "code": "QAR",
+      "bynRate": 0.7957
+    },
+    {
+      "code": "KES",
+      "bynRate": 0.022425
+    },
+    {
+      "code": "COP",
+      "bynRate": 0.00084145
+    },
+    {
+      "code": "MMK",
+      "bynRate": 0.0008939999999999999
+    },
+    {
+      "code": "LAK",
+      "bynRate": 0.00012932
+    },
+    {
+      "code": "GEL",
+      "bynRate": 1.10129
+    },
+    {
+      "code": "ALL",
+      "bynRate": 0.035127
+    },
+    {
+      "code": "LBP",
+      "bynRate": 0.0000324
+    },
+    {
+      "code": "LYD",
+      "bynRate": 0.4515
+    },
+    {
+      "code": "MUR",
+      "bynRate": 0.061541
+    },
+    {
+      "code": "MYR",
+      "bynRate": 0.7109
+    },
+    {
+      "code": "MAD",
+      "bynRate": 0.30903
+    },
+    {
+      "code": "MXN",
+      "bynRate": 0.16634
+    },
+    {
+      "code": "NGN",
+      "bynRate": 0.0021006999999999996
+    },
+    {
+      "code": "NPR",
+      "bynRate": 0.019184
+    },
+    {
+      "code": "ILS",
+      "bynRate": 0.97362
+    },
+    {
+      "code": "TWD",
+      "bynRate": 0.091225
+    },
+    {
+      "code": "TMT",
+      "bynRate": 0.82738
+    },
+    {
+      "code": "OMR",
+      "bynRate": 7.5431
+    },
+    {
+      "code": "PKR",
+      "bynRate": 0.01043
+    },
+    {
+      "code": "RON",
+      "bynRate": 0.63123
+    },
+    {
+      "code": "IDR",
+      "bynRate": 0.00016216
+    },
+    {
+      "code": "ZAR",
+      "bynRate": 0.17744
+    },
+    {
+      "code": "SAR",
+      "bynRate": 0.77317
+    },
+    {
+      "code": "RSD",
+      "bynRate": 0.028197999999999997
+    },
+    {
+      "code": "SYP",
+      "bynRate": 0.025143699999999998
+    },
+    {
+      "code": "PEN",
+      "bynRate": 0.8493299999999999
+    },
+    {
+      "code": "TJS",
+      "bynRate": 0.31289
+    },
+    {
+      "code": "VES",
+      "bynRate": 0.004667
+    },
+    {
+      "code": "SDG",
+      "bynRate": 0.00484
+    },
+    {
+      "code": "BDT",
+      "bynRate": 0.023572000000000003
+    },
+    {
+      "code": "MNT",
+      "bynRate": 0.0008107
+    },
+    {
+      "code": "TND",
+      "bynRate": 0.9792
+    },
+    {
+      "code": "UZS",
+      "bynRate": 0.00024065
+    },
+    {
+      "code": "UYU",
+      "bynRate": 0.072081
+    },
+    {
+      "code": "PHP",
+      "bynRate": 0.047306
+    },
+    {
+      "code": "HUF",
+      "bynRate": 0.009299400000000001
+    },
+    {
+      "code": "CLP",
+      "bynRate": 0.0031481
+    },
+    {
+      "code": "LKR",
+      "bynRate": 0.008648
+    },
+    {
+      "code": "ETB",
+      "bynRate": 0.01799
+    }
+  ]
+}

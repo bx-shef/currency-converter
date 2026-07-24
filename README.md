@@ -16,6 +16,8 @@
 - Сумма прописью для BYN и RUB (формат как в платёжке: «рубль / копейка»),
   с переключателем регистра первой буквы (строчная / заглавная)
 - Кэш курсов в localStorage (12 ч) — НБ РБ обновляет раз в день
+- Резервная копия курсов (`public/rates-fallback.json`): если API НБ РБ недоступен при первой
+  загрузке, показываются последние сохранённые курсы с пометкой «резервная копия» (issue #80)
 - Светлая и тёмная тема — кнопка в шапке (по умолчанию системная тема, переключение запоминается)
 - Статическое приложение (без серверной части)
 - Mobile-first дизайн
@@ -107,8 +109,10 @@ app/
   components/              — SiteFooter, ConverterPromo (промо-карточки под калькулятором) и др.
   plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
 public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
+public/rates-fallback.json — снапшот «последних известных курсов» (fallback при сбое API, #80)
 scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
 scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
+scripts/gen-rates-fallback.mjs — генератор снапшота курсов (pnpm rates:snapshot)
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```
 

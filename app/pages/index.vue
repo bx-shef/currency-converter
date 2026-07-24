@@ -30,6 +30,7 @@ const {
   fetchError,
   refreshError,
   dismissRefreshError,
+  usingFallback,
   activeCurrency,
   refresh,
   onValueUpdate,
@@ -186,6 +187,13 @@ onBeforeUnmount(() => {
           v-if="ratesDate"
           class="text-gray-500 dark:text-gray-400"
         > · на {{ ratesDate }}</span>
+        <!-- Rates come from the static fallback snapshot (issue #80): api.nbrb.by
+             was unreachable on load. Flag it so users know they aren't live. -->
+        <span
+          v-if="usingFallback"
+          class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+          title="API НБ РБ недоступен — показаны последние сохранённые курсы"
+        >резервная копия</span>
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"

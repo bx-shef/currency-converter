@@ -396,6 +396,62 @@ describe('useNbrbRates', () => {
     expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(9.99)
   })
 
+  it('falls back to the static snapshot when a cold API load fails (#80)', async () => {
+    const onGoal = vi.fn()
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      if (url.includes('rates-fallback.json')) {
+        return { date: '2026-06-04T00:00:00', rates: [{ code: 'USD', bynRate: 3.5 }] }
+      }
+      throw new Error('nbrb down') // both live feeds fail
+    }))
+
+    const api = await runComposable(() => useNbrbRates({ onGoal }))
+    await flushPromises()
+
+    // Snapshot rates are shown, flagged as fallback, without a hard error.
+    expect(api.usingFallback.value).toBe(true)
+    expect(api.fetchError.value).toBe('')
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.5)
+    expect(api.ratesDate.value).toBe('04.06.2026') // ISO formatted like the live feed
+    // Telemetry: both the outage and the fallback engagement are reported.
+    expect(onGoal).toHaveBeenCalledWith('rates_load_failed')
+    expect(onGoal).toHaveBeenCalledWith('rates_fallback_used')
+  })
+
+  it('shows a hard fetchError when both the API and the fallback snapshot fail (#80)', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async () => {
+      throw new Error('everything down') // live feeds AND the snapshot fail
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+
+    expect(api.fetchError.value).toBe('load')
+    expect(api.usingFallback.value).toBe(false)
+  })
+
+  it('a successful live load supersedes the fallback and clears the flag (#80)', async () => {
+    let live = false
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      if (url.includes('rates-fallback.json')) {
+        return { date: '2026-06-04T00:00:00', rates: [{ code: 'USD', bynRate: 3.5 }] }
+      }
+      if (!live) throw new Error('down')
+      return MOCK_RATES
+    }))
+
+    const api = await runComposable(() => useNbrbRates())
+    await flushPromises()
+    expect(api.usingFallback.value).toBe(true) // cold load → fallback engaged
+
+    // API recovers; a refresh replaces the snapshot with live data.
+    live = true
+    await api.refresh()
+    await flushPromises()
+    expect(api.usingFallback.value).toBe(false)
+    expect(api.currencies.value.find(c => c.code === 'USD')?.bynRate).toBe(3.2)
+  })
+
   it('does not throw when the default (uninjected) goal reporter is used', async () => {
     // No onGoal passed → defaults to useMetrikaGoal().reachGoal, which is
     // no-op-safe here (no window.ym / blank counter). Load must still fail cleanly.

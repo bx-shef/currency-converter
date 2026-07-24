@@ -8,6 +8,10 @@
     "refreshError": {
       "title": "Failed to refresh rates",
       "description": "Showing the last loaded values."
+    },
+    "fallbackNotice": {
+      "label": "backup copy",
+      "hint": "NBRB API is unavailable — showing the last saved rates"
     }
   },
   "mock": {

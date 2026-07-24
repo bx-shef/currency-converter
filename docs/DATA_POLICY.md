@@ -1,6 +1,6 @@
 # Политика данных и диагностики
 
-> Last reviewed: 2026-07-23
+> Last reviewed: 2026-07-24
 
 Что приложение делает с данными и что именно оно измеряет. Объединяет «потоки данных»
 (P2-3) и «диагностику» (P2-4) в один документ — для статического виджета без бэкенда
@@ -49,6 +49,7 @@
 |---|---|---|
 | `rates_load_failed` | сбой загрузки дневного (основного) фида курсов | `useNbrbRates` |
 | `rates_monthly_missing` | дневной фид успешен, месячный (best-effort) упал | `useNbrbRates` |
+| `rates_fallback_used` | холодная загрузка API провалилась → показан статический снапшот (issue #80) | `useNbrbRates` |
 | `converter_helpful_yes` / `converter_helpful_no` | клик 👍/👎 в блоке «Помог курс?» | `index.vue` |
 | `market_card_click` | клик CTA карточки «Приложение для Bitrix24» | `AppInBitrixCard` |
 | `market_qr_reveal` | показ QR листинга Маркета (hold-to-reveal) | `HoldRevealQr` |

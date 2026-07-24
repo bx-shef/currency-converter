@@ -122,6 +122,24 @@ describe('index.vue (converter page)', () => {
     expect(wrapper.text()).not.toContain(ru.app.fetchError)
   })
 
+  it('shows the "резервная копия" badge when rates come from the fallback snapshot (#80)', async () => {
+    vi.stubGlobal('$fetch', vi.fn(async (url: string) => {
+      if (url.includes('rates-fallback.json')) {
+        return { date: '2026-06-04T00:00:00', rates: [{ code: 'USD', bynRate: 3.5 }] }
+      }
+      throw new Error('nbrb down')
+    }))
+
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+
+    // Rows render (from the snapshot) and the fallback badge is shown.
+    expect(wrapper.text()).toContain('Сумма прописью')
+    expect(wrapper.text()).toContain('резервная копия')
+    // The full-screen error must NOT appear — we have snapshot data to show.
+    expect(wrapper.text()).not.toContain(ru.app.fetchError)
+  })
+
   it('shows the "helpful?" nudge and fires converter_helpful_yes on 👍', async () => {
     const wrapper = await mountSuspended(IndexPage)
     await flushPromises()
