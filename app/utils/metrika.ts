@@ -3,6 +3,17 @@
 // counter id from runtimeConfig.
 
 /**
+ * Strict validity check for a Yandex.Metrika counter id: a non-empty string of
+ * digits only. Shared by the build-time fail-fast guard (`nuxt.config.ts`) and
+ * the layout's decision to load Metrika (`default.vue`) so the two can't drift.
+ * Deliberately stricter than {@link reachMetrikaGoal}'s lenient `Number()` check
+ * — a malformed id must be caught at build, not silently coerced at runtime.
+ */
+export function isValidCounterId(raw: string): boolean {
+  return /^\d+$/.test(raw)
+}
+
+/**
  * Fire a Metrika goal via the injected `ym` global. Returns whether it fired.
  * No-op (false) when tracking is off — a blank/invalid counter id — or when
  * `ym` isn't a function (Metrika not loaded, e.g. suppressed inside the B24

@@ -1,4 +1,5 @@
 import { contentLocales } from './i18n/i18n'
+import { isValidCounterId } from './app/utils/metrika'
 
 const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   ? process.env.NUXT_ALLOWED_HOSTS.split(',').map((h: string) => h.trim())
@@ -6,14 +7,14 @@ const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
 
 // Fail-fast on a malformed analytics counter id (issue #46). The id is baked into
 // the SSG bundle at `nuxt generate`, so a typo would silently ship a broken
-// Metrika init. Empty/unset is fine (analytics simply off). This build-time check
-// is deliberately stricter than the runtime one in utils/metrika.ts (which
-// leniently no-ops via Number()) — here we reject anything but plain digits so a
-// bad value can't reach the bundle in the first place.
-const yandexCounterId = (process.env.NUXT_PUBLIC_YANDEX_COUNTER_ID ?? '').trim()
-if (yandexCounterId !== '' && !/^\d+$/.test(yandexCounterId)) {
+// Metrika init. Empty/unset is fine (analytics simply off). Validates the RAW env
+// value (the same one Nuxt bakes into runtimeConfig.public) with the shared
+// isValidCounterId — so a value that passes here is exactly one default.vue will
+// accept, and anything else (spaces, letters, decimals) fails the build.
+const rawCounterId = process.env.NUXT_PUBLIC_YANDEX_COUNTER_ID ?? ''
+if (rawCounterId !== '' && !isValidCounterId(rawCounterId)) {
   throw new Error(
-    `NUXT_PUBLIC_YANDEX_COUNTER_ID must be digits only (got "${yandexCounterId}"). `
+    `NUXT_PUBLIC_YANDEX_COUNTER_ID must be digits only (got "${rawCounterId}"). `
     + 'Leave it unset to disable analytics.'
   )
 }
@@ -33,9 +34,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Validated above; empty disables analytics. (Nuxt also maps the
-      // NUXT_PUBLIC_YANDEX_COUNTER_ID env here — this seeds the same value.)
-      yandexCounterId,
+      // Nuxt maps NUXT_PUBLIC_YANDEX_COUNTER_ID here at build; the guard above
+      // fail-fasts on a malformed value before it can be baked in.
+      yandexCounterId: '',
       // Public URL where this app is hosted. Used by the Bitrix24 install
       // handler to compose the placement HANDLER. Override via NUXT_PUBLIC_SITE_URL.
       siteUrl: '',
