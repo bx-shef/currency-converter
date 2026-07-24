@@ -18,18 +18,18 @@ export const useB24 = () => {
   }
 
   function set(newValue: B24Frame | undefined): Result {
+    // Update `type` synchronously (issue #88): `set()` is called from `init()`
+    // inside onMounted (post-render), so there's no "mutate during render" risk,
+    // and a deferred flip cost waitForB24 an extra ~100ms poll on install while
+    // isInit() lagged a microtask behind the resolved init().
     if (newValue instanceof B24Frame) {
       if (!$b24) {
         $b24 = newValue
-        nextTick(() => {
-          type.value = 'B24Frame'
-        })
+        type.value = 'B24Frame'
       }
     } else {
       $b24 = undefined
-      nextTick(() => {
-        type.value = 'undefined'
-      })
+      type.value = 'undefined'
     }
     return new Result()
   }

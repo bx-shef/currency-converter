@@ -186,7 +186,10 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   ввода чата — единственное место встройки).
 - `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (идемпотентен; молча no-op вне
   фрейма — когда `window.name` отсутствует; парсинг/handshake делает SDK), `isInit()`, `get()`/
-  `getOrThrow()`, `getRequiredRights()` (из `config/b24.ts`), `targetOrigin()`.
+  `getOrThrow()`, `getRequiredRights()` (из `config/b24.ts`), `targetOrigin()`. `set()` флипает
+  `type.value` **синхронно** (issue #88 — раньше через `nextTick`, что стоило `waitForB24` лишние
+  ~100ms на install). Вставка в чат (`message.send`) шлётся SDK на реальный origin портала
+  (`getTargetOrigin()`, не `*`) — targetOrigin явно передавать не нужно.
 - `app/pages/install.vue` (layout `clear`) — обработчик установки: `init → placement.bind`
   `→ installFinish`. Биндит один плейсмент `IM_TEXTAREA` (панель над полем ввода чата) на
   обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Вне фрейма —
@@ -221,8 +224,15 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   — все через build-args (см. Dockerfile/ci). Значения запекаются в SSG-бандл на `generate`,
   поэтому build-arg должен присутствовать до сборки.
 - `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
-  (`*.bitrix24.*`), иначе iframe-встройка и REST-вызовы install падают. Self-hosted порталы
-  на своём домене нужно добавлять туда вручную.
+  (`*.bitrix24.<tld>`, ~22 зоны — issue #88), иначе iframe-встройка и REST-вызовы install падают.
+  Список **зеркалится** между двумя директивами (инвариант + точный набор проверяет
+  `tests/nginxCsp.test.ts`); международные зоны — из сабпроцессор-доки Б24, плюс CIS-зоны
+  (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется **вручную** (best-effort — Б24
+  добавляет регионы; self-hosted на своём домене добавляют сами). `frame-ancestors` намеренно НЕ
+  сужается по location: `/` — dual-mode (Application URL, открывается в портале), поэтому ему нужен
+  тот же allow-list, что `/install`/`/widget`.
+  Security-заголовки повторены в `location /_nuxt/` (`nosniff`+HSTS), т.к. nginx не наследует
+  `add_header` в location со своим `add_header` (issue #46).
 
 Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
 без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика
