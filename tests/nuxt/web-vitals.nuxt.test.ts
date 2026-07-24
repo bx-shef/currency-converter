@@ -78,4 +78,16 @@ describe('webVitals.client plugin', () => {
     expect(reachGoalMock).toHaveBeenCalledTimes(1)
     expect(reachGoalMock).toHaveBeenCalledWith('web_vitals_lcp_good')
   })
+
+  it('untracked metric (webVitalGoal → null): no goal, no throw', async () => {
+    runPlugin()
+    await flushPromises()
+
+    // A metric webVitalGoal doesn't map (unknown name) must be a silent no-op —
+    // and must not occupy a slot in the dedup Set (a later valid one still fires).
+    expect(() => cbs.lcp!({ name: 'TTFB', rating: 'good' })).not.toThrow()
+    expect(reachGoalMock).not.toHaveBeenCalled()
+    cbs.lcp!({ name: 'LCP', rating: 'good' })
+    expect(reachGoalMock).toHaveBeenCalledOnce()
+  })
 })

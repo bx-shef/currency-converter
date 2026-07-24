@@ -23,15 +23,18 @@ export function makeMockB24(opts: MockB24Options = {}): ReturnType<typeof useB24
   // The B24Frame fake is intentionally minimal — only `placement` + `parent.message.send`.
   // The full install flow (auth.getAuthData / actions.v2.batch.make / installFinish) is portal-only;
   // extend `MockB24Options` + `getOrThrow` here if a test ever needs that B24 branch.
+  const inFrame = () => opts.isInit?.() ?? true
   return {
     init: vi.fn(async () => ok),
-    get: () => ({}) as unknown as B24Frame,
+    // Mirror the real contract: get() yields the frame only once initialised
+    // (standalone → undefined), so callers' `if (!$b24) return` path is exercised.
+    get: () => (inFrame() ? ({} as unknown as B24Frame) : undefined),
     getOrThrow: () => ({
       placement: { placement: opts.placement?.() ?? 'IM_TEXTAREA' },
       parent: { message: { send } }
     }) as unknown as B24Frame,
     set: () => ok,
-    isInit: () => opts.isInit?.() ?? true,
+    isInit: inFrame,
     targetOrigin: () => 'https://example.bitrix24.by',
     getRequiredRights: () => []
   }
