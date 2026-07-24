@@ -6,13 +6,12 @@
 import CopyIcon from '@bitrix24/b24icons-vue/outline/CopyIcon'
 import { copyButtonProps, type CopyState } from '~/utils/copyFeedback'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   /** Flash state driving the colour + aria-label. */
   state: CopyState
   /** aria-label shown while idle (the ok/err labels are fixed RU, see #87). */
   label: string
-  size?: 'sm' | 'lg'
-}>(), { size: 'sm' })
+}>()
 
 const ui = computed(() => copyButtonProps(props.state, props.label))
 </script>
@@ -22,7 +21,7 @@ const ui = computed(() => copyButtonProps(props.state, props.label))
     type="button"
     :aria-label="ui.ariaLabel"
     :color="ui.color"
-    :size="size"
+    size="sm"
     :icon="CopyIcon"
     class="shrink-0 me-[3px]"
   />
