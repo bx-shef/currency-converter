@@ -1,6 +1,6 @@
 # Инструкция AI-агенту: деплой через GHCR + Watchtower + nginx-proxy
 
-> Last reviewed: 2026-07-23
+> Last reviewed: 2026-07-25
 
 Эту инструкцию нужно отдать AI-агенту в репозитории, где предстоит настроить
 автоматический деплой. Агент обязан **сначала** прислать план и вопросы,
@@ -126,11 +126,14 @@ cp .env.prod.example .env.prod && nano .env.prod
    локально и закоммитить **до** включения кеша. Не пытаться чинить через PR
    на стороне сервера.
 
-11. **`rsvg-convert` удалён в librsvg 2.57+.** Если в Dockerfile нужна
-    SVG→PNG конвертация (OG-картинки) — на свежих Alpine (`node:22-alpine` и новее)
-    `rsvg-convert` уже нет. Использовать `inkscape`:
-    `apk add inkscape font-dejavu fontconfig && fc-cache -f`. Либо рендерить
-    OG через библиотеку (Satori), без системного бинаря.
+11. **OG-картинка: инкскейп убран (issue #81).** Раньше Dockerfile рендерил
+    `public/og.png` из `scripts/og.svg` через тяжёлый `inkscape` (`rsvg-convert`
+    удалён в librsvg 2.57+). Теперь `public/og.png` **закоммичен** в репо (build
+    его не генерит — одна системная зависимость меньше), а регенерация — локально
+    `pnpm og:snapshot` (`scripts/gen-og.mjs`, рендер уже установленным Chromium
+    через `playwright-core`; DejaVu Sans совпадает со старым рендером). Историческая
+    справка: если бы понадобился build-time рендер — `apk add inkscape font-dejavu
+    fontconfig` или Satori.
 
 12. **Публичный репозиторий → публичный GHCR-образ → `docker login` на сервере
     не нужен.** Приватный → нужен PAT с `read:packages`:
@@ -286,7 +289,7 @@ cp .env.prod.example .env.prod && nano .env.prod
   резолвится с публичного IP, не закеширован старый AAAA, и `LETSENCRYPT_EMAIL`
   задан в `.env.prod` nginx-proxy.
 - CI падает на `pnpm install` с cache → грабли #10, нет lockfile.
-- Сборка падает на rsvg/inkscape → грабли #11.
+- OG-картинка (`/og.png`) пропала/битая → грабли #11 (закоммичена в `public/`, реген `pnpm og:snapshot`; в билде больше не рендерится).
 
 ---
 

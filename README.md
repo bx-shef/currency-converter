@@ -1,6 +1,6 @@
 # Конвертер валют НБ РБ
 
-> Last reviewed: 2026-07-24
+> Last reviewed: 2026-07-25
 
 Конвертер валют по официальному курсу Национального банка Республики Беларусь.
 
@@ -110,8 +110,10 @@ app/
   plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
 public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
 public/rates-fallback.json — снапшот «последних известных курсов» (fallback при сбое API, #80)
-scripts/og.svg             — исходник OG-картинки (→ public/og.png на этапе docker build)
+public/og.png              — готовый рендер OG-картинки (закоммичен; регенерация pnpm og:snapshot)
+scripts/og.svg             — исходник OG-картинки (→ public/og.png через scripts/gen-og.mjs)
 scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
+scripts/gen-og.mjs         — генератор OG-картинки из og.svg (Chromium; pnpm og:snapshot)
 scripts/gen-rates-fallback.mjs — генератор снапшота курсов (pnpm rates:snapshot)
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```

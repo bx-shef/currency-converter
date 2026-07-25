@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-24
+> Last reviewed: 2026-07-25
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -27,6 +27,7 @@ pnpm test         # Vitest (оба проекта; быстрый прогон n
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
 pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/VISUAL_VERIFICATION.md
+pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
