@@ -51,6 +51,10 @@ describe('install.vue', () => {
     await flushPromises()
 
     expect(replaceSpy).not.toHaveBeenCalled() // no standalone redirect when in-frame
-    expect(wrapper.text()).toContain(en.page.install.error.title) // retryable error shown
+    expect(wrapper.text()).toContain(en.page.install.error.title) // error state shown
+    // The «retryable» part: the retry button renders (label) and is enabled again
+    // (isRunning reset in the finally), so the user can re-run the install.
+    expect(wrapper.text()).toContain(en.page.install.error.retry)
+    expect(wrapper.find('button:not([disabled])').exists()).toBe(true)
   })
 })
