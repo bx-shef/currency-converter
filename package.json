@@ -23,6 +23,7 @@
     "typecheck": "vue-tsc --noEmit",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "screenshots": "node scripts/screenshots.mjs",
+    "og:snapshot": "node scripts/gen-og.mjs",
     "rates:snapshot": "node scripts/gen-rates-fallback.mjs",
     "postinstall": "nuxt prepare"
   },

@@ -33,10 +33,9 @@ ENV NUXT_PUBLIC_COMMIT_SHA=$NUXT_PUBLIC_COMMIT_SHA
 # card still shows. Baked at generate time like the other public config.
 ARG NUXT_PUBLIC_MARKETPLACE_URL
 ENV NUXT_PUBLIC_MARKETPLACE_URL=$NUXT_PUBLIC_MARKETPLACE_URL
-# Generate OG image from SVG (DejaVu supports Cyrillic).
-# inkscape 1.x replaces rsvg-convert which was removed in librsvg 2.57+
-RUN apk add --no-cache inkscape font-dejavu fontconfig && fc-cache -f && \
-    inkscape -o public/og.png scripts/og.svg
+# OG image (public/og.png) is committed to the repo and copied in with the source
+# above — no build-time render, so the heavy inkscape system dependency is gone
+# (issue #81). Regenerate from scripts/og.svg with `pnpm og:snapshot` on a redesign.
 RUN pnpm generate
 # Inject per-build sha256 CSP hashes for Nuxt's inline scripts into nginx.conf,
 # so the served CSP needs no `script-src 'unsafe-inline'`. Writes in place.
