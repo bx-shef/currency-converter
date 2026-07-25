@@ -5,6 +5,7 @@ import { withoutTrailingSlash } from 'ufo'
 import { useB24 } from '~/composables/useB24'
 import { IM_TEXTAREA_PLACEMENT } from '~/config/b24'
 import { buildPlacementCalls, type PlacementSpec } from '~/utils/b24Placements'
+import { buildLangAll } from '~/utils/langAll'
 import { contentLocales } from '../../i18n/i18n'
 import { sleep } from '~/utils/sleep'
 
@@ -118,25 +119,6 @@ const steps: Record<string, InstallStep> = {
 }
 const stepCode = ref<string>('init')
 
-/**
- * Builds the LANG_ALL map for placement.bind: TITLE per locale Bitrix24 ships.
- * Uses the same locale codes as our i18n setup, so vue-i18n's fallback chain
- * applies — missing translations resolve to English.
- */
-function buildLangAll() {
-  const out: Record<string, { TITLE: string }> = {}
-  for (const loc of contentLocales) {
-    const title = locale.value === loc.code
-      ? t('app.title')
-      // Use vue-i18n's tm/te machinery indirectly: ask t() to resolve the key
-      // with an explicit locale override. te() doesn't accept locale, so we
-      // wrap with try/catch to be safe.
-      : t('app.title', {}, { locale: loc.code }) as string
-    out[loc.code] = { TITLE: title }
-  }
-  return out
-}
-
 async function makeInit(): Promise<void> {
   if (!isUseB24.value) return
   const $b24 = b24Instance.getOrThrow()
@@ -181,7 +163,7 @@ async function makePlacement(): Promise<void> {
 
   const placementList = initData.value.placementList ?? []
   const TITLE = t('app.title')
-  const { unbind, bind } = buildPlacementCalls(placementList, PLACEMENTS, handlerUrl.value, TITLE, buildLangAll())
+  const { unbind, bind } = buildPlacementCalls(placementList, PLACEMENTS, handlerUrl.value, TITLE, buildLangAll(contentLocales, locale.value, t))
 
   // 1) Best-effort cleanup of stale bindings — a missing one is fine, so don't
   //    halt and don't surface its errors.
