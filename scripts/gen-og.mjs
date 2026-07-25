@@ -7,6 +7,9 @@
 //
 // Chromium renders with the same DejaVu Sans the SVG asks for, so the output
 // matches the previous inkscape render (both use font-dejavu / DejaVu Sans).
+// NOTE: regenerate on a machine that has DejaVu Sans installed (fc-list | grep
+// -i dejavu) — otherwise Chromium silently substitutes another font and the
+// Cyrillic title drifts from the committed image.
 import { chromium } from 'playwright-core'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'

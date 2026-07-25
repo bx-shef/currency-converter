@@ -45,6 +45,9 @@ RUN node scripts/csp-hashes.mjs .output/public nginx.conf nginx.conf
 FROM nginxinc/nginx-unprivileged:1.31-alpine AS runner
 COPY --from=builder /app/.output/public /usr/share/nginx/html
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Fail the build if the committed OG image didn't make it into the output (issue
+# #81) — e.g. if a future .dockerignore rule accidentally excludes public/*.png.
+RUN test -f /usr/share/nginx/html/og.png || { echo 'og.png missing from build output'; exit 1; }
 # Fail the build on a bad nginx.conf or an un-substituted CSP-hash placeholder —
 # catches config syntax errors and a broken csp-hashes.mjs run at CI (docker-build
 # job), not at container start.

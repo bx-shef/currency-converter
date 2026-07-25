@@ -289,7 +289,7 @@ cp .env.prod.example .env.prod && nano .env.prod
   резолвится с публичного IP, не закеширован старый AAAA, и `LETSENCRYPT_EMAIL`
   задан в `.env.prod` nginx-proxy.
 - CI падает на `pnpm install` с cache → грабли #10, нет lockfile.
-- Сборка падает на rsvg/inkscape → грабли #11.
+- OG-картинка (`/og.png`) пропала/битая → грабли #11 (закоммичена в `public/`, реген `pnpm og:snapshot`; в билде больше не рендерится).
 
 ---
 
