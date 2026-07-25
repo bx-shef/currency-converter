@@ -1,37 +1,56 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { flushPromises } from '@vue/test-utils'
 
 // Spy on router.replace so we can assert the standalone redirect.
 const replaceSpy = vi.hoisted(() => vi.fn())
+// Control whether the page believes it's inside a B24 frame.
+const b24State = vi.hoisted(() => ({ inFrame: false }))
 
 vi.mock('vue-router', async (orig) => {
   const actual = await orig<typeof import('vue-router')>()
   return { ...actual, useRouter: () => ({ replace: replaceSpy }) }
 })
 
-// Standalone: no B24 frame (isInit=false) → waitForB24 times out → mock progress.
 vi.mock('~/composables/useB24', async () => {
   const { makeMockB24 } = await import('./helpers/mockB24')
-  return { useB24: () => makeMockB24({ isInit: () => false }) }
+  return { useB24: () => makeMockB24({ isInit: () => b24State.inFrame }) }
 })
 
 const InstallPage = await import('~/pages/install.vue').then(m => m.default)
+const en = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/en.json'), 'utf-8'))
 
-describe('install.vue — standalone (no B24 frame)', () => {
+describe('install.vue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     replaceSpy.mockClear()
+    b24State.inFrame = false
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('runs the mock progress and redirects to /', async () => {
+  it('standalone (no B24 frame): runs the mock progress and redirects to /', async () => {
     await mountSuspended(InstallPage)
     // onMounted → runInstall: waitForB24 polls ~10s, then the mock steps run
     // ~3.8s (3×600ms + 2000ms) before router.replace('/'). Drive all the timers.
     await vi.advanceTimersByTimeAsync(14000)
     expect(replaceSpy).toHaveBeenCalledWith('/')
+  })
+
+  it('inside a B24 frame, a failing install shows a retryable error, not a redirect (#86)', async () => {
+    b24State.inFrame = true
+    const wrapper = await mountSuspended(InstallPage)
+    // isInit=true → waitForB24 returns at once; the real install flow's first step
+    // (makeInit) calls portal methods the minimal mock frame lacks → throws →
+    // caught → error state with a retry button (no sleeps precede the throw).
+    await vi.advanceTimersByTimeAsync(200)
+    await flushPromises()
+
+    expect(replaceSpy).not.toHaveBeenCalled() // no standalone redirect when in-frame
+    expect(wrapper.text()).toContain(en.page.install.error.title) // retryable error shown
   })
 })
