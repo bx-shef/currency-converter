@@ -6,7 +6,7 @@
     "refresh": "Refresh rates",
     "fetchError": "Couldn't load rates from the NBRB site. Check your internet and refresh the page.",
     "refreshError": {
-      "title": "Couldn't refresh the rates",
+      "title": "Couldn't refresh rates",
       "description": "Showing the previous rates — try refreshing again."
     },
     "fallbackNotice": {
@@ -30,7 +30,8 @@
       "sumInWords": "Amount in words",
       "insert": "Insert into chat",
       "inserted": "Inserted into chat",
-      "insertFailed": "Couldn't insert into the chat. Try again.",
+      "insertFailed": "Couldn't insert into chat",
+      "insertFailedHint": "Try again.",
       "notInFrame": "Chat insert only works inside Bitrix24",
       "caseGroup": "First letter case",
       "caseLower": "Lowercase first letter",
@@ -52,7 +53,7 @@
         "title": "Application installation failed",
         "retry": "Try again"
       },
-      "placementWarning": "Not all app components were installed.",
+      "placementWarning": "Not all app components were installed — reinstall it",
       "diagnostics": {
         "title": "Diagnostics",
         "mode": "Mode",

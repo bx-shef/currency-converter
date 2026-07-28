@@ -54,5 +54,5 @@ pnpm screenshots         # снять скриншоты (терминал 2) �
 - Виджет (`/widget/converter`): компактная раскладка под узкий iframe, «прописью», переключатель
   регистра «аб/Аб», кнопка «Вставить в чат».
 - Установка (`/install`): вне iframe снимок ловит экран мок-прогресса установки
-  («Application installation / Loading portal data…» + сворачиваемый «Diagnostics») —
+  («Application installation / Connecting to Bitrix24…» + сворачиваемый «Diagnostics») —
   standalone-редирект на `/` происходит позже (~через паузы мок-шагов) и в кадр не попадает.
