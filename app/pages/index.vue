@@ -194,7 +194,7 @@ onBeforeUnmount(() => {
           v-if="usingFallback"
           color="air-primary-warning"
           size="xss"
-          title="API НБ РБ недоступен — показаны последние сохранённые курсы"
+          title="Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы"
         >
           резервная копия
         </B24Badge>
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
              hardcoded RU; see #87). The multilingual B24 widget localizes the
              same message via t('app.fetchError'); index.nuxt.test.ts asserts this
              literal equals ru.json's app.fetchError so the two can't drift (#97). -->
-        Не удалось загрузить курсы НБ РБ. Попробуйте обновить страницу.
+        Не удалось загрузить курсы с сайта НБ РБ. Проверьте интернет и обновите страницу.
       </div>
 
       <!-- Currency rows -->
@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
           size="sm"
           :close="true"
           title="Не удалось обновить курсы"
-          description="Показаны последние загруженные значения."
+          description="Показываем прежние курсы — попробуйте обновить ещё раз."
           class="-mx-2"
           @update:open="(open: boolean) => { if (!open) dismissRefreshError() }"
         />

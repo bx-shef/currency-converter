@@ -130,7 +130,7 @@ describe('index.vue (converter page)', () => {
     // Drift guard (mirrors #97): the in-template RU literals equal ru.json, so
     // the hardcoded page text and the locale string can't silently diverge.
     expect(ru.app.refreshError.title).toBe('Не удалось обновить курсы')
-    expect(ru.app.refreshError.description).toBe('Показаны последние загруженные значения.')
+    expect(ru.app.refreshError.description).toBe('Показываем прежние курсы — попробуйте обновить ещё раз.')
     // fetchError's full-screen message must NOT be shown.
     expect(wrapper.text()).not.toContain(ru.app.fetchError)
   })
