@@ -128,9 +128,13 @@ async function insertIntoChat() {
     })
     toast.add({ title: t('page.widget.inserted'), color: 'air-primary-success', duration: 1500 })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e)
+    // Raw error → console (for debugging); the user sees a plain, actionable hint.
     console.error('[widget] im:setImTextareaContent failed', e)
-    toast.add({ title: t('page.widget.insertFailed'), description: msg, color: 'air-primary-alert' })
+    toast.add({
+      title: t('page.widget.insertFailed'),
+      description: t('page.widget.insertFailedHint'),
+      color: 'air-primary-alert'
+    })
   } finally {
     isBusy.value = false
   }
