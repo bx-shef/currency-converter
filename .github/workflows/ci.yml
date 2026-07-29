@@ -58,8 +58,9 @@ jobs:
   docker-build:
     name: docker-build
     # Validate the production image builds on every PR. Catches Dockerfile /
-    # base-image breakage (e.g. corepack removed in node 25+, see deploy guide
-    # грабля #17) before it can reach main and the GHCR deploy. No registry push.
+    # base-image breakage (e.g. corepack removed in node 25+, see
+    # docs/PROCESS.md §8, грабля #18) before it can reach main and the GHCR
+    # deploy. No registry push.
     # Runs on Dependabot PRs too — that is exactly where a node bump would surface.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
