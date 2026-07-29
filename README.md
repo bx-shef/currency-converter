@@ -1,6 +1,6 @@
 # Конвертер валют НБ РБ
 
-> Last reviewed: 2026-07-25
+> Last reviewed: 2026-07-29
 
 Конвертер валют по официальному курсу Национального банка Республики Беларусь.
 
@@ -81,8 +81,10 @@ UI виджета и страницы установки переведены ч
 
 ## Структура
 
-> Полная карта архитектуры (разбор по файлам, конвенции) — в [`CLAUDE.md`](CLAUDE.md);
-> точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md). Ниже — общий обзор.
+> Документация проекта — три файла: [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) (из чего
+> собран проект и что в каком статусе), [`docs/PROCESS.md`](docs/PROCESS.md) (весь путь от
+> настройки до публикации в Bitrix24) и [`docs/FUTURE.md`](docs/FUTURE.md) (что отложено на
+> потом). Разбор по файлам и конвенции кода — в [`CLAUDE.md`](CLAUDE.md). Ниже — общий обзор.
 
 ```
 app/
@@ -119,7 +121,7 @@ tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-util
 ```
 
 Диагностика/приватность (цели Метрики, инвариант «shape/outcome, never content») —
-[`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
+[`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §4.
 
 Курсы берутся из публичного API НБ РБ:
 `https://api.nbrb.by/exrates/rates?periodicity=0` (поля `Cur_Abbreviation`,

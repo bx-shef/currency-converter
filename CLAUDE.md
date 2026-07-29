@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-25
+> Last reviewed: 2026-07-29
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -26,7 +26,7 @@ pnpm typecheck    # vue-tsc --noEmit
 pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
-pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/VISUAL_VERIFICATION.md
+pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/PROCESS.md §2.2
 pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
 ```
 
@@ -137,7 +137,7 @@ pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Ch
   → UI помечает курсы как «резервная копия» (с датой снапшота); успешная живая загрузка сбрасывает
   флаг. Шлётся цель `rates_fallback_used`. Снапшот генерит `scripts/gen-rates-fallback.mjs`
   (`pnpm rates:snapshot`) — парс/мёрж зеркалят `utils/nbrb.ts`. Автообновление снапшота (cron) —
-  остаток #80 (см. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §3).
+  остаток #80 (см. [`docs/FUTURE.md`](docs/FUTURE.md)).
 - `app/composables/useCopyFeedback.ts` — копирование в буфер с вспышкой ok/err (Vue-обёртки).
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
@@ -175,7 +175,7 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 
 - `scripts/screenshots.mjs` — dev-харнесс визуальной проверки (`pnpm screenshots`): снимает
   роут × вьюпорт × тема (12 PNG) с предустановленного Chromium через `playwright-core`. **Не в CI**
-  (нет baseline/diff — только «глазами свериться»), прод не трогает. Детали — `docs/VISUAL_VERIFICATION.md`.
+  (нет baseline/diff — только «глазами свериться»), прод не трогает. Детали — `docs/PROCESS.md` §2.2.
 
 ## Встройка в Bitrix24 (issue #31)
 
@@ -251,7 +251,7 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 > (промежуточная мера в рамках SDK 2.0) — `callBatch` в коде больше нет; следить, чтобы новый код
 > не возвращал deprecated-вызовы. **issue #85 остаётся открытым**: это переход на `actions.v3.batch.make`
 > + runtime-валидация ответа портала + обработка ошибок `placement.unbind` — не выполнен (бэклог,
-> «под решение владельца» — см. [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §3).
+> «под решение владельца» — см. [`docs/FUTURE.md`](docs/FUTURE.md)).
 
 ## Конвенции
 
@@ -266,9 +266,8 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 
 ## Деплой
 
-GHCR + Watchtower за nginx-proxy. Первичная настройка и «грабли» — в
-[`docs/AI_DEPLOY_GUIDE.md`](docs/AI_DEPLOY_GUIDE.md); рутина/мониторинг/инциденты уже в проде —
-[`docs/OPERATIONS.md`](docs/OPERATIONS.md); гейты публикации в Маркет — [`docs/MARKETPLACE_RELEASE.md`](docs/MARKETPLACE_RELEASE.md);
+GHCR + Watchtower за nginx-proxy. Настройка, деплой, эксплуатация, «грабли» и гейты
+публикации в Маркет — в [`docs/PROCESS.md`](docs/PROCESS.md) (§0, §4, §6–§8);
 пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52
 (частично закрыт: SHA-пины сторонних actions в `ci.yml` + `# vX.Y.Z` для Dependabot; таймауты
 docker-джоб 30→15 мин; откат `make prod-rollback TAG=sha-<коммит>` через `${APP_IMAGE_TAG}` в
@@ -295,7 +294,7 @@ Watchtower, digest-пин базовых образов) — по решению
 ## Отчётность (reporting-kit)
 
 Вендорный бандл для работы с AI-агентом и отчётов в Telegram лежит в [`reporting-kit/`](reporting-kit/)
-(карточка интеграции — [`docs/REPORTING_KIT.md`](docs/REPORTING_KIT.md)). Держим как есть, чтобы
+(его собственные инструкции — внутри каталога). Держим как есть, чтобы
 синхронизировать с источником; у него **свои конвенции и свой CI**, поэтому он **не
 линтуется** нашими проверками (исключён из `tests/mdReviewStamp.test.ts` и ESLint,
 добавлен в `.dockerignore`). Навыки `/report-status`,

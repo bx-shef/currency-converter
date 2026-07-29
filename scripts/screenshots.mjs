@@ -2,7 +2,7 @@
 // so a UI change can be eyeballed in light/dark on mobile and desktop.
 //
 // Server and shooter are intentionally separate (robust + cross-platform): start
-// the app first, then run this. See docs/VISUAL_VERIFICATION.md.
+// the app first, then run this. See docs/PROCESS.md §2.2.
 //   pnpm generate && pnpm preview        # terminal 1 (serves http://localhost:3000)
 //   pnpm screenshots                     # terminal 2 (writes screenshots/*.png)
 //
