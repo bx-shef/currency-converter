@@ -4,14 +4,14 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-// Review-stamp convention (see docs/PROCESS.md §4): every tracked .md carries
+// Review-stamp convention (see docs/PROCESS.md §3, "Конвенции документации"): every .md carries
 // `> Last reviewed: YYYY-MM-DD` (ISO date) as a blockquote right under its H1.
 const STAMP_RE = /^> Last reviewed: \d{4}-\d{2}-\d{2}$/m
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 
 // `reporting-kit/` is a self-contained vendored bundle with its own conventions
-// and its own CI (see docs/REPORTING_KIT.md). It does not follow our review-stamp
+// and its own CI (see docs/PROJECT_MAP.md §3.8). It does not follow our review-stamp
 // convention, so it is excluded here — kept verbatim to stay syncable with source.
 const EXCLUDED_PREFIXES = ['reporting-kit/'] as const
 

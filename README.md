@@ -1,6 +1,6 @@
 # Конвертер валют НБ РБ
 
-> Last reviewed: 2026-07-25
+> Last reviewed: 2026-07-29
 
 Конвертер валют по официальному курсу Национального банка Республики Беларусь.
 
@@ -26,29 +26,11 @@
 
 ## Встройка в Битрикс24
 
-Приложение умеет работать в двух режимах: standalone (обычный сайт) и внутри Битрикс24 как iframe-приложение.
+Приложение умеет работать в двух режимах: как обычный сайт и внутри Битрикс24 как
+iframe-приложение — виджет в панели над полем ввода сообщения чата.
 
-### Установка в портал
-
-В разделе «Разработчикам → Иное → Локальное приложение»:
-
-- **Application URL:** `https://<host>/`
-- **Installation URL:** `https://<host>/install`
-- **Scopes (права):** `user_brief`, `im`, `placement`
-
-Страница `/install` сама вызовет `placement.bind` и зарегистрирует место встраивания
-`IM_TEXTAREA` (виджет в панели над полем ввода сообщения чата) на обработчик
-`/widget/converter`.
-
-### Переменные окружения
-
-| Переменная | По умолчанию | Описание |
-|---|---|---|
-| `NUXT_PUBLIC_SITE_URL` | — | Публичный URL приложения. Нужен в проде, чтобы install-страница построила правильный `HANDLER` для `placement.bind`. В dev (через ngrok и т.п.) URL вычисляется из адреса браузера. |
-| `NUXT_PUBLIC_AUTHOR_NAME` | `bx-shef` | Подпись в подвале виджета. |
-| `NUXT_PUBLIC_AUTHOR_URL` | `https://bx-shef.by` | Ссылка с подписи в подвале виджета. |
-| `NUXT_PUBLIC_MARKETPLACE_URL` | (константа `MARKETPLACE_URL`) | Ссылка на приложение в Маркете Bitrix24 (карточка «Приложение для Bitrix24» под калькулятором). По умолчанию — опубликованный листинг из `app/utils/site.ts`; переменная переопределяет его (напр. региональный листинг). |
-| `NUXT_PUBLIC_COMMIT_SHA` | — | Git-коммит сборки — ссылка «сборка &lt;sha&gt;» в подвале. В CI подставляется `github.sha`, в dev пусто (показывается «сборка dev»). |
+> Как зарегистрировать приложение в портале, что прописать в его карточке и как оно
+> устанавливается — [`docs/PROCESS.md`](docs/PROCESS.md) §0.1 и §5.
 
 ### Локализация
 
@@ -81,8 +63,10 @@ UI виджета и страницы установки переведены ч
 
 ## Структура
 
-> Полная карта архитектуры (разбор по файлам, конвенции) — в [`CLAUDE.md`](CLAUDE.md);
-> точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md). Ниже — общий обзор.
+> Документация проекта — три файла: [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) (из чего
+> собран проект и что в каком статусе), [`docs/PROCESS.md`](docs/PROCESS.md) (весь путь от
+> настройки до публикации в Bitrix24) и [`docs/FUTURE.md`](docs/FUTURE.md) (что отложено на
+> потом). Разбор по файлам и конвенции кода — в [`CLAUDE.md`](CLAUDE.md). Ниже — общий обзор.
 
 ```
 app/
@@ -119,7 +103,7 @@ tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-util
 ```
 
 Диагностика/приватность (цели Метрики, инвариант «shape/outcome, never content») —
-[`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
+[`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md) §4.
 
 Курсы берутся из публичного API НБ РБ:
 `https://api.nbrb.by/exrates/rates?periodicity=0` (поля `Cur_Abbreviation`,
@@ -166,91 +150,14 @@ powershell -ExecutionPolicy Bypass -File scripts\check.ps1   # Windows
 | `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (только цифры, необязательно) |
 | `NUXT_ALLOWED_HOSTS` | Разрешённые хосты dev-сервера через запятую — нужно для туннелей (ngrok, localtunnel) |
 
-## Деплой на сервер
+## Деплой
 
-### Схема
+Push в `main` → GitHub Actions собирает образ → выкладывает в GHCR → Watchtower на сервере
+обновляет контейнер за ~5 минут, за общим nginx-proxy с сертификатом Let's Encrypt.
 
-Push в `main` → GitHub Actions билдит образ → пушит в **GHCR** (`ghcr.io/bx-shef/currency-converter`) → **Watchtower** на сервере автоматически обновляет контейнер (~5 мин).
+> Настройка сервера, переменные, команды `make`, откат и разбор инцидентов —
+> [`docs/PROCESS.md`](docs/PROCESS.md) §0.3, §4 и §7.
 
-На сервере **не нужен** `git clone` — только три файла и `.env.prod`.
-
-### Первоначальная настройка сервера
-
-**1. Установить Docker**
-```bash
-curl -fsSL https://get.docker.com | sh
-```
-
-> Docker-образ публичный (репозиторий публичный) — `docker login ghcr.io` **не нужен**.
-
-**2. Скачать файлы на сервер**
-```bash
-mkdir -p /home/bitrix/currency-converter && cd /home/bitrix/currency-converter
-
-curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
-curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.nginxproxy.yml
-curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/Makefile
-curl -fsSL -o .env.prod https://raw.githubusercontent.com/bx-shef/currency-converter/main/.env.prod.example
-
-nano .env.prod  # заполнить DOMAIN и LETSENCRYPT_EMAIL
-```
-
-**3. Создать сеть и запустить**
-```bash
-make init-network      # docker-сеть proxy-net
-make init-nginxproxy   # nginx-proxy + Let's Encrypt
-make prod-up           # приложение + Watchtower
-```
-
-### Обновление конфига на сервере
-
-Если `docker-compose.prod.yml` изменился в репозитории, обнови файл через curl:
-
-```bash
-cd /home/bitrix/currency-converter
-curl -fsSLO https://raw.githubusercontent.com/bx-shef/currency-converter/main/docker-compose.prod.yml
-make prod-up
-```
-
-### Переменные окружения
-
-#### `.env.prod` на сервере
-
-| Переменная | Описание |
-|---|---|
-| `DOMAIN` | Домен сайта (DNS → IP сервера) |
-| `LETSENCRYPT_EMAIL` | Email для SSL-сертификата |
-
-#### GitHub Secrets (Settings → Secrets and variables → Actions → **Secrets**)
-
-| Secret | Описание |
-|---|---|
-| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (необязательно) |
-
-#### GitHub Variables (Settings → Secrets and variables → Actions → **Variables**)
-
-Это **Variables**, не Secrets (значения не секретные, запекаются в публичный бандл):
-
-| Variable | Описание |
-|---|---|
-| `NUXT_PUBLIC_SITE_URL` | Публичный URL приложения. **Обязателен для встройки в Б24** — без него install-страница намеренно откажется регистрировать виджет (`placement.bind` требует абсолютный HANDLER). |
-| `NUXT_PUBLIC_AUTHOR_NAME` | Подпись в подвале виджета (необязательно, дефолт `bx-shef`). |
-| `NUXT_PUBLIC_AUTHOR_URL` | Ссылка с подписи (необязательно, дефолт `https://bx-shef.by`). |
-| `NUXT_PUBLIC_MARKETPLACE_URL` | Ссылка на приложение в Маркете Bitrix24 (карточка под калькулятором; необязательно). Не задана → берётся константа `MARKETPLACE_URL` из `app/utils/site.ts`. |
-
-`NUXT_PUBLIC_COMMIT_SHA` в Variables заводить не нужно — CI подставляет его из `github.sha` автоматически (ссылка «сборка &lt;sha&gt;» в подвале).
-
-### Команды
-
-```bash
-make prod-up                     # запустить / перезапустить
-make prod-down                   # остановить
-make prod-pull                   # скачать свежий образ без перезапуска
-make prod-redeploy               # принудительно обновить + smoke-тест
-make prod-smoke                  # проверить, что приложение отвечает
-make prod-rollback TAG=sha-abc1234  # откат на конкретный образ (тег из GHCR)
-make logs                        # логи приложения
-```
 
 ## Документация
 
