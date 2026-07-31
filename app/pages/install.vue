@@ -35,6 +35,9 @@ const progressColor = ref<'air-primary' | 'air-primary-success' | 'air-primary-w
 const progressValue = ref<null | number>(null)
 // Non-empty while the last install attempt failed — drives the retry UI.
 const installError = ref('')
+// Failed portal handshake — recovery is a page reload, not a re-run (see
+// reloadInstallPage below for why the SDK loader can't be retried in-place).
+const handshakeFailed = ref(false)
 // True while an install attempt is in flight — guards the Retry button.
 const isRunning = ref(false)
 
@@ -207,18 +210,33 @@ async function makeFinish(): Promise<void> {
  * there is nothing to poll — the old 10s loop only delayed the standalone mock.
  * Three outcomes:
  *  - frame is up → real install flow;
- *  - no `window.name` → genuinely standalone → mock flow;
- *  - `window.name` present but the handshake failed → throw into the retryable
- *    error state. Falling into the mock flow here (as before) redirected away
- *    with the install silently unfinished — no `installFinish`, no retry.
+ *  - no portal marker in `window.name` → genuinely standalone → mock flow;
+ *  - portal marker present but the handshake failed → throw into the error
+ *    state. Falling into the mock flow here (as before) redirected away with
+ *    the install silently unfinished — no `installFinish`, no retry.
+ * The marker check requires the `|` of B24's "domain|protocol|appSid" format,
+ * not mere non-emptiness — a stale `window.name` from an unrelated
+ * `window.open(url, 'name')` must not flip a standalone visitor into an error.
  */
 async function waitForB24(): Promise<boolean> {
   await b24Instance.init()
   if (isUseB24.value) return true
-  if (typeof window !== 'undefined' && window.name) {
+  if (typeof window !== 'undefined' && window.name.includes('|')) {
+    handshakeFailed.value = true
     throw new Error(t('page.install.error.handshake'))
   }
   return false
+}
+
+/**
+ * Recovery for a failed portal handshake. The SDK 2.0 frame loader is a module
+ * singleton with a first-call latch: after a failed `initializeB24Frame` every
+ * later call queues behind a watcher that only resolves on success — i.e. it
+ * hangs forever. Re-running `runInstall` can therefore never recover; a full
+ * page reload is the only clean way to restart the handshake.
+ */
+function reloadInstallPage() {
+  window.location.reload()
 }
 
 /** Runs the full install flow. Surfaces failures as a retryable error state
@@ -227,6 +245,7 @@ async function runInstall() {
   if (isRunning.value) return // guard against double-clicking Retry
   isRunning.value = true
   installError.value = ''
+  handshakeFailed.value = false
   progressColor.value = 'air-primary'
   progressValue.value = null
   stepCode.value = 'init'
@@ -301,15 +320,25 @@ onMounted(runInstall)
           {{ installError }}
         </p>
         <!-- `loading` (documented b24ui busy state) shows retry progress —
-             a bare disabled button read as "nothing happening". -->
+             a bare disabled button read as "nothing happening". A failed
+             handshake retries via full reload (the SDK loader latch makes an
+             in-place re-run hang forever — see reloadInstallPage). -->
         <B24Button
           :label="t('page.install.error.retry')"
           color="air-primary"
           size="sm"
           :loading="isRunning"
           :disabled="isRunning"
-          @click="runInstall"
+          @click="handshakeFailed ? reloadInstallPage() : runInstall()"
         />
+        <!-- Escape hatch: if the error keeps recurring (e.g. a stale
+             window.name outside a portal), the page must not be a dead end. -->
+        <NuxtLink
+          to="/"
+          class="text-xs text-(--ui-color-base-3) hover:underline"
+        >
+          {{ t('page.install.error.home') }}
+        </NuxtLink>
       </div>
       <p
         v-else

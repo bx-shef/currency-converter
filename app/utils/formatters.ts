@@ -29,14 +29,22 @@ const amountFormatter = new Intl.NumberFormat('ru-RU', numberFormatOptions)
  * decimal form — so the on-screen number, the sum in words and the copied
  * value could disagree by one kopeck (8.165 → «8,17» / «…16 копеек» / "8.16").
  * Every kopeck-precision consumer must go through this single helper.
+ *
+ * Matches Intl on all values the app can produce (4-decimal `roundValue`
+ * grid, formula products — verified exhaustively in review). On adversarial
+ * doubles whose shortest form carries 17 significant digits (…4999999999999)
+ * the double→string→double round-trip can tip one kopeck up vs raw Intl —
+ * consistency across consumers still holds because formatAmount itself
+ * pre-rounds through this helper.
  * @returns integer kopecks; NaN for non-finite input (callers guard on it).
  */
 export function toKopecks(amount: number): number {
   if (!Number.isFinite(amount)) return NaN
   const sign = amount < 0 ? -1 : 1
   // `${abs}e2` shifts the decimal point in the DECIMAL string form. For
-  // magnitudes that stringify exponentially (≥1e21 — far above MAX_AMOUNT)
-  // the concat yields NaN; fall back to plain binary rounding there.
+  // magnitudes that stringify exponentially (≥1e21 or <1e-6 — far outside
+  // [0, MAX_AMOUNT]) the concat yields NaN; fall back to binary rounding
+  // there (≥1e21 also exceeds exact-integer kopeck range — display only).
   const abs = Math.abs(amount)
   const shifted = Number(`${abs}e2`)
   return sign * Math.round(Number.isFinite(shifted) ? shifted : abs * 100)

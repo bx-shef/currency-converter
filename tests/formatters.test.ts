@@ -19,6 +19,9 @@ describe('toKopecks — single kopeck-rounding authority', () => {
     expect(toKopecks(0)).toBe(0)
     expect(toKopecks(NaN)).toBeNaN()
     expect(toKopecks(Infinity)).toBeNaN()
+    // formatAmount passes non-finite input through to Intl untouched
+    // (ru-RU NaN renders with a non-breaking space: «не\u00A0число»).
+    expect(formatAmount(NaN)).toBe('не число')
   })
 
   it('survives magnitudes that stringify exponentially', () => {
