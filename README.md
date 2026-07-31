@@ -79,7 +79,7 @@ app/
   pages/install.vue        — установка приложения в портал (регистрация виджета в чате)
   pages/widget/converter.vue — компактный конвертер для панели над полем ввода чата
   config/currencies.ts     — каталог валют (состав, MAX_AMOUNT, дефолт)
-  config/b24.ts            — константы встройки: права и код места встраивания
+  config/b24.ts            — константы встройки: права и код места в портале, куда встраивается виджет
   composables/
     useNbrbRates.ts        — загрузка курсов, кэш, состояние строк, ввод, health-цели
     useCopyFeedback.ts     — копирование в буфер с вспышкой ok/err
@@ -88,16 +88,20 @@ app/
   utils/                   — чистые функции, покрыты тестами:
     converter.ts           — конвертация и адаптивный шаг
     formatters.ts          — формат чисел, формула, «чистое» число для буфера, метка квартала
-                             и toKopecks — единое округление до копеек для всех трёх путей
+                             и общее округление до копеек (на экране, в буфере и прописью —
+                             одно и то же число)
     numberToWords.ts       — сумма прописью на русском
     nbrb.ts                — парсинг ответа НБ РБ, слияние дневного/месячного фидов
     ratesCache.ts          — валидация/сериализация кэша курсов
     copyFeedback.ts        — clipboard + флеш-машина + выбор цвета
     site.ts / build.ts     — ссылки экосистемы, промо-карточки, версия сборки для подвала
-    metrika.ts / webVitals.ts / isEmbedded.ts — ядро целей, замеры скорости, детект iframe
-    langAll.ts / chatMessage.ts / b24Placements.ts — имя виджета по локалям, текст
-                             для вставки в чат, батчи привязки мест встраивания
-    url.ts / sleep.ts      — безопасный http(s)-адрес для ссылок, пауза для мок-шагов
+    metrika.ts             — ядро целей статистики (без счётчика ничего не шлёт)
+    webVitals.ts           — замеры скорости страницы диапазонами
+    isEmbedded.ts          — определение, что страница открыта во фрейме
+    langAll.ts             — имя виджета на всех языках портала
+    chatMessage.ts         — текст, который виджет вставляет в чат
+    b24Placements.ts       — групповые запросы к порталу при установке виджета
+    url.ts / sleep.ts      — только http(s)-ссылки, пауза для шагов демо-установки
   directives/holdRepeat.ts — автоповтор +/− при удержании
   components/              — SiteFooter, ConverterPromo (промо-карточки под калькулятором) и др.
   plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
@@ -108,6 +112,8 @@ scripts/og.svg             — исходник OG-картинки (→ public/
 scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
 scripts/gen-og.mjs         — генератор OG-картинки из og.svg (Chromium; pnpm og:snapshot)
 scripts/gen-rates-fallback.mjs — генератор снапшота курсов (pnpm rates:snapshot)
+scripts/screenshots.mjs    — скриншоты роут × вьюпорт × тема (pnpm screenshots)
+scripts/check.sh / .ps1    — все проверки одной командой (см. «Локальная разработка»)
 i18n/                      — локали: список языков, конфиг, переводы locales/<code>.json
 tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-utils: composables, index.vue)
 ```
@@ -148,18 +154,14 @@ bash scripts/check.sh                                    # Linux/macOS
 powershell -ExecutionPolicy Bypass -File scripts\check.ps1   # Windows
 ```
 
-Автотесты не покрывают только рантайм SDK в реальном портале — вставка в чат,
-standalone-ветка установки и чистая логика встройки протестированы. Для визуальной
-проверки: `pnpm dev` и открыть `/`, `/install`, `/widget/converter` — на `/install`
+Тестами покрыто всё, кроме живого обмена с порталом: вставка в чат, ветка установки
+вне портала и чистая логика встройки проверяются автотестами, а сам обмен с реальным
+Битрикс24 — только руками. Для визуальной проверки: `pnpm dev` и открыть `/`, `/install`, `/widget/converter` — на `/install`
 крутится прогресс с редиректом на `/` (вне портала), виджет показывает конвертер
 с прописью и неактивной кнопкой «Вставить в чат».
 
-Переменные для локальной разработки — в `.env` (образец в `.env.example`):
-
-| Переменная | Описание |
-|---|---|
-| `NUXT_PUBLIC_YANDEX_COUNTER_ID` | ID счётчика Яндекс.Метрики (только цифры, необязательно) |
-| `NUXT_ALLOWED_HOSTS` | Разрешённые хосты dev-сервера через запятую — нужно для туннелей (ngrok, localtunnel) |
+Переменные для локальной разработки — в `.env`. Полный список с пояснениями лежит
+в [`.env.example`](.env.example); для `pnpm dev` ни одна из них не обязательна.
 
 ## Деплой
 

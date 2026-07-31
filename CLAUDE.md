@@ -20,16 +20,16 @@
 ## Команды
 
 ```bash
-pnpm dev          # дев-сервер
-pnpm lint         # ESLint
-pnpm typecheck    # vue-tsc --noEmit
-pnpm test         # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
-pnpm generate     # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
-pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
-pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/PROCESS.md §2.2
-pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
+pnpm dev            # дев-сервер
+pnpm lint           # ESLint
+pnpm typecheck      # vue-tsc --noEmit
+pnpm test           # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
+pnpm generate       # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
+pnpm preview        # посмотреть собранную статику локально (для pnpm screenshots)
+pnpm check          # алиас: lint && typecheck && test (прогон перед пушем)
+pnpm screenshots    # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/PROCESS.md §2.2
+pnpm og:snapshot    # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
 pnpm rates:snapshot # регенерация public/rates-fallback.json (резервные курсы, issue #80)
-pnpm preview      # посмотреть собранную статику локально (для pnpm screenshots)
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
@@ -149,13 +149,11 @@ pnpm preview      # посмотреть собранную статику ло�
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`,
   `formatPlainAmount` («чистое» число с точкой для буфера) и `quarterOfDate`/`quarterLabel`
   (текущий календарный квартал для блока формулы, напр. «II квартал 2026»).
-  **`toKopecks` — единственный источник округления до копеек** (issue #169): округляет по
-  **десятичной** записи числа (half away from zero), а не по бинарному float. Через него
-  обязаны идти **все** потребители копеечной точности — `formatAmount` (экран),
-  `formatPlainAmount` (буфер), `rublesAmountInWords` (пропись), `applyFormula`. Раньше три
-  пути округляли по-своему и расходились на копейку (8.165 → «8,17» на экране, «8.16»
-  в буфере, «…16 копеек» прописью). Новый `Math.round(x * 100)` / `toFixed(2)` в коде —
-  регресс; инвариант согласованности закреплён в `tests/formatters.test.ts`.
+  **`toKopecks` — единственная точка округления до копеек** (issue #169): через неё идут
+  экран (`formatAmount`), буфер (`formatPlainAmount`) и пропись (`rublesAmountInWords`), той же
+  функцией округляется результат формулы. Округление копеек **в обход `toKopecks`** — регресс
+  (раньше пути расходились на копейку). Почему именно так — JSDoc в `formatters.ts`,
+  инвариант согласованности — в `tests/formatters.test.ts`.
 - `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**;
   копейки считает через `toKopecks`, см. выше).
 - `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`) и `mergeRates`
@@ -164,7 +162,7 @@ pnpm preview      # посмотреть собранную статику ло�
 - `app/utils/b24Placements.ts` — `buildPlacementCalls`: сборка батчей отвязки/привязки
   плейсментов для install-флоу (чистая, покрыта `tests/b24Placements.test.ts`).
 - `app/utils/url.ts` — `safeHttpUrl`: пропускает только http(s)-ссылки (защита `href`
-  в подвале виджета от `javascript:`); `app/utils/sleep.ts` — пауза для мок-шагов install.
+  в подвале виджета от `javascript:`); `app/utils/sleep.ts` — пауза между шагами install.
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета + `copyButtonProps`
   (state → `{color, ariaLabel}` для copy-кнопки; чистые функции).
 - `app/components/CopyButton.vue` — микрокомпонент copy-кнопки с ok/err-вспышкой (обёртка над
@@ -211,14 +209,12 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   `→ installFinish`. Биндит один плейсмент `IM_TEXTAREA` (панель над полем ввода чата) на
   обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Ошибка
   показывает retry (с `isRunning`-guard), а не падает. **Три исхода `waitForB24`** (issue #169):
-  фрейм поднялся → реальная установка; в `window.name` нет маркера портала (формат
-  `domain|protocol|appSid`, проверяем наличие `|`, а не просто непустоту — стухшее имя от
-  чужого `window.open` не должно ронять standalone-гостя) → mock-прогресс с редиректом на `/`;
-  маркер есть, а фрейм не поднялся → ретраебельная ошибка. **Повтор для последнего случая —
-  `window.location.reload()`, а не повторный `runInstall`**: лоадер фрейма в SDK 2.0 —
-  модульный синглтон с защёлкой первого вызова, после неудачи все последующие вызовы ждут
-  наблюдателя, который резолвится только при успехе (то есть висят вечно). На экране ошибки
-  есть выход «На главную», чтобы страница не была тупиком.
+  фрейм поднялся → реальная установка; в `window.name` нет маркера портала (ищем `|` формата
+  `domain|protocol|appSid`, а не просто непустоту) → mock-прогресс с редиректом на `/`; маркер
+  есть, а фрейм не поднялся → ретраебельная ошибка. **Повтор в последнем случае —
+  `window.location.reload()`, а не повторный `runInstall`** (лоадер SDK 2.0 — синглтон с
+  защёлкой: после неудачи повторный вызов висит вечно); на экране ошибки есть выход «На
+  главную». Подробности — JSDoc `waitForB24`/`reloadInstallPage`.
   `LANG_ALL` — `app.title` на всех языках портала (имя виджета на чип-плейсменте берётся
   отсюда **в момент install** — после смены `app.title` уже установленным порталам нужна
   переустановка приложения, чтобы подхватить новое имя). Карту `LANG_ALL` строит чистый
@@ -252,7 +248,7 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   — все через build-args (см. Dockerfile/ci). Значения запекаются в SSG-бандл на `generate`,
   поэтому build-arg должен присутствовать до сборки.
 - `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
-  (`*.bitrix24.<tld>`, ~22 зоны — issue #88), иначе iframe-встройка и REST-вызовы install падают.
+  (`*.bitrix24.<tld>`, ровно 22 зоны — issue #88), иначе iframe-встройка и REST-вызовы install падают.
   Список **зеркалится** между двумя директивами (инвариант + точный набор проверяет
   `tests/nginxCsp.test.ts`); международные зоны — из сабпроцессор-доки Б24, плюс CIS-зоны
   (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется **вручную** (best-effort — Б24
@@ -293,12 +289,9 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 
 GHCR + Watchtower за nginx-proxy. Настройка, деплой, эксплуатация, «грабли» и гейты
 публикации в Маркет — в [`docs/PROCESS.md`](docs/PROCESS.md) (§0, §4, §6–§8);
-пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг — issue #52
-(частично закрыт: SHA-пины сторонних actions в `ci.yml` + `# vX.Y.Z` для Dependabot; таймауты
-docker-джоб 30→15 мин; откат `make prod-rollback TAG=sha-<коммит>` через `${APP_IMAGE_TAG}` в
-prod-compose + smoke-тест `make prod-smoke` после `prod-redeploy`; healthcheck и пины
-watchtower/nginx-proxy/acme-companion уже были). Остаток #52 (brotli/HTTP2, SSH-деплой вместо
-Watchtower, digest-пин базовых образов) — по решению владельца.
+пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг: **issue #52
+закрыт**, несделанный остаток (brotli/HTTP2, SSH-деплой вместо Watchtower, digest-пин базовых
+образов) описан в [`docs/FUTURE.md`](docs/FUTURE.md) — если берём в работу, нужен новый issue.
 
 Прод-образ — `nginxinc/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
 **без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt в `index.html` (FOUC-гард
