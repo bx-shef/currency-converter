@@ -36,3 +36,18 @@ describe('nginx.conf CSP Bitrix24 domains (#88)', () => {
     expect(bitrixTlds('connect-src')).toEqual(EXPECTED_TLDS)
   })
 })
+
+describe('nginx.conf CSP hardening directives (#169)', () => {
+  // form-action is NOT inherited from default-src: without it an injected form
+  // could post anywhere. The app has no forms, so this is defence in depth.
+  it('restricts form submissions to the site itself (form-action \'self\')', () => {
+    expect(csp).toContain('form-action \'self\'')
+  })
+
+  // Directives that must never silently disappear from the policy.
+  it('keeps the baseline lockdown directives', () => {
+    expect(csp).toContain('object-src \'none\'')
+    expect(csp).toContain('base-uri \'self\'')
+    expect(csp).toContain('default-src \'self\'')
+  })
+})

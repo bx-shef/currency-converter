@@ -157,6 +157,14 @@ describe('index.vue (converter page)', () => {
     expect(wrapper.find(`[title="${ru.app.fallbackNotice.hint}"]`).exists(), 'badge tooltip mirrors ru.json hint').toBe(true)
   })
 
+  it('pins the page title to ru.json (drift guard #97)', async () => {
+    // app.vue hardcodes the tab title while index.vue passes the same string to
+    // the portal via parent.setTitle(t('page.index.seo.title')) — pin them equal.
+    const appVue = readFileSync(join(process.cwd(), 'app/app.vue'), 'utf-8')
+    expect(appVue).toContain(`const title = '${ru.page.index.seo.title}'`)
+    expect(ru.page.index.seo.title).toBe('Конвертер валют НБ РБ')
+  })
+
   it('pins the remaining RU literals to ru.json (drift guard #97)', async () => {
     const wrapper = await mountSuspended(IndexPage)
     await flushPromises()

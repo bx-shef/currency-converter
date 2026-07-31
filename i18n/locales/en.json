@@ -37,6 +37,8 @@
       "caseLower": "Lowercase first letter",
       "caseUpper": "Uppercase first letter",
       "copyAmount": "Copy amount",
+      "copied": "Copied",
+      "copyFailed": "Couldn't copy",
       "copyWords": "Copy amount in words",
       "decrease": "Decrease",
       "increase": "Increase"
