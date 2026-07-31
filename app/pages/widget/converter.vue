@@ -77,9 +77,13 @@ const displayRubWords = computed(() =>
   wordsCapitalized.value ? capitalizeFirst(rawWords('RUB')) : rawWords('RUB'))
 
 // Clipboard feedback: per-row amount + per-currency sum-in-words.
-const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
+const { state: copyStateRow, copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
 const { state: copyStateByn, copy: copyBynWords } = useCopyFeedback()
 const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
+
+// One screen-reader live region for every copy source (issue #169) — colour and
+// aria-label swaps don't reach assistive tech.
+const copyStates = computed(() => [copyStateByn.value, copyStateRub.value, copyStateRow.value])
 
 /** Copies one row's amount as a plain number (dot, 2 decimals, no grouping). */
 function copyRow(code: string) {
@@ -148,9 +152,14 @@ async function insertIntoChat() {
        tall popup it forced a few-px horizontal scrollbar that shifted the layout
        right during copy-selection (issue #135). 100% of the frame fixes it. -->
   <div class="min-h-screen w-full bg-(--ui-color-base-bg) flex flex-col gap-2 p-3">
+    <CopyAnnouncer
+      :states="copyStates"
+      :ok-label="t('page.widget.copied')"
+      :err-label="t('page.widget.copyFailed')"
+    />
     <!-- Top bar: rate date + refresh. The widget title lives on the chat chip
          (placement TITLE), so we don't repeat it here — saves a line. -->
-    <div class="flex items-center justify-between gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <p
         class="text-(--ui-color-base-3) truncate min-w-0"
         :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
@@ -168,6 +177,14 @@ async function insertIntoChat() {
           {{ t('app.fallbackNotice.label') }}
         </B24Badge>
       </p>
+      <!-- Same reason as on the main page: the badge tooltip is invisible on
+           touch, and the B24 mobile app is touch-only (issue #169). -->
+      <span
+        v-if="usingFallback"
+        class="order-last basis-full text-[11px] leading-tight text-(--ui-color-base-3)"
+      >
+        {{ t('app.fallbackNotice.hint') }}
+      </span>
       <B24Button
         :aria-label="t('app.refresh')"
         color="air-tertiary-no-accent"

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { copyButtonProps, createFlash, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
+import { copyAnnouncement, copyButtonProps, createFlash, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
 
 describe('writeToClipboard', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -94,5 +94,14 @@ describe('copyButtonProps', () => {
   it('ok/err → status colour + fixed RU feedback label (ignores idle label)', () => {
     expect(copyButtonProps('ok', 'X')).toEqual({ color: 'air-primary-success', ariaLabel: 'Скопировано' })
     expect(copyButtonProps('err', 'X')).toEqual({ color: 'air-primary-alert', ariaLabel: 'Не удалось скопировать' })
+  })
+})
+
+describe('copyAnnouncement (#169)', () => {
+  it('announces the outcome and clears on idle', () => {
+    expect(copyAnnouncement('ok', 'Скопировано', 'Ошибка')).toBe('Скопировано')
+    expect(copyAnnouncement('err', 'Скопировано', 'Ошибка')).toBe('Ошибка')
+    // Empty on idle so a repeat copy re-triggers the live region.
+    expect(copyAnnouncement('idle', 'Скопировано', 'Ошибка')).toBe('')
   })
 })

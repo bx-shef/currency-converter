@@ -85,3 +85,16 @@ export function copyButtonProps(state: CopyState, idleLabel: string): { color: C
   if (state === 'err') return { color: 'air-primary-alert', ariaLabel: 'Не удалось скопировать' }
   return { color: 'air-tertiary-no-accent', ariaLabel: idleLabel }
 }
+
+/**
+ * Text for the screen-reader live region announcing a copy result (issue #169).
+ * Swapping a rendered button's `aria-label` is NOT announced — assistive tech
+ * only re-reads a control on focus — so the outcome has to reach a live region.
+ * Idle yields '' to clear the region between flashes (otherwise a repeat copy
+ * of the same kind would not re-announce).
+ */
+export function copyAnnouncement(state: CopyState, okLabel: string, errLabel: string): string {
+  if (state === 'ok') return okLabel
+  if (state === 'err') return errLabel
+  return ''
+}

@@ -101,7 +101,13 @@ const currentQuarter = quarterLabel()
 const { state: copyState, copy: copyBynWords } = useCopyFeedback()
 const { state: copyStateRub, copy: copyRubWords } = useCopyFeedback()
 const { state: copyStateFormula, copy: copyFormulaText } = useCopyFeedback()
-const { copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
+const { state: copyStateRow, copy: copyRowAmount, colorFor: rowCopyColorFor } = useKeyedCopyFeedback()
+
+// Every copy source feeds one screen-reader live region (issue #169): the
+// buttons' colour flash and aria-label swap are invisible to assistive tech.
+const copyStates = computed(() => [
+  copyState.value, copyStateRub.value, copyStateFormula.value, copyStateRow.value
+])
 
 /** Copies one row's amount as a plain number (dot, 2 decimals, no grouping) —
  *  the same clean format as the formula copy, for pasting into spreadsheets. */
@@ -179,8 +185,9 @@ onBeforeUnmount(() => {
     <h1 class="sr-only">
       Конвертер валют по официальному курсу НБ РБ
     </h1>
+    <CopyAnnouncer :states="copyStates" />
     <div class="w-full max-w-sm sm:max-w-[464px]">
-      <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
+      <div class="mb-3 flex flex-wrap items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
           href="https://www.nbrb.by/"
           target="_blank"
@@ -215,6 +222,17 @@ onBeforeUnmount(() => {
           class="ml-auto me-1.5"
           @click="refresh"
         />
+        <!-- The badge's explanation lives in a native `title` tooltip, which
+             touch devices never show — and the fallback mostly happens on
+             mobile. Repeat it as visible text there (issue #169). Placed after
+             the refresh button so its full-width line doesn't push the button
+             onto a row of its own. -->
+        <span
+          v-if="usingFallback"
+          class="basis-full text-[11px] leading-tight text-gray-500 sm:hidden dark:text-gray-400"
+        >
+          Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы
+        </span>
       </div>
 
       <!-- Loading skeleton -->
