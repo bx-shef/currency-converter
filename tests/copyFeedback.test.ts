@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { copyAnnouncement, copyButtonProps, createFlash, firstActiveState, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
+import { copyAnnouncement, copyButtonProps, createFlash, pickColor, writeToClipboard, type CopyState } from '../app/utils/copyFeedback'
 
 describe('writeToClipboard', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -97,18 +97,11 @@ describe('copyButtonProps', () => {
   })
 })
 
-describe('copyAnnouncement / firstActiveState (#169)', () => {
+describe('copyAnnouncement (#169)', () => {
   it('announces the outcome and clears on idle', () => {
     expect(copyAnnouncement('ok', 'Скопировано', 'Ошибка')).toBe('Скопировано')
     expect(copyAnnouncement('err', 'Скопировано', 'Ошибка')).toBe('Ошибка')
     // Empty on idle so a repeat copy re-triggers the live region.
     expect(copyAnnouncement('idle', 'Скопировано', 'Ошибка')).toBe('')
-  })
-
-  it('picks the first non-idle state so one region serves every copy button', () => {
-    expect(firstActiveState(['idle', 'idle', 'ok', 'err'])).toBe('ok')
-    expect(firstActiveState(['idle', 'err'])).toBe('err')
-    expect(firstActiveState(['idle', 'idle'])).toBe('idle')
-    expect(firstActiveState([])).toBe('idle')
   })
 })

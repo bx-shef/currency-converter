@@ -98,8 +98,3 @@ export function copyAnnouncement(state: CopyState, okLabel: string, errLabel: st
   if (state === 'err') return errLabel
   return ''
 }
-
-/** First non-idle state among several copy sources — for one shared live region. */
-export function firstActiveState(states: readonly CopyState[]): CopyState {
-  return states.find(s => s !== 'idle') ?? 'idle'
-}

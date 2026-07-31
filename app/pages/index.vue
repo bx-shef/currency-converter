@@ -209,15 +209,6 @@ onBeforeUnmount(() => {
         >
           резервная копия
         </B24Badge>
-        <!-- The badge's explanation lives in a native `title` tooltip, which
-             touch devices never show — and the fallback mostly happens on
-             mobile. Repeat it as visible text there (issue #169). -->
-        <span
-          v-if="usingFallback"
-          class="basis-full text-[11px] leading-tight text-gray-500 sm:hidden dark:text-gray-400"
-        >
-          Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы
-        </span>
         <!-- `loading` is the documented b24ui busy state (spinner replaces the
              icon) — no hand-rolled animate-spin; the widget's refresh button
              already uses the same prop, keeping the two screens consistent. -->
@@ -231,6 +222,17 @@ onBeforeUnmount(() => {
           class="ml-auto me-1.5"
           @click="refresh"
         />
+        <!-- The badge's explanation lives in a native `title` tooltip, which
+             touch devices never show — and the fallback mostly happens on
+             mobile. Repeat it as visible text there (issue #169). Placed after
+             the refresh button so its full-width line doesn't push the button
+             onto a row of its own. -->
+        <span
+          v-if="usingFallback"
+          class="basis-full text-[11px] leading-tight text-gray-500 sm:hidden dark:text-gray-400"
+        >
+          Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы
+        </span>
       </div>
 
       <!-- Loading skeleton -->

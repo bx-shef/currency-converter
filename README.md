@@ -103,7 +103,8 @@ app/
     b24Placements.ts       — групповые запросы к порталу при установке виджета
     url.ts / sleep.ts      — только http(s)-ссылки, пауза для шагов демо-установки
   directives/holdRepeat.ts — автоповтор +/− при удержании
-  components/              — SiteFooter, ConverterPromo (промо-карточки под калькулятором) и др.
+  components/              — SiteFooter, ConverterPromo (промо-карточки), CopyAnnouncer
+                             (озвучка копирования для скринридеров) и др.
   plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
 public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
 public/rates-fallback.json — снапшот «последних известных курсов» (fallback при сбое API, #80)

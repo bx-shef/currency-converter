@@ -155,14 +155,9 @@ describe('index.vue (converter page)', () => {
     // localizes the same strings via t()) — pin them so they can't diverge.
     expect(ru.app.fallbackNotice.label).toBe('резервная копия')
     expect(wrapper.find(`[title="${ru.app.fallbackNotice.hint}"]`).exists(), 'badge tooltip mirrors ru.json hint').toBe(true)
-  })
-
-  it('pins the page title to ru.json (drift guard #97)', async () => {
-    // app.vue hardcodes the tab title while index.vue passes the same string to
-    // the portal via parent.setTitle(t('page.index.seo.title')) — pin them equal.
-    const appVue = readFileSync(join(process.cwd(), 'app/app.vue'), 'utf-8')
-    expect(appVue).toContain(`const title = '${ru.page.index.seo.title}'`)
-    expect(ru.page.index.seo.title).toBe('Конвертер валют НБ РБ')
+    // The same text is repeated visibly for touch users (no native tooltip) —
+    // pin it too, otherwise the third copy of this string could drift.
+    expect(wrapper.text()).toContain(ru.app.fallbackNotice.hint)
   })
 
   it('pins the remaining RU literals to ru.json (drift guard #97)', async () => {

@@ -159,7 +159,7 @@ async function insertIntoChat() {
     />
     <!-- Top bar: rate date + refresh. The widget title lives on the chat chip
          (placement TITLE), so we don't repeat it here — saves a line. -->
-    <div class="flex items-center justify-between gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <p
         class="text-(--ui-color-base-3) truncate min-w-0"
         :class="isBitrixMobile ? 'text-sm' : 'text-[11px]'"
@@ -177,6 +177,14 @@ async function insertIntoChat() {
           {{ t('app.fallbackNotice.label') }}
         </B24Badge>
       </p>
+      <!-- Same reason as on the main page: the badge tooltip is invisible on
+           touch, and the B24 mobile app is touch-only (issue #169). -->
+      <span
+        v-if="usingFallback"
+        class="order-last basis-full text-[11px] leading-tight text-(--ui-color-base-3)"
+      >
+        {{ t('app.fallbackNotice.hint') }}
+      </span>
       <B24Button
         :aria-label="t('app.refresh')"
         color="air-tertiary-no-accent"
