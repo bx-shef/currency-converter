@@ -1,6 +1,6 @@
 # Процесс: от настройки до публикации в Bitrix24
 
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-07-31
 
 Один сквозной документ: как приложение настраивается, разрабатывается, проверяется,
 попадает на прод, устанавливается в портал Bitrix24 и публикуется в Маркете. Дальше —
@@ -365,7 +365,7 @@ Nuxt разрешаются по их хэшам, которые `scripts/csp-ha
 | Доступность снаружи | `make prod-smoke-external` | `200`, валидный TLS |
 | Контейнер жив | `docker ps` (проверка каждые 30 с) | `Up (healthy)` |
 | TLS-сертификат | команда ниже | обновить, если **меньше 14 дней** |
-| Свежесть деплоя | `docker inspect currency-converter --format '{{.Image}}'` | номер совпадает с последним коммитом `main` |
+| Свежесть деплоя | `docker inspect currency-converter --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'` | коммит совпадает с последним в `main` (то же видно в подвале сайта: «сборка `<sha>`») |
 | Watchtower | `docker logs watchtower --tail 20` | периодические «Session done» |
 | Диск | `docker system df` | логи ограничены (10 МБ × 3); при росте — `docker image prune -f` |
 

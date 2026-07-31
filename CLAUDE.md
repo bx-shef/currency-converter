@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-07-31
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -28,6 +28,8 @@ pnpm generate     # сборка статики (nuxt generate, SSG) — то ж
 pnpm check        # алиас: lint && typecheck && test (прогон перед пушем)
 pnpm screenshots  # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/PROCESS.md §2.2
 pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
+pnpm rates:snapshot # регенерация public/rates-fallback.json (резервные курсы, issue #80)
+pnpm preview      # посмотреть собранную статику локально (для pnpm screenshots)
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
@@ -147,10 +149,22 @@ pnpm og:snapshot  # регенерация public/og.png из scripts/og.svg (Ch
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`,
   `formatPlainAmount` («чистое» число с точкой для буфера) и `quarterOfDate`/`quarterLabel`
   (текущий календарный квартал для блока формулы, напр. «II квартал 2026»).
-- `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**).
+  **`toKopecks` — единственный источник округления до копеек** (issue #169): округляет по
+  **десятичной** записи числа (half away from zero), а не по бинарному float. Через него
+  обязаны идти **все** потребители копеечной точности — `formatAmount` (экран),
+  `formatPlainAmount` (буфер), `rublesAmountInWords` (пропись), `applyFormula`. Раньше три
+  пути округляли по-своему и расходились на копейку (8.165 → «8,17» на экране, «8.16»
+  в буфере, «…16 копеек» прописью). Новый `Math.round(x * 100)` / `toFixed(2)` в коде —
+  регресс; инвариант согласованности закреплён в `tests/formatters.test.ts`.
+- `app/utils/numberToWords.ts` — сумма прописью на русском (возвращает **нижний регистр**;
+  копейки считает через `toKopecks`, см. выше).
 - `app/utils/nbrb.ts` — парсинг ответа НБ РБ (нормализация `Cur_Scale`) и `mergeRates`
   (слияние дневного и месячного фидов по коду валюты, приоритет у первого).
 - `app/utils/ratesCache.ts` — валидация/сериализация кэша курсов (чистые функции).
+- `app/utils/b24Placements.ts` — `buildPlacementCalls`: сборка батчей отвязки/привязки
+  плейсментов для install-флоу (чистая, покрыта `tests/b24Placements.test.ts`).
+- `app/utils/url.ts` — `safeHttpUrl`: пропускает только http(s)-ссылки (защита `href`
+  в подвале виджета от `javascript:`); `app/utils/sleep.ts` — пауза для мок-шагов install.
 - `app/utils/copyFeedback.ts` — clipboard + флеш-машина + выбор цвета + `copyButtonProps`
   (state → `{color, ariaLabel}` для copy-кнопки; чистые функции).
 - `app/components/CopyButton.vue` — микрокомпонент copy-кнопки с ok/err-вспышкой (обёртка над
@@ -188,13 +202,23 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 - `app/composables/useB24.ts` — обёртка над `B24Frame`: `init()` (идемпотентен; молча no-op вне
   фрейма — когда `window.name` отсутствует; парсинг/handshake делает SDK), `isInit()`, `get()`/
   `getOrThrow()`, `getRequiredRights()` (из `config/b24.ts`), `targetOrigin()`. `set()` флипает
-  `type.value` **синхронно** (issue #88 — раньше через `nextTick`, что стоило `waitForB24` лишние
-  ~100ms на install). Вставка в чат (`message.send`) шлётся SDK на реальный origin портала
-  (`getTargetOrigin()`, не `*`) — targetOrigin явно передавать не нужно.
+  `type.value` **синхронно** (issue #88): `install.vue` полагается на то, что сразу после
+  `await init()` состояние `isInit()` уже актуально. Исходная ошибка SDK не теряется —
+  логируется `console.warn` в `catch` (наружу отдаётся generic-текст, иначе инцидент
+  в портале нечем диагностировать). Вставка в чат (`message.send`) шлётся SDK на реальный
+  origin портала (`getTargetOrigin()`, не `*`) — targetOrigin явно передавать не нужно.
 - `app/pages/install.vue` (layout `clear`) — обработчик установки: `init → placement.bind`
   `→ installFinish`. Биндит один плейсмент `IM_TEXTAREA` (панель над полем ввода чата) на
-  обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Вне фрейма —
-  mock-прогресс с редиректом на `/`. Ошибка показывает retry (с `isRunning`-guard), а не падает.
+  обработчик `/widget/converter`, с чисткой старых привязок (`PLACEMENTS`-цикл). Ошибка
+  показывает retry (с `isRunning`-guard), а не падает. **Три исхода `waitForB24`** (issue #169):
+  фрейм поднялся → реальная установка; в `window.name` нет маркера портала (формат
+  `domain|protocol|appSid`, проверяем наличие `|`, а не просто непустоту — стухшее имя от
+  чужого `window.open` не должно ронять standalone-гостя) → mock-прогресс с редиректом на `/`;
+  маркер есть, а фрейм не поднялся → ретраебельная ошибка. **Повтор для последнего случая —
+  `window.location.reload()`, а не повторный `runInstall`**: лоадер фрейма в SDK 2.0 —
+  модульный синглтон с защёлкой первого вызова, после неудачи все последующие вызовы ждут
+  наблюдателя, который резолвится только при успехе (то есть висят вечно). На экране ошибки
+  есть выход «На главную», чтобы страница не была тупиком.
   `LANG_ALL` — `app.title` на всех языках портала (имя виджета на чип-плейсменте берётся
   отсюда **в момент install** — после смены `app.title` уже установленным порталам нужна
   переустановка приложения, чтобы подхватить новое имя). Карту `LANG_ALL` строит чистый
@@ -212,7 +236,8 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   чтобы не было дыры над прижатой к низу кнопкой.
 - `app/utils/chatMessage.ts` — чистый `buildWordsLines` (строки «прописью» BYN/RUB для вставки; покрыт тестами).
 - `i18n/` — список локалей в `i18n/i18n.ts` (зеркалит языки Б24), конфиг в `i18n/i18n.config.ts`,
-  переводы `i18n/locales/<code>.json` (полные `ru`/`en`, прочие — фолбэк на `en` + свой `app.title`).
+  переводы `i18n/locales/<code>.json` (полные `ru`/`en`; прочие — фолбэк на `en` плюс свои
+  `app.title` и `page.widget.seo.title`).
   Осиротевшие ключи (в `ru`/`en`, но не используемые через `t()`) ловит ESLint-правило
   `@intlify/vue-i18n/no-unused-keys` (в `eslint.config.mjs`, только оно — без шумного `no-raw-text`).
   Паритет ключей `ru`↔`en` (чтобы не «добавил в `ru`, забыл в `en`») и наличие `app.title`

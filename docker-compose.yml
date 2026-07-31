@@ -4,6 +4,13 @@ services:
       context: .
       args:
         NUXT_PUBLIC_YANDEX_COUNTER_ID: ${NUXT_PUBLIC_YANDEX_COUNTER_ID:-}
+        # Same set the CI build passes — without SITE_URL a locally built image
+        # has a non-working /install (the handler URL must be absolute).
+        NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:-}
+        NUXT_PUBLIC_MARKETPLACE_URL: ${NUXT_PUBLIC_MARKETPLACE_URL:-}
+        NUXT_PUBLIC_AUTHOR_NAME: ${NUXT_PUBLIC_AUTHOR_NAME:-}
+        NUXT_PUBLIC_AUTHOR_URL: ${NUXT_PUBLIC_AUTHOR_URL:-}
+        NUXT_PUBLIC_COMMIT_SHA: ${NUXT_PUBLIC_COMMIT_SHA:-}
     ports:
       - "80:8080"
     restart: unless-stopped
