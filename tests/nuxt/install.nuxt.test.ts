@@ -35,10 +35,48 @@ describe('install.vue', () => {
 
   it('standalone (no B24 frame): runs the mock progress and redirects to /', async () => {
     await mountSuspended(InstallPage)
-    // onMounted → runInstall: waitForB24 polls ~10s, then the mock steps run
-    // ~3.8s (3×600ms + 2000ms) before router.replace('/'). Drive all the timers.
-    await vi.advanceTimersByTimeAsync(14000)
+    // onMounted → runInstall: waitForB24 resolves immediately (no window.name →
+    // standalone), then the mock steps run ~3.8s (3×600ms + 2000ms) before
+    // router.replace('/'). Drive all the timers.
+    await vi.advanceTimersByTimeAsync(5000)
     expect(replaceSpy).toHaveBeenCalledWith('/')
+  })
+
+  it('portal marker but failed handshake: retryable error, NOT the mock redirect', async () => {
+    // The portal sets window.name = "domain|protocol|appSid" on its iframes.
+    // If the marker is present but init() produced no frame, the handshake
+    // failed — silently playing the standalone mock (with its redirect to /)
+    // would leave the install unfinished with no retry. Expect the error state.
+    window.name = 'portal.bitrix24.by|https|app-sid' // the `|` is the marker
+    try {
+      const wrapper = await mountSuspended(InstallPage)
+      await vi.advanceTimersByTimeAsync(5000)
+      await flushPromises()
+
+      expect(replaceSpy).not.toHaveBeenCalled()
+      expect(wrapper.text()).toContain(en.page.install.error.title)
+      expect(wrapper.text()).toContain(en.page.install.error.handshake)
+      // Retry renders enabled (recovery = page reload; an in-place re-run
+      // would hang on the SDK loader's first-call latch) + a home escape hatch.
+      expect(wrapper.text()).toContain(en.page.install.error.retry)
+      expect(wrapper.find('button:not([disabled])').exists()).toBe(true)
+      expect(wrapper.text()).toContain(en.page.install.error.home)
+    } finally {
+      window.name = ''
+    }
+  })
+
+  it('a stale non-portal window.name (no "|") still runs the standalone mock', async () => {
+    // window.name persists per-tab: any earlier window.open(url, 'name') leaves
+    // one behind. Without the portal's `|` format it must NOT trip the error.
+    window.name = 'stale-opener-name'
+    try {
+      await mountSuspended(InstallPage)
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(replaceSpy).toHaveBeenCalledWith('/')
+    } finally {
+      window.name = ''
+    }
   })
 
   it('inside a B24 frame, a failing install shows a retryable error, not a redirect (#86)', async () => {

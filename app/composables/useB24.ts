@@ -20,8 +20,8 @@ export const useB24 = () => {
   function set(newValue: B24Frame | undefined): Result {
     // Update `type` synchronously (issue #88): `set()` is called from `init()`
     // inside onMounted (post-render), so there's no "mutate during render" risk,
-    // and a deferred flip cost waitForB24 an extra ~100ms poll on install while
-    // isInit() lagged a microtask behind the resolved init().
+    // and the install page relies on isInit() being accurate immediately after
+    // `await init()` resolves (a deferred flip lagged a microtask behind).
     if (newValue instanceof B24Frame) {
       if (!$b24) {
         $b24 = newValue
@@ -50,8 +50,11 @@ export const useB24 = () => {
         LoadDataType.Currency
       ])
       return set(b24)
-    } catch {
+    } catch (error) {
       // Thrown when not genuinely inside a portal — swallow, stay standalone.
+      // Keep the real cause in the console: the install page surfaces only a
+      // generic handshake message, so this is the diagnostic trail.
+      console.warn('[useB24] init failed', error)
     }
     return new Result()
   }

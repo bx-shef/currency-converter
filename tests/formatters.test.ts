@@ -1,5 +1,44 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel, quarterOfDate } from '../app/utils/formatters'
+import { applyFormula, capitalizeFirst, FORMULA_FACTOR, formatAmount, formatPlainAmount, numberFormatOptions, quarterLabel, quarterOfDate, toKopecks } from '../app/utils/formatters'
+import { rublesAmountInWords } from '../app/utils/numberToWords'
+
+describe('toKopecks — single kopeck-rounding authority', () => {
+  it('rounds on the decimal form, not the binary float', () => {
+    // 8.165 is stored as 8.16499… — binary Math.round(x*100)/toFixed(2) round
+    // DOWN, while the decimal form rounds up. The helper must round up.
+    expect(toKopecks(8.165)).toBe(817)
+    expect(toKopecks(0.145)).toBe(15)
+    expect(toKopecks(1.005)).toBe(101)
+    expect(toKopecks(2.445)).toBe(245)
+    expect(toKopecks(4.015)).toBe(402)
+    expect(toKopecks(1.025)).toBe(103)
+  })
+
+  it('handles sign, zero and non-finite input', () => {
+    expect(toKopecks(-8.165)).toBe(-817)
+    expect(toKopecks(0)).toBe(0)
+    expect(toKopecks(NaN)).toBeNaN()
+    expect(toKopecks(Infinity)).toBeNaN()
+    // formatAmount passes non-finite input through to Intl untouched
+    // (ru-RU NaN renders with a non-breaking space: «не\u00A0число»).
+    expect(formatAmount(NaN)).toBe('не число')
+  })
+
+  it('survives magnitudes that stringify exponentially', () => {
+    expect(toKopecks(3.2e12)).toBe(3.2e14)
+    expect(toKopecks(1e21)).toBe(1e23) // falls back to binary rounding, no NaN
+  })
+
+  it('keeps the displayed number, the copied value and the words in lockstep', () => {
+    // The actual bug: 8.165 rendered «8,17», copied "8.16", worded «16 копеек».
+    for (const v of [8.165, 0.145, 1.005, 2.445, 4.015, 1.025, 1.999, 123.45]) {
+      const kop = String(toKopecks(v) % 100).padStart(2, '0')
+      expect(formatAmount(v).slice(-2), `display of ${v}`).toBe(kop)
+      expect(formatPlainAmount(v).slice(-2), `clipboard of ${v}`).toBe(kop)
+      expect(rublesAmountInWords(v), `words of ${v}`).toContain(` ${kop} `)
+    }
+  })
+})
 
 describe('formatPlainAmount', () => {
   it('formats with exactly 2 decimals and a dot separator', () => {

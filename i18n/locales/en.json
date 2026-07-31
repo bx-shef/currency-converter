@@ -51,7 +51,9 @@
       },
       "error": {
         "title": "Application installation failed",
-        "retry": "Try again"
+        "retry": "Try again",
+        "handshake": "The Bitrix24 portal didn't respond during connection. Press “Try again” to reload the install page.",
+        "home": "Go to home"
       },
       "placementWarning": "Not all app components were installed — reinstall it",
       "diagnostics": {
