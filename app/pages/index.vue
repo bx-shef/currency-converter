@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
     </h1>
     <CopyAnnouncer :states="copyStates" />
     <div class="w-full max-w-sm sm:max-w-[464px]">
-      <div class="mb-3 flex flex-wrap items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
+      <div class="mb-3 flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 sm:text-sm">
         <a
           href="https://www.nbrb.by/"
           target="_blank"
@@ -222,18 +222,18 @@ onBeforeUnmount(() => {
           class="ml-auto me-1.5"
           @click="refresh"
         />
-        <!-- The badge's explanation lives in a native `title` tooltip, which
-             touch devices never show — and the fallback mostly happens on
-             mobile. Repeat it as visible text there (issue #169). Placed after
-             the refresh button so its full-width line doesn't push the button
-             onto a row of its own. -->
-        <span
-          v-if="usingFallback"
-          class="basis-full text-[11px] leading-tight text-gray-500 sm:hidden dark:text-gray-400"
-        >
-          Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы
-        </span>
       </div>
+      <!-- The badge's explanation lives in a native `title` tooltip, which touch
+           devices never show — and the fallback mostly happens on mobile. Repeat
+           it as visible text there (issue #169). Kept OUTSIDE the header row: as
+           a flex item it needed basis-full, which pushed the refresh button onto
+           a row of its own on narrow screens. -->
+      <p
+        v-if="usingFallback"
+        class="-mt-2 mb-3 text-[11px] leading-tight text-gray-500 sm:hidden dark:text-gray-400"
+      >
+        Сайт НБ РБ сейчас недоступен — показываем последние сохранённые курсы
+      </p>
 
       <!-- Loading skeleton -->
       <div
