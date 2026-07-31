@@ -148,9 +148,24 @@ describe('index.vue (converter page)', () => {
 
     // Rows render (from the snapshot) and the fallback badge is shown.
     expect(wrapper.text()).toContain('Сумма прописью')
-    expect(wrapper.text()).toContain('резервная копия')
+    expect(wrapper.text()).toContain(ru.app.fallbackNotice.label)
     // The full-screen error must NOT appear — we have snapshot data to show.
     expect(wrapper.text()).not.toContain(ru.app.fetchError)
+    // Drift guard (#97): the page's RU literals mirror ru.json (the widget
+    // localizes the same strings via t()) — pin them so they can't diverge.
+    expect(ru.app.fallbackNotice.label).toBe('резервная копия')
+    expect(wrapper.find(`[title="${ru.app.fallbackNotice.hint}"]`).exists(), 'badge tooltip mirrors ru.json hint').toBe(true)
+  })
+
+  it('pins the remaining RU literals to ru.json (drift guard #97)', async () => {
+    const wrapper = await mountSuspended(IndexPage)
+    await flushPromises()
+    // «По курсу НБ РБ» = app.subtitle; aria «Обновить курсы» = app.refresh —
+    // both localized in the widget via t(), hardcoded here (RU-only page, #87).
+    expect(wrapper.text()).toContain(ru.app.subtitle)
+    expect(ru.app.subtitle).toBe('По курсу НБ РБ')
+    expect(wrapper.find(`[aria-label="${ru.app.refresh}"]`).exists(), 'refresh aria-label mirrors ru.json').toBe(true)
+    expect(ru.app.refresh).toBe('Обновить курсы')
   })
 
   it('copies the BYN sum-in-words via the extracted CopyButton (#82 @click fallthrough)', async () => {

@@ -10,6 +10,8 @@
  * directly via {{ }} interpolation without an extra guard.
  */
 
+import { toKopecks } from './formatters'
+
 const UNITS_M = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять']
 const UNITS_F = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять']
 const TEENS = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать']
@@ -81,7 +83,9 @@ export function rublesAmountInWords(amount: number): string {
   const sign = amount < 0 ? 'минус ' : ''
   // Round the whole amount to kopecks first so floating-point noise (e.g. 1.999)
   // doesn't end up as "1 rouble 100 kopecks" — round propagates into roubles.
-  const totalKopecks = Math.round(Math.abs(amount) * 100)
+  // Shared toKopecks rounds on the DECIMAL form, keeping the words in lockstep
+  // with formatAmount/formatPlainAmount (8.165 must be 17 kopecks everywhere).
+  const totalKopecks = Math.abs(toKopecks(amount))
   const rubles = Math.floor(totalKopecks / 100)
   const kopecks = totalKopecks % 100
   const rubWords = integerToWords(rubles)

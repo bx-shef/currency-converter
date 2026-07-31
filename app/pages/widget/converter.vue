@@ -204,12 +204,15 @@ async function insertIntoChat() {
           :class="isBitrixMobile ? 'h-11' : 'h-8'"
         />
       </div>
-      <div
+      <!-- Cold-load failure: B24Alert per the b24ui-first convention (was a raw
+           div); role="alert" so screen readers announce the state change. -->
+      <B24Alert
         v-else-if="fetchError"
-        class="text-xs text-(--ui-color-accent-main-alert) p-2"
-      >
-        {{ t('app.fetchError') }}
-      </div>
+        color="air-primary-alert"
+        size="sm"
+        role="alert"
+        :title="t('app.fetchError')"
+      />
       <div
         v-for="currency in currencies"
         v-else
@@ -355,7 +358,9 @@ async function insertIntoChat() {
         />
       </div>
 
-      <!-- Insert into chat: hidden in the mobile app for now (per portal feedback). -->
+      <!-- Insert into chat: hidden in the mobile app for now (per portal feedback).
+           `loading` (documented b24ui busy state) shows progress while the async
+           send is in flight — a bare disabled button read as "nothing happening". -->
       <B24Button
         v-if="!isBitrixMobile"
         block
@@ -363,6 +368,7 @@ async function insertIntoChat() {
         color="air-primary"
         :icon="SendIcon"
         :label="t('page.widget.insert')"
+        :loading="isBusy"
         :disabled="isBusy || !isReady || loading || !!fetchError"
         @click="insertIntoChat"
       />

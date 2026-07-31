@@ -140,13 +140,17 @@ onMounted(async () => {
   try {
     await $b24.parent.setTitle(t('page.index.seo.title'))
   } catch {
-    // setTitle is best-effort — failure inside the frame is non-fatal
-    return
+    // setTitle is best-effort — a failure must not skip the fit-to-content
+    // flow below (bailing out here left the portal frame with a double scroll).
   }
 
   // fitWindow runs in the SDK's isSafely mode, so a transient failure is a no-op.
+  // The sync try/catch matters too: with a partial SDK surface (e.g. no
+  // `parent`) the call throws before a promise exists — fit stays best-effort.
   const fit = () => {
-    $b24.parent.fitWindow().catch(() => {})
+    try {
+      $b24.parent.fitWindow().catch(() => {})
+    } catch { /* best-effort */ }
   }
   fit()
   if (rootEl.value && typeof ResizeObserver !== 'undefined') {
@@ -198,13 +202,17 @@ onBeforeUnmount(() => {
         >
           резервная копия
         </B24Badge>
+        <!-- `loading` is the documented b24ui busy state (spinner replaces the
+             icon) — no hand-rolled animate-spin; the widget's refresh button
+             already uses the same prop, keeping the two screens consistent. -->
         <B24Button
           aria-label="Обновить курсы"
           color="air-tertiary-no-accent"
           size="sm"
           :icon="RefreshIcon"
+          :loading="refreshing"
           :disabled="loading || refreshing"
-          :class="['ml-auto me-1.5', refreshing ? '[&_svg]:animate-spin' : '']"
+          class="ml-auto me-1.5"
           @click="refresh"
         />
       </div>
@@ -221,18 +229,21 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <!-- Error state -->
-      <div
+      <!-- Error state. B24Alert per the b24ui-first convention (was a raw div);
+           role="alert" so screen readers announce the state change.
+           Intentionally a RU literal: this standalone page has no non-RU
+           audience (all its visible text — labels and aria-labels below — is
+           hardcoded RU; see #87). The multilingual B24 widget localizes the
+           same message via t('app.fetchError'); index.nuxt.test.ts asserts this
+           literal equals ru.json's app.fetchError so the two can't drift (#97). -->
+      <B24Alert
         v-else-if="fetchError"
-        class="-mx-2 rounded-lg border border-red-200 px-2 py-3 text-sm text-red-500 dark:border-red-800"
-      >
-        <!-- Intentionally a RU literal: this standalone page has no non-RU
-             audience (all its visible text — labels and aria-labels below — is
-             hardcoded RU; see #87). The multilingual B24 widget localizes the
-             same message via t('app.fetchError'); index.nuxt.test.ts asserts this
-             literal equals ru.json's app.fetchError so the two can't drift (#97). -->
-        Не удалось загрузить курсы с сайта НБ РБ. Проверьте интернет и обновите страницу.
-      </div>
+        color="air-primary-alert"
+        size="sm"
+        role="alert"
+        title="Не удалось загрузить курсы с сайта НБ РБ. Проверьте интернет и обновите страницу."
+        class="-mx-2"
+      />
 
       <!-- Currency rows -->
       <div

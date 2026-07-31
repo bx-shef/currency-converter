@@ -22,9 +22,31 @@ export const numberFormatOptions: Intl.NumberFormatOptions = {
 
 const amountFormatter = new Intl.NumberFormat('ru-RU', numberFormatOptions)
 
+/**
+ * Rounds an amount to whole kopecks, half away from zero, on the number's
+ * DECIMAL representation. `Math.round(x * 100)` and `toFixed(2)` round the
+ * BINARY float instead (8.165 is stored as 8.16499…), while Intl rounds the
+ * decimal form — so the on-screen number, the sum in words and the copied
+ * value could disagree by one kopeck (8.165 → «8,17» / «…16 копеек» / "8.16").
+ * Every kopeck-precision consumer must go through this single helper.
+ * @returns integer kopecks; NaN for non-finite input (callers guard on it).
+ */
+export function toKopecks(amount: number): number {
+  if (!Number.isFinite(amount)) return NaN
+  const sign = amount < 0 ? -1 : 1
+  // `${abs}e2` shifts the decimal point in the DECIMAL string form. For
+  // magnitudes that stringify exponentially (≥1e21 — far above MAX_AMOUNT)
+  // the concat yields NaN; fall back to plain binary rounding there.
+  const abs = Math.abs(amount)
+  const shifted = Number(`${abs}e2`)
+  return sign * Math.round(Number.isFinite(shifted) ? shifted : abs * 100)
+}
+
 /** Formats a number as a ru-RU grouped decimal with exactly 2 fraction digits. */
 export function formatAmount(value: number): string {
-  return amountFormatter.format(value)
+  // Pre-round via toKopecks so this path can never disagree with
+  // formatPlainAmount / rublesAmountInWords on the displayed kopecks.
+  return amountFormatter.format(Number.isFinite(value) ? toKopecks(value) / 100 : value)
 }
 
 /**
@@ -39,7 +61,7 @@ export const FORMULA_FACTOR = 0.16
  */
 export function applyFormula(byn: number): number {
   if (!Number.isFinite(byn)) return 0
-  return Math.round(byn * FORMULA_FACTOR * 100) / 100
+  return toKopecks(byn * FORMULA_FACTOR) / 100
 }
 
 /** Roman numerals for quarters 1–4 (index = quarter − 1). */
@@ -70,5 +92,5 @@ export function capitalizeFirst(text: string): string {
  * (e.g. 1234.5 → "1234.50"). Non-finite input yields "0.00".
  */
 export function formatPlainAmount(value: number): string {
-  return Number.isFinite(value) ? value.toFixed(2) : '0.00'
+  return Number.isFinite(value) ? (toKopecks(value) / 100).toFixed(2) : '0.00'
 }

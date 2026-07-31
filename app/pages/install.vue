@@ -201,13 +201,24 @@ async function makeFinish(): Promise<void> {
   await $b24.installFinish()
 }
 
-async function waitForB24(timeoutMs = 10000): Promise<boolean> {
+/**
+ * Resolves the install context. Once `init()` is awaited the outcome is final
+ * (`set()` flips the flag synchronously, and nothing else calls `init()`), so
+ * there is nothing to poll — the old 10s loop only delayed the standalone mock.
+ * Three outcomes:
+ *  - frame is up → real install flow;
+ *  - no `window.name` → genuinely standalone → mock flow;
+ *  - `window.name` present but the handshake failed → throw into the retryable
+ *    error state. Falling into the mock flow here (as before) redirected away
+ *    with the install silently unfinished — no `installFinish`, no retry.
+ */
+async function waitForB24(): Promise<boolean> {
   await b24Instance.init()
-  const start = Date.now()
-  while (!isUseB24.value && (Date.now() - start) < timeoutMs) {
-    await sleep(100)
+  if (isUseB24.value) return true
+  if (typeof window !== 'undefined' && window.name) {
+    throw new Error(t('page.install.error.handshake'))
   }
-  return isUseB24.value
+  return false
 }
 
 /** Runs the full install flow. Surfaces failures as a retryable error state
@@ -289,10 +300,13 @@ onMounted(runInstall)
         <p class="text-xs text-(--ui-color-base-3) break-all max-w-md">
           {{ installError }}
         </p>
+        <!-- `loading` (documented b24ui busy state) shows retry progress —
+             a bare disabled button read as "nothing happening". -->
         <B24Button
           :label="t('page.install.error.retry')"
           color="air-primary"
           size="sm"
+          :loading="isRunning"
           :disabled="isRunning"
           @click="runInstall"
         />
@@ -332,12 +346,14 @@ onMounted(runInstall)
             >
               <span class="text-(--ui-color-base-3)">{{ t('page.install.diagnostics.scopes') }}:</span>
               <div class="flex flex-wrap gap-1">
+                <!-- `inverted` is b24ui's documented soft look — Badge has no
+                     `variant` prop (a leftover one was silently ignored). -->
                 <B24Badge
                   v-for="s in diagnostics.granted"
                   :key="`g-${s}`"
                   :label="s"
                   color="air-primary-success"
-                  variant="soft"
+                  inverted
                   size="sm"
                 />
                 <B24Badge
@@ -345,7 +361,7 @@ onMounted(runInstall)
                   :key="`m-${s}`"
                   :label="`${s} (missing)`"
                   color="air-primary-alert"
-                  variant="soft"
+                  inverted
                   size="sm"
                 />
               </div>

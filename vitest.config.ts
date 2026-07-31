@@ -29,7 +29,11 @@ export default defineConfig(async () => ({
           // PerformanceObservers that leak across mounted tests.
           setupFiles: ['./tests/nuxt/setup.ts'],
           // Nuxt cold start + happy-dom can exceed the 5s default on CI.
-          testTimeout: 30_000
+          // The cold start itself happens in @nuxt/test-utils' beforeAll
+          // (setupNuxt), governed by hookTimeout — without raising it too,
+          // suites flake with "Hook timed out in 10000ms" on a cold cache.
+          testTimeout: 30_000,
+          hookTimeout: 60_000
         }
       })
     ]
