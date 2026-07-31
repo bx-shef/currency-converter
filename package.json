@@ -2,7 +2,7 @@
   "name": "currency-converter",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "private": true,
   "description": "Конвертер валют по официальному курсу НБ РБ (Nuxt SSG)",
