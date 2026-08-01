@@ -55,6 +55,15 @@ jobs:
       - name: Build (nuxt generate)
         run: pnpm generate
 
+      # Tripwire against re-accumulating vulnerable transitive deps (issue #174:
+      # 29 findings had piled up unnoticed, incl. axios shipping to the browser).
+      # Gated at `high` on purpose: a newly published low/moderate advisory
+      # anywhere in the dev toolchain must not block unrelated PRs. The full
+      # `pnpm audit` (all severities) is a periodic manual check — see
+      # docs/PROCESS.md §7.1. Fix by adding a floor to pnpm.overrides.
+      - name: Audit dependencies (high/critical)
+        run: pnpm audit --audit-level high
+
   docker-build:
     name: docker-build
     # Validate the production image builds on every PR. Catches Dockerfile /

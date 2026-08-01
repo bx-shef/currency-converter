@@ -49,3 +49,25 @@ describe('SessionStart hook', () => {
     expect(out).toBe('')
   })
 })
+
+describe('pnpm.overrides are documented (issue #174)', () => {
+  const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf-8'))
+  const map = readFileSync(join(repoRoot, 'docs/PROJECT_MAP.md'), 'utf-8')
+
+  /** `js-yaml@4` / `esbuild@0.27` scope by version branch — the package name is the part before `@`. */
+  const packageNames = [
+    ...new Set(Object.keys(pkg.pnpm?.overrides ?? {}).map(key => key.split('@')[0]))
+  ]
+
+  it('has overrides to check', () => {
+    // Guards the guard: if the block is ever emptied, the loop below would pass vacuously.
+    expect(packageNames.length).toBeGreaterThan(0)
+  })
+
+  // Each pinned version is a security floor someone must eventually lift; an
+  // undocumented one is a pin nobody knows to remove. The map explains why each
+  // exists and — crucially — whether it reaches the browser or is build-only.
+  it.each(packageNames)('%s is explained in docs/PROJECT_MAP.md', (name) => {
+    expect(map).toContain(`\`${name}\``)
+  })
+})
