@@ -1,6 +1,6 @@
 # Процесс: от настройки до публикации в Bitrix24
 
-> Last reviewed: 2026-08-01
+> Last reviewed: 2026-10-21
 
 Один сквозной документ: как приложение настраивается, разрабатывается, проверяется,
 попадает на прод, устанавливается в портал Bitrix24 и публикуется в Маркете. Дальше —
@@ -103,7 +103,8 @@ cp .env.prod.example .env.prod && nano .env.prod   # заполнить DOMAIN �
 - [ ] nginx-proxy запущен (`docker ps | grep nginx-proxy`). **Если он уже стоит — второй раз
       не поднимать**, см. предупреждение ниже. Если его правда нет — `make init-nginxproxy`
 - [ ] `.env.prod` заполнен
-- [ ] `make prod-up` отработал; `docker ps` показывает приложение **и** Watchtower
+- [ ] `make prod-up` отработал; `docker ps` показывает приложение; общий Watchtower хоста
+      (`docker ps | grep watchtower`) запущен — свой проект его не поднимает
 - [ ] `curl -I https://<домен>` → `200`, TLS валиден
 
 > ⚠️ **Сервер общий с другими сайтами.** Не поднимайте nginx-proxy второй раз, если он уже
@@ -401,7 +402,7 @@ TLS продлевается автоматически; руками вмеши
 | `502` от nginx-proxy | контейнер не в той docker-сети, либо прокси шлёт не на тот порт | Различить две причины — командами ниже |
 | Белый экран в портале, `405` или смешанный контент | пропал `error_page 405 =200 $uri;` или `absolute_redirect off;` | проверить `nginx.conf` в образе, пересобрать |
 | TLS не выдан или не продлён | DNS не резолвится или сработало ограничение Let's Encrypt | `docker logs <acme-companion>`; `dig +short $DOMAIN`; проверить `LETSENCRYPT_EMAIL` |
-| Watchtower не обновляет | нет `DOCKER_API_VERSION` или метки на контейнере | `docker logs watchtower`; метка `com.centurylinklabs.watchtower.enable=true` |
+| Watchtower не обновляет | общий Watchtower не запущен, нет `DOCKER_API_VERSION` или метки на контейнере | `docker logs watchtower`; метка `com.centurylinklabs.watchtower.enable=true`; общий Watchtower — `bx-shef/toolsai`, `site/deploy/watchtower.compose.yml` |
 | Курсы не грузятся у всех | `api.nbrb.by` недоступен | Внешняя проблема НБ РБ. Первую загрузку спасает `public/rates-fallback.json` (бейдж «резервная копия»), вернувшихся — кэш браузера. Копия статична, обновляется `pnpm rates:snapshot` |
 | Сборка или деплой красные | см. Actions: `ci` → `deploy` | Частое: нет lockfile для кэша; мажорный бамп Node; пропавший файл `og.png` |
 
