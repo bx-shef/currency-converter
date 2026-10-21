@@ -3,7 +3,8 @@
 
 services:
   app:
-    # Обычно `latest` (Watchtower авто-обновляет). Для отката задать конкретный
+    # Обычно `latest` (авто-обновляет общий Watchtower хоста по метке ниже — свой не поднимаем:
+    # он один на все сайты сервера, со входом в ghcr для приватных образов). Для отката задать конкретный
     # immutable-тег: `make prod-rollback TAG=sha-<коммит>` (issue #52 P1).
     image: ghcr.io/bx-shef/currency-converter:${APP_IMAGE_TAG:-latest}
     container_name: currency-converter
@@ -26,28 +27,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     # Cap nginx access logs so json-file doesn't fill the disk over time.
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  watchtower:
-    # Pinned tag: floating `latest` would let a compromised upstream image
-    # self-upgrade via the docker.sock mount and root the host.
-    image: containrrr/watchtower:1.7.1
-    container_name: watchtower
-    environment:
-      - DOCKER_API_VERSION=1.47
-    volumes:
-      # docker.sock is intentionally read-write — Watchtower has to stop/start
-      # containers to update them. Mitigation: image pinned above; only
-      # containers carrying the label below are touched (--label-enable).
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup --label-enable
-    restart: unless-stopped
-    # Cap Watchtower's own logs too — it polls every 5 min forever (same
-    # disk-fill risk the app's json-file cap addresses).
     logging:
       driver: json-file
       options:
