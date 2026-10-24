@@ -16,6 +16,9 @@
   var id = meta && meta.getAttribute('content')
   if (!id || !/^\d+$/.test(id)) return
 
+  // Только с согласия на cookie: без баннера (скрипт не загрузился) — не считаем вовсе.
+  if (!window.BxConsent) return
+  window.BxConsent.onAnalytics(function () {
   ;(function (m, e, t, r, i, k, a) {
     m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments) }
     m[i].l = 1 * new Date()
@@ -25,4 +28,5 @@
   })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym')
 
   window.ym(Number(id), 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true })
+  })
 })()

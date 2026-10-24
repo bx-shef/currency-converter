@@ -34,14 +34,12 @@ if (yandexCounterId) {
     meta: [
       { name: 'yandex-metrika-id', content: yandexCounterId }
     ],
+    // Счётчик — только после согласия на cookie (Закон 99-З): cookie-consent.js — общий баннер
+    // посадочных из bx-shef/Lp (правят там), metrika.js стартует из BxConsent.onAnalytics.
+    // Оба defer — порядок сохраняется. Пиксель <noscript> снят: он считал бы без согласия.
     script: [
+      { 'key': 'cookie-consent', 'src': '/cookie-consent.js', 'defer': true, 'data-policy': 'https://offer.bx-shef.by/privacy', 'data-services': 'Яндекс Метрику (статистика посещений)' },
       { key: 'yandex-metrika', src: '/metrika.js', defer: true }
-    ],
-    noscript: [
-      {
-        // No script execution here — just a tracking pixel; counter id is digit-only.
-        innerHTML: `<div><img src="https://mc.yandex.ru/watch/${yandexCounterId}" style="position:absolute; left:-9999px;" alt="" /></div>`
-      }
     ]
   })
 }
