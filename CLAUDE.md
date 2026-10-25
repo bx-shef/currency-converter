@@ -85,7 +85,10 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
   `app.vue`, чтобы трекинг не попадал на iframe-страницы Б24 (layout `clear`). Сам `/` тоже
   на этом layout и может открыться как B24-приложение (dual-mode), поэтому `public/metrika.js`
   дополнительно глушит себя в iframe (`window.self !== window.top`) — это держит трекинг и
-  его CSP-блокируемые sync-пиксели вне портала. Навигация (левое меню/бургер) ведёт на
+  его CSP-блокируемые sync-пиксели вне портала. ⚠ Счётчик стартует **только после согласия на
+  cookie** (Закон 99-З): `public/cookie-consent.js` — общий баннер посадочных, копия из `bx-shef/Lp`
+  (правят там), `metrika.js` зовёт `BxConsent.onAnalytics`; нет баннера — нет и счётчика; пиксель
+  `<noscript>` снят. «Настройки cookie» — в `SiteFooter`. Навигация (левое меню/бургер) ведёт на
   соседний лендинг «Импорт выписки клиент-банка» (`CLIENT_BANK_LANDING_URL` из `utils/site.ts`)
   и на документацию b24ui/b24jssdk/b24icons/REST.
   `app/layouts/clear.vue` — минимальный layout под `/install` и виджет (только `<B24App>`).

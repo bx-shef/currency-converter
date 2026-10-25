@@ -127,6 +127,7 @@ Bitrix24 UI (`b24ui`), `@bitrix24/b24jssdk`, `@nuxtjs/i18n`, Vitest.
 | `tar` | сборщик статики (`nitropack`); было критическое | обновится `nitropack` |
 | `brace-expansion` (ветки 1/2/5), `js-yaml` | проверялки кода (ESLint и плагины) | обновятся ESLint-плагины |
 | `postcss`, `svgo`, `esbuild` (ветки 0.27/0.28) | конвейер сборки (Vite/Nuxt, минификация CSS) | обновятся Vite/Nuxt |
+| `serialize-javascript` | сборка: `@rollup/plugin-terser` в Nitro (GHSA XSS, low) | обновится nitropack |
 | `shell-quote` | панель разработчика Nuxt | обновится `@nuxt/devtools` |
 | `form-data` | серверная часть `axios`; в браузер **не** попадает | обновится `axios` |
 
