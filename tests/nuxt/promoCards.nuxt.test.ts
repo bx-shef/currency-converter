@@ -14,6 +14,9 @@ describe('CustomDevCard', () => {
     const wrapper = await mountSuspended(CustomDevCard)
     const hrefs = wrapper.findAll('a').map(a => a.attributes('href'))
     expect(hrefs).toContain('https://offer.bx-shef.by/#brief')
+    // Rights holder shown on the card header (brand switch, PR #192).
+    expect(wrapper.text()).toContain('ООО «БэИксШефБай»')
+    expect(wrapper.text()).not.toContain('Шевчик')
   })
 })
 
