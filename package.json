@@ -6,7 +6,7 @@
   },
   "private": true,
   "description": "Конвертер валют по официальному курсу НБ РБ (Nuxt SSG)",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "author": "ИП Шевчик И. С.",
   "homepage": "https://github.com/bx-shef/currency-converter#readme",
   "repository": {
