@@ -118,7 +118,7 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
   которой отдельная `market_click`), показ QR — `market_qr_reveal`. Дефолт пропа `clickGoal` в
   компоненте — родовой `market_click` (фолбэк, если карточку встроят без явной цели).
 - `app/components/CustomDevCard.vue` — баннер «Нужна доработка под ваш процесс?» (премиальная
-  `B24Card variant="filled-copilot"`). **Самодостаточный**: текст и ссылки ИП Шевчик зашиты
+  `B24Card variant="filled-copilot"`). **Самодостаточный**: текст и ссылки ООО «БэИксШефБай» зашиты
   (оффер один на всю экосистему), пропсы — только имена целей. QR (`<HoldRevealQr dark>`) ведёт
   на `offer.bx-shef.by/` (без `#hash`), CTA-клик — на `#brief`. Цели `custom_dev_click`/
   `custom_dev_qr_reveal`. Переносим на **внутренние страницы** `client-bank`.

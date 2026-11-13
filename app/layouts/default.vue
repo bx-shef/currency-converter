@@ -111,7 +111,7 @@ const navItems = [
 
     <B24Footer>
       <template #left>
-        <span class="text-xs text-gray-500 dark:text-white/55">© {{ currentYear }} ИП Шевчик И. С</span>
+        <span class="text-xs text-gray-500 dark:text-white/55">© {{ currentYear }} ООО «БэИксШефБай»</span>
       </template>
 
       <SiteFooter />
