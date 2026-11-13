@@ -1,6 +1,6 @@
 # Карта проекта
 
-> Last reviewed: 2026-08-01
+> Last reviewed: 2026-11-13
 
 Что в проекте есть, из каких частей оно собрано и в каком каждая часть состоянии.
 
@@ -113,7 +113,7 @@ Bitrix24 UI (`b24ui`), `@bitrix24/b24jssdk`, `@nuxtjs/i18n`, Vitest.
 | Сборка падает, если счётчик Метрики задан неверно | ✅ сделано | `nuxt.config.ts` |
 | Версии сторонних GitHub Actions зафиксированы по контрольной сумме; образы с доступом к управлению Docker (Watchtower, nginx-proxy, acme-companion) — на конкретных версиях | ✅ сделано | `ci.yml`, compose-файлы |
 | Ротация логов контейнеров | ✅ сделано | `docker-compose.prod.yml` |
-| Уязвимости в библиотеках закрыты: `pnpm audit --audit-level high` — 0 (2026-10-21: было 45 high/critical после месяца без обновлений, закрыто `pnpm update`; два без исправления — в исключениях, см. ниже) | ✅ сделано | `package.json`, разделы `pnpm.overrides` и `pnpm.auditConfig` |
+| Уязвимости в библиотеках закрыты: `pnpm audit --audit-level high` — 0 (2026-10-21: было 45 high/critical после месяца без обновлений, закрыто `pnpm update`; 2026-11-13: ещё 9 high в `follow-redirects` и `node-forge` — закрыто тем же `pnpm update`, планки не понадобились: диапазоны родителей уже допускали исправленные версии, устарел только lock) | ✅ сделано | `package.json`, разделы `pnpm.overrides` и `pnpm.auditConfig` |
 | Сжатие brotli и HTTP/2, деплой по SSH вместо Watchtower, фиксация базовых образов по контрольной сумме | ⏸ отложено | остаток инфра-долга, issue #52 уже закрыт (см. [`FUTURE.md`](FUTURE.md)) |
 
 **Принудительные версии библиотек (`pnpm.overrides`).** Уязвимые версии приходят
@@ -139,7 +139,6 @@ Bitrix24 UI (`b24ui`), `@bitrix24/b24jssdk`, `@nuxtjs/i18n`, Vitest.
 
 | Advisory | Пакет | Откуда | Почему не опасно | Снять, когда |
 |---|---|---|---|---|
-| GHSA-86w9-cpqp-85rv | `node-forge` | `nuxt → nitropack → listhen` (HTTPS дев-сервера) | только `pnpm dev`; в статику и прод-образ (nginx) не попадает | выйдет исправленный `node-forge` или `listhen` уйдёт от него |
 | GHSA-vfj7-8cjw-p6xm | `braces` | `nuxt → nitropack → globby → micromatch` | разбор шаблонов путей при сборке, входные данные — наши | выйдет исправленный `braces` |
 
 Новое исключение — только с такой же строкой здесь; при каждом обновлении зависимостей
