@@ -18,7 +18,7 @@ init-nginxproxy:
 
 # ─── Управление приложением ────────────────────────────────────
 
-## Запустить приложение + Watchtower
+## Запустить приложение (обновляет общий Watchtower хоста)
 prod-up:
 	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 

@@ -30,6 +30,19 @@ const shaHref = computed(() => commitUrl(commitSha as string))
         rel="noopener noreferrer"
         class="hover:text-blue-600 hover:underline dark:hover:text-white"
       >{{ tool.label }}</a>
+      <a
+        href="https://offer.bx-shef.by/privacy"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hover:text-blue-600 hover:underline dark:hover:text-white"
+      >Политика конфиденциальности</a>
+      <button
+        type="button"
+        data-cookie-settings
+        class="hover:text-blue-600 hover:underline dark:hover:text-white"
+      >
+        Настройки cookie
+      </button>
     </nav>
     <a
       :href="shaHref"
