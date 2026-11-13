@@ -1,0 +1,63 @@
+# Правила уровня ревью bx-shef/currency-converter. Формат и движок — tools/review-tier.sh
+# (побайтная копия эталона bx-shef/toolsai; здесь правят только этот файл).
+# Первое подходящее правило выигрывает: исключения стоят выше общих. Не подошло ничего — уровень 1.
+
+# --- только по слову владельца: уровень 2 и пометка ---
+hold LICENSE                          # юридический документ
+
+# --- исключение до общего правила: правка одной строки version ---
+0 package.json only:^[[:space:]]*"version":
+
+# --- уровень 2: панель из пяти ---
+2 tools/review-tier.*
+2 .github/*
+2 package.json|pnpm-lock.yaml
+2 Dockerfile|docker-compose*.yml|.dockerignore|nginx.conf|Makefile
+2 nuxt.config.ts|vitest.config.ts|eslint.config.mjs|tsconfig.json
+2 scripts/*
+2 .env.example|.env.prod.example
+# установщик и контракт с порталом Bitrix24
+2 app/pages/install.vue|app/config/b24.ts|app/composables/useB24.ts
+# безопасность: внешний ввод, ссылки, фрейм, согласие на cookie и счётчик
+2 app/utils/url.ts|app/utils/isEmbedded.ts|app/utils/nbrb.ts|app/utils/ratesCache.ts
+2 public/metrika.js|public/cookie-consent.js
+# деньги приложения: суммы на экране, в буфере и прописью (расхождение на копейку — issue #169)
+2 app/utils/formatters.ts|app/utils/converter.ts|app/utils/numberToWords.ts
+# исполняется в каждой агент-сессии
+2 .claude/hooks/*|.claude/settings.json
+# вендорный бандл: правят в источнике, здесь только синхронизация
+2 reporting-kit/*
+
+# --- уровень 0: без ревью, только pnpm check ---
+0 .gitattributes|.gitignore
+0 docs/*|tests/*
+0 *.md
+0 *.png|*.svg
+
+# --- таблица случаев для --self-test ---
+case 2 LICENSE
+case 0 README.md
+case 0 docs/PROCESS.md
+case 0 tests/formatters.test.ts
+case 0 .gitignore
+case 0 public/og.png
+case 0 .claude/skills/review-panel/SKILL.md
+case 1 app/pages/index.vue
+case 1 app/utils/site.ts
+case 1 i18n/locales/ru.json
+case 1 app/components/CopyButton.vue
+case 2 package.json
+case 2 pnpm-lock.yaml
+case 2 .github/workflows/ci.yml
+case 2 Dockerfile
+case 2 nginx.conf
+case 2 scripts/csp-hashes.mjs
+case 2 nuxt.config.ts
+case 2 app/pages/install.vue
+case 2 app/composables/useB24.ts
+case 2 app/utils/nbrb.ts
+case 2 app/utils/formatters.ts
+case 2 public/metrika.js
+case 2 .claude/hooks/session-start.sh
+case 2 reporting-kit/README.md
+case 2 tools/review-tier.rules
