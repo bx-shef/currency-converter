@@ -3,8 +3,8 @@ import ArrowRightLIcon from '@bitrix24/b24icons-vue/outline/ArrowRightLIcon'
 import { useMetrikaGoal } from '~/composables/useMetrikaGoal'
 
 // «Нужна доработка под ваш процесс?» — premium b24ui copilot card offering custom
-// Bitrix24 development (ИП Шевчик, partner). Self-contained/portable: the copy and
-// the ИП Шевчик URLs are the same across the ecosystem, so they're baked in;
+// Bitrix24 development (ООО «БэИксШефБай», partner). Self-contained/portable: the copy and
+// the ООО «БэИксШефБай» URLs are the same across the ecosystem, so they're baked in;
 // only the Metrika goal names are props (a repo may track its own). Uses the
 // shared <HoldRevealQr> for the mobile QR (→ the site, no #hash). `relative
 // overflow-hidden` on the card lets the QR overlay fill it.
@@ -21,7 +21,7 @@ withDefaults(defineProps<{
 
 const { reachGoal } = useMetrikaGoal()
 
-// ИП Шевчик partner site — CTA scrolls to the brief (#brief); the QR points at the
+// ООО «БэИксШефБай» partner site — CTA scrolls to the brief (#brief); the QR points at the
 // bare site (a QR to an anchor is pointless).
 const BRIEF_URL = 'https://offer.bx-shef.by/#brief'
 const SITE_URL = 'https://offer.bx-shef.by/'
@@ -40,7 +40,7 @@ const SITE_URL = 'https://offer.bx-shef.by/'
     <template #header>
       <div class="flex flex-col gap-1.5">
         <span class="text-[11px] font-medium uppercase tracking-wide opacity-70">
-          ИП Шевчик · Партнёр Bitrix24
+          ООО «БэИксШефБай» · Партнёр Bitrix24
         </span>
         <div class="text-(length:--ui-font-size-2xl)/[normal] font-(--ui-font-weight-semi-bold)">
           Нужна доработка под ваш процесс?

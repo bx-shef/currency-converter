@@ -10,10 +10,13 @@ import CustomDevCard from '~/components/CustomDevCard.vue'
 // extracted, so re-assert it here — otherwise a typo in a conversion CTA would
 // only be caught by a human eyeballing a screenshot.
 describe('CustomDevCard', () => {
-  it('CTA links to the ИП Шевчик brief anchor', async () => {
+  it('CTA links to the ООО «БэИксШефБай» brief anchor', async () => {
     const wrapper = await mountSuspended(CustomDevCard)
     const hrefs = wrapper.findAll('a').map(a => a.attributes('href'))
     expect(hrefs).toContain('https://offer.bx-shef.by/#brief')
+    // Rights holder shown on the card header (brand switch, PR #192).
+    expect(wrapper.text()).toContain('ООО «БэИксШефБай»')
+    expect(wrapper.text()).not.toContain('Шевчик')
   })
 })
 
