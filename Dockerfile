@@ -42,7 +42,7 @@ RUN pnpm generate
 RUN node scripts/csp-hashes.mjs .output/public nginx.conf nginx.conf
 
 # nginx-unprivileged runs as the non-root `nginx` user and listens on :8080.
-FROM nginxinc/nginx-unprivileged:1.31-alpine AS runner
+FROM nginx/nginx-unprivileged:1.31.9-alpine AS runner
 COPY --from=builder /app/.output/public /usr/share/nginx/html
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 # Fail the build if the committed OG image didn't make it into the output (issue

@@ -389,7 +389,7 @@ GHCR + Watchtower за nginx-proxy. Настройка, деплой, экспл
 закрыт**, несделанный остаток (brotli/HTTP2, SSH-деплой вместо Watchtower, digest-пин базовых
 образов) описан в [`docs/FUTURE.md`](docs/FUTURE.md) — если берём в работу, нужен новый issue.
 
-Прод-образ — `nginxinc/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
+Прод-образ — `nginx/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
 **без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt в `index.html` (FOUC-гард
 `theme-init` и `window.__NUXT__.config` с меняющимся `buildId`) разрешаются по sha256-хэшам,
 которые `scripts/csp-hashes.mjs` вычисляет из собранного HTML и подставляет в `nginx.conf`
