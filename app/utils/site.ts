@@ -48,8 +48,7 @@ export const FOOTER_LINKS: readonly SiteLink[] = [
  * itself is intentionally absent — this IS the converter, so no self-link.
  */
 export const ECOSYSTEM_TOOLS: readonly SiteLink[] = [
-  { id: 'bankimport', label: 'Импорт выписки клиент-банка', href: CLIENT_BANK_LANDING_URL },
-  { id: 'bbcode', label: 'BBCode ↔ Markdown', href: 'https://bx-shef.github.io/app-convert-bbocode-md/' }
+  { id: 'bankimport', label: 'Импорт выписки клиент-банка', href: CLIENT_BANK_LANDING_URL }
 ]
 
 /** Copy for the «app in Bitrix24» promo card (passed to <AppInBitrixCard>). The
