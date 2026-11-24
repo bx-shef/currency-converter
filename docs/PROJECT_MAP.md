@@ -108,7 +108,7 @@ Bitrix24 UI (`b24ui`), `@bitrix24/b24jssdk`, `@nuxtjs/i18n`, Vitest.
 | Часть | Статус | Где лежит |
 |---|---|---|
 | CI: lint → test → typecheck → сборка статики; прод-образ на PR | ✅ сделано | `.github/workflows/ci.yml` |
-| Деплой: GHCR → Watchtower → nginx-proxy, TLS Let's Encrypt | ✅ сделано | `Dockerfile`, `docker-compose.prod.yml` |
+| Деплой: GHCR → Watchtower → nginx-proxy, TLS Let's Encrypt | ⏸ автовыкладка выключена владельцем 24.11.2026 ([`PROCESS.md`](PROCESS.md) §4, #200) | `Dockerfile`, `docker-compose.prod.yml` |
 | Откат на конкретный коммит + smoke-тесты (внутренний и внешний) | ✅ сделано | `Makefile` |
 | Правила безопасности без разрешения встроенных скриптов (хэши считаются при сборке) | ✅ сделано | `scripts/csp-hashes.mjs`, `nginx.conf` |
 | Заголовки безопасности, включая статику `/_nuxt/` | ✅ сделано | `nginx.conf` |
