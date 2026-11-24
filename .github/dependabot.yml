@@ -15,6 +15,12 @@ updates:
           - "@bitrix24/*"
       dev-deps:
         dependency-type: development
+    # TypeScript 7 is the native port: no `typescript/lib/*` in package exports,
+    # so vue-tsc crashes with ERR_PACKAGE_PATH_NOT_EXPORTED. Stay on 6.x until
+    # vue-tsc supports it; minor/patch of 6.x still flow through.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
