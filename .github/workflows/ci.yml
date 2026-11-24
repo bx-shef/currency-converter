@@ -95,7 +95,10 @@ jobs:
     needs: ci
     # Gate the deploy on CI (issue #45 P1): a red CI now blocks the image from
     # ever reaching GHCR / Watchtower. Only the main branch deploys.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # DISABLED by the owner (2026-11-24): the app is moving from static nginx to a
+    # Node server (#200); nothing may reach the production server until the owner
+    # switches the deployment. Re-enable by removing `false &&`.
+    if: false && github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Serialize deploys: two quick pushes to main must not race two GHCR pushes.
     # Don't cancel an in-flight push (a half-pushed image tag is worse than a wait).
     concurrency:
