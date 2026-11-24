@@ -133,7 +133,8 @@ describe(`MCP on the built server (store: ${REDIS_URL ? 'Redis' : 'memory'})`, (
     expect(await (await login('employee-refresh')).json()).toEqual({ admin: false })
   })
 
-  it('login: JSON only (415), Content-Length required (411)', async () => {
+  it('login: JSON only (415), Content-Length required (411), at most 4 KB (413)', async () => {
+    expect((await fetch(`${base}/api/app/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh: 'x'.repeat(5000) }) })).status).toBe(413)
     expect((await fetch(`${base}/api/app/session`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: 'x' })).status).toBe(415)
     const chunked = streamOf('{"refresh":"x"}')
     const r = await fetch(`${base}/api/app/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: chunked, duplex: 'half' } as RequestInit)
@@ -227,7 +228,9 @@ describe(`MCP on the built server (store: ${REDIS_URL ? 'Redis' : 'memory'})`, (
         expect(r.headers.get('x-content-type-options')).toBe('nosniff')
         const html = await r.text()
         expect(html).toContain('<div id="__nuxt"')
-        for (const [, js] of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
+        // Every EXECUTABLE inline script of the page is allowed by hash (JSON data blocks are not scripts for the CSP).
+        for (const [, attrs, js] of html.matchAll(/<script((?:(?!\ssrc=)[^>])*)>([\s\S]*?)<\/script>/g)) {
+          if (/type="application\/json"/.test(attrs ?? '')) continue
           expect(csp, `${method} ${p}: inline script allowed`).toContain(`'sha256-${createHash('sha256').update(js ?? '').digest('base64')}'`)
         }
       }

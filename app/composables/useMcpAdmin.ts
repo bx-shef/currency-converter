@@ -30,6 +30,13 @@ function messageOf(e: unknown): string {
 export function useMcpAdmin() {
   /** Log in from the frame. `off` — the server has no shef.cowork settings (503): the card is not shown. */
   async function login(): Promise<McpLogin> {
+    // The portal tells the frame whether this user is an admin: nobody else needs the key screen, so their
+    // single-use refresh token is not spent and nothing goes to the server (it re-checks user.admin itself).
+    try {
+      if (!useB24().getOrThrow().auth.isAdmin) return { state: 'ready', admin: false }
+    } catch {
+      return { state: 'off' }
+    }
     try {
       const r = await $fetch<{ token?: string, admin: boolean }>('/api/app/session', { method: 'POST', body: { refresh: await refreshToken() } })
       // A session exists only for a portal admin; anyone else gets { admin: false } and no token.

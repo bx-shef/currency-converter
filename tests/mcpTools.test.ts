@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MAX_AMOUNT } from '../app/config/currencies'
 import { formatAmount, toKopecks } from '../app/utils/formatters'
-import { minskToday, NbrbApi, NbrbUnavailable, type FetchJson } from '../server/lib/mcp/nbrbApi'
+import { minskToday, NbrbApi, NbrbUnavailable, UPSTREAM_PER_MINUTE, type FetchJson } from '../server/lib/mcp/nbrbApi'
 import { MCP_TOOLS, McpTools } from '../server/lib/mcp/tools'
 
 // 2026-11-20 12:00 Minsk = 09:00 UTC.
@@ -294,5 +294,22 @@ describe('NbrbApi cache', () => {
     await expect(api.ratesOn('2026-11-20')).rejects.toBeInstanceOf(NbrbUnavailable)
     down = false
     expect((await api.ratesOn('2026-11-20')).rates.get('USD')?.bynRate).toBe(2.9943)
+  })
+})
+
+describe('NbrbApi upstream ceiling', () => {
+  it('no more than UPSTREAM_PER_MINUTE requests to НБ РБ a minute, then «unavailable»', async () => {
+    let n = 0
+    let now = NOW
+    const api = new NbrbApi(async (url) => {
+      n++
+      return url.includes('periodicity=1') ? [] : daily('2026-11-01')
+    }, () => now)
+    const dates = Array.from({ length: 100 }, (_, i) => `2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + Math.floor(i / 12)).padStart(2, '0')}`)
+    const results = await Promise.allSettled(dates.map(d => api.ratesOn(d)))
+    expect(n).toBeLessThanOrEqual(UPSTREAM_PER_MINUTE)
+    expect(results.some(r => r.status === 'rejected' && r.reason instanceof NbrbUnavailable)).toBe(true)
+    now += 60_001
+    await expect(api.ratesOn('2024-01-02')).resolves.toBeTruthy()
   })
 })

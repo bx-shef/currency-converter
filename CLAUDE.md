@@ -326,8 +326,10 @@ HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (
   **вручную** (best-effort — Б24 добавляет регионы; self-hosted на своём домене добавляют сами).
   `frame-ancestors` намеренно НЕ сужается по странице: `/` — dual-mode (Application URL, открывается в портале),
   поэтому ему нужен тот же allow-list, что `/install`/`/widget`. Хук рендера (`server/plugins/csp.ts`) ставит CSP на
-  каждый отрендеренный HTML-ответ, с хэшами inline-скриптов **этого же ответа** — политика всегда совпадает со
-  страницей (и 404 тоже). Остальные заголовки (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  каждый отрендеренный HTML-ответ и разрешает по хэшу **только известные** inline-скрипты этого ответа
+  (`allowedInlineScriptHashes`: `theme-init` из `app/utils/themeInit.ts`, importmap Nuxt, последний `__NUXT__.config`,
+  скрипт «назад» страницы 404) — внедрённый в разметку скрипт хэша не получает. **Новый свой inline-скрипт** —
+  только через белый список в `server/lib/security.ts` (лучше — файл в `public/`). Остальные заголовки (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
   HSTS, `X-XSS-Protection: 0`) — `SECURITY_HEADERS` через routeRules (issue #46).
 - `server/routes/health.get.ts` — `/health` для healthcheck образа и `make prod-smoke`.
 - `app/components/RateTrend.vue` + `app/utils/rateHistory.ts` — в виджете чата под строками: курс валюты, которую

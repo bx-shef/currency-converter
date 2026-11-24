@@ -1,8 +1,5 @@
 <script setup lang="ts">
-// b24ui colorMode persists the choice under this @vueuse/core key; the inline
-// theme-init script below reads it to set the class before paint. Keep in sync
-// with b24ui's `colorModeStorageKey` default.
-const COLOR_MODE_STORAGE_KEY = 'vueuse-color-scheme'
+import { THEME_INIT_SCRIPT } from '~/utils/themeInit'
 
 useHead({
   meta: [
@@ -29,7 +26,7 @@ useHead({
       key: 'theme-init',
       tagPosition: 'head',
       tagPriority: 'critical',
-      innerHTML: `(function(){try{var s=localStorage.getItem("${COLOR_MODE_STORAGE_KEY}")||"auto";if(s==="auto"){s=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=s!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d);}catch(e){}})();`
+      innerHTML: THEME_INIT_SCRIPT
     }
   ]
 })

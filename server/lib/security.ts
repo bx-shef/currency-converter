@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { THEME_INIT_SCRIPT } from '../../app/utils/themeInit'
 
 // Security headers of every response — the Node server's copy of what nginx.conf used to send (issue #46,
 // #88, #169). The CSP has no `script-src 'unsafe-inline'`: Nuxt's inline scripts (the FOUC theme-init guard and
@@ -50,14 +51,68 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
 }
 
-// Inline <script> = a script tag without a `src` attribute.
-const INLINE_SCRIPT = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g
+/**
+ * The 404 page's «back» script — verbatim from Nuxt (nuxt/dist/app/components/error-404.vue); a Nuxt update that
+ * changes it is caught by tests/securityHeaders.test.ts (the copy is compared with the installed Nuxt).
+ */
+export const NUXT_ERROR_BACK_SCRIPT = '(()=>{if(!(window.history.state&&window.history.state.back||document.referrer.startsWith(window.location.origin+"/")))return;const t=document.querySelector("[data-back-home]"),e=document.querySelector("[data-back-previous]");t&&e&&(e.onclick=()=>window.history.back(),t.hidden=!0,e.hidden=!1)})();'
 
-/** `'sha256-…'` sources of every inline script in the given HTML documents, unique. */
+const NUXT_CONFIG_PREFIX = 'window.__NUXT__={};window.__NUXT__.config='
+
+// Inline <script> = a script tag without a `src` attribute (`data-src` is not `src`).
+const INLINE_SCRIPT = /<script((?:(?!\ssrc=)[^>])*)>([\s\S]*?)<\/script>/g
+
+const hashOf = (body: string) => `'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`
+
+/** `'sha256-…'` sources of every inline script in the given HTML documents, unique (no allow-list — tooling). */
 export function inlineScriptHashes(htmls: string[]): string[] {
   const out = new Set<string>()
   for (const html of htmls) {
-    for (const [, body] of html.matchAll(INLINE_SCRIPT)) out.add(`'sha256-${createHash('sha256').update(body ?? '', 'utf8').digest('base64')}'`)
+    for (const m of html.matchAll(INLINE_SCRIPT)) out.add(hashOf(m[2] ?? ''))
   }
+  return [...out]
+}
+
+/** importmap of Nuxt: only `{ "imports": { name: "/_nuxt/….js" } }`. */
+function isNuxtImportMap(body: string): boolean {
+  try {
+    const v = JSON.parse(body) as Record<string, unknown>
+    const keys = Object.keys(v)
+    const imports = v.imports as Record<string, unknown> | undefined
+    return keys.length === 1 && keys[0] === 'imports' && !!imports && typeof imports === 'object'
+      && Object.values(imports).every(u => typeof u === 'string' && /^\/_nuxt\/[\w.-]+\.js$/.test(u))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Hashes of the KNOWN executable inline scripts of one rendered page — never «every inline script»: a `<script>`
+ * injected into the markup (a future v-html, an error reflection) must stay blocked by the CSP.
+ * - `theme-init` — exactly THEME_INIT_SCRIPT;
+ * - Nuxt importmap — `/_nuxt/` entries only;
+ * - `window.__NUXT__.config` — only the LAST such script: Nuxt puts it at the end of <body>, after the app root,
+ *   so anything injected inside the app comes earlier and is not allowed;
+ * - the 404 «back» script — exactly NUXT_ERROR_BACK_SCRIPT.
+ * Non-JavaScript blocks (`application/json` payload) are not scripts for the CSP and are skipped.
+ */
+export function allowedInlineScriptHashes(html: string): string[] {
+  const out = new Set<string>()
+  let lastConfig: string | null = null
+  for (const m of html.matchAll(INLINE_SCRIPT)) {
+    const attrs = m[1] ?? ''
+    const body = m[2] ?? ''
+    const type = /\stype="([^"]*)"/.exec(attrs)?.[1]
+    if (type === 'importmap') {
+      if (isNuxtImportMap(body)) out.add(hashOf(body))
+    } else if (type && type !== 'module' && type !== 'text/javascript') {
+      continue
+    } else if (body === THEME_INIT_SCRIPT || body === NUXT_ERROR_BACK_SCRIPT) {
+      out.add(hashOf(body))
+    } else if (body.startsWith(NUXT_CONFIG_PREFIX)) {
+      lastConfig = body
+    }
+  }
+  if (lastConfig !== null) out.add(hashOf(lastConfig))
   return [...out]
 }

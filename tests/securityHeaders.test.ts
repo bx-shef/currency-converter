@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { BITRIX24_ZONES, buildCsp, CSP_TEMPLATE, inlineScriptHashes, SECURITY_HEADERS } from '../server/lib/security'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { allowedInlineScriptHashes, BITRIX24_ZONES, buildCsp, CSP_TEMPLATE, inlineScriptHashes, NUXT_ERROR_BACK_SCRIPT, SECURITY_HEADERS } from '../server/lib/security'
+import { THEME_INIT_SCRIPT } from '../app/utils/themeInit'
 
 // Guards the CSP and security headers the Node server sends (server/lib/security.ts; nginx.conf before #200).
 // The Bitrix24 cloud-zone list (issue #88) is hand-maintained and must be mirrored between frame-ancestors
@@ -69,5 +72,58 @@ describe('security headers (#46)', () => {
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
     })
     expect(Object.keys(SECURITY_HEADERS).map(k => k.toLowerCase())).not.toContain('x-frame-options')
+  })
+})
+
+describe('CSP allow-list of inline scripts (server/plugins/csp.ts)', () => {
+  const h = (body: string) => inlineScriptHashes([`<script>${body}</script>`])[0]!
+  const CONFIG = 'window.__NUXT__={};window.__NUXT__.config={public:{siteUrl:""}}'
+  const page = (injected: string) => [
+    '<html><head><script type="importmap">{"imports":{"#entry":"/_nuxt/Ab_1.js"}}</script>',
+    `<script data-hid="theme-init">${THEME_INIT_SCRIPT}</script></head><body><div id="__nuxt">`,
+    injected,
+    `</div><div id="teleports"></div><script>${CONFIG}</script>`,
+    '<script type="application/json" data-nuxt-data="nuxt-app">[1]</script></body></html>'
+  ].join('')
+
+  it('allows the known scripts of a page', () => {
+    const allowed = allowedInlineScriptHashes(page(''))
+    expect(allowed).toContain(h(THEME_INIT_SCRIPT))
+    expect(allowed).toContain(h(CONFIG))
+    expect(allowed).toContain(h('{"imports":{"#entry":"/_nuxt/Ab_1.js"}}'))
+    expect(allowed).toHaveLength(3)
+  })
+  it('a script injected into the markup gets no hash — the CSP blocks it', () => {
+    for (const evil of ['<script>alert(1)</script>', '<script data-src="x">alert(1)</script>', '<script type="module">alert(1)</script>']) {
+      const allowed = allowedInlineScriptHashes(page(evil))
+      expect(allowed, evil).not.toContain(h('alert(1)'))
+      expect(allowed).toHaveLength(3)
+    }
+  })
+  it('a script after the real config (end of body) is not allowed either — it is not the Nuxt config', () => {
+    const tail = page('').replace('</body>', '<script>alert(1)</script></body>')
+    const allowed = allowedInlineScriptHashes(tail)
+    expect(allowed).not.toContain(h('alert(1)'))
+    expect(allowed).toContain(h(CONFIG))
+  })
+  it('an injected fake `window.__NUXT__` before the real one is not allowed (only the last counts)', () => {
+    const fake = 'window.__NUXT__={};window.__NUXT__.config={};alert(1)'
+    const allowed = allowedInlineScriptHashes(page(`<script>${fake}</script>`))
+    expect(allowed).not.toContain(h(fake))
+    expect(allowed).toContain(h(CONFIG))
+  })
+  it('a foreign importmap or a changed theme-init is not allowed', () => {
+    const bad = page('').replace('/_nuxt/Ab_1.js', 'https://evil.example/x.js').replace(THEME_INIT_SCRIPT, `${THEME_INIT_SCRIPT}alert(1)`)
+    expect(allowedInlineScriptHashes(bad)).toHaveLength(1)
+  })
+  it('the 404 «back» script copy equals the one in the installed Nuxt', () => {
+    const pnpm = join(process.cwd(), 'node_modules/.pnpm')
+    const dirs = readdirSync(pnpm).filter(d => d.startsWith('nuxt@'))
+    expect(dirs.length).toBeGreaterThan(0)
+    for (const d of dirs) {
+      const vue = readFileSync(join(pnpm, d, 'node_modules/nuxt/dist/app/components/error-404.vue'), 'utf8')
+      expect(vue, d).toContain(NUXT_ERROR_BACK_SCRIPT)
+    }
+    expect(allowedInlineScriptHashes(`<script>${NUXT_ERROR_BACK_SCRIPT}</script>`)).toEqual([h(NUXT_ERROR_BACK_SCRIPT)])
   })
 })

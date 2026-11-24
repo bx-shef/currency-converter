@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { parseEncryptionKey, readConfig } from '../server/lib/mcp/config'
-import { clientIp, hits, takeHit } from '../server/lib/mcp/limits'
+import { clientIp, hits, ipBucket, isLimited, takeHit } from '../server/lib/mcp/limits'
 import { isPrivateIp, LoginError, PortalAuth, readJsonCapped, restEndpoint, type Fetch } from '../server/lib/mcp/oauth'
 import { RedisStore, StoreUnavailable, type RedisLike } from '../server/lib/mcp/redisStore'
 import { AdminSessions } from '../server/lib/mcp/session'
 import { MemoryStore } from '../server/lib/mcp/store'
+import { takeNonce } from '../server/lib/mcp/protocol'
 
 const KEY_B64 = Buffer.alloc(32, 5).toString('base64')
 const ENV = { PUBLIC_URL: 'https://cc.example.by', B24_CLIENT_ID: 'local.app', B24_CLIENT_SECRET: 's3cret', ENCRYPTION_KEY: KEY_B64 }
@@ -189,6 +190,24 @@ describe('RedisStore failures', () => {
   })
 })
 
+describe('takeNonce over RedisStore', () => {
+  it('SET NX: a repeated nonce is 409', async () => {
+    const data = new Map<string, string>()
+    const r: RedisLike = {
+      get: async k => data.get(k) ?? null,
+      set: async (k, v, _e, _t, nx) => {
+        if (nx === 'NX' && data.has(k)) return null
+        data.set(k, v)
+        return 'OK'
+      },
+      del: async k => data.delete(k)
+    }
+    const store = new RedisStore(r)
+    await takeNonce(store, 'a1b2c3d4e5f60718', 'cc'.repeat(16))
+    await expect(takeNonce(store, 'a1b2c3d4e5f60718', 'cc'.repeat(16))).rejects.toMatchObject({ status: 409 })
+  })
+})
+
 describe('rate limits', () => {
   it('client address: the LAST X-Forwarded-For entry (added by the proxy), else the socket', () => {
     expect(clientIp('6.6.6.6, 10.0.0.9', '172.18.0.2')).toBe('10.0.0.9')
@@ -201,16 +220,32 @@ describe('rate limits', () => {
     expect([1, 2, 3].map(() => takeHit('k', 2, 60, 0))).toEqual([true, true, false])
     expect(takeHit('k', 2, 60, 60_000)).toBe(true)
   })
-  it('a full table sweeps expired keys and never resets live counters', () => {
+  it('a full table drops the oldest windows — never everybody\'s counters, never refusing new keys', () => {
     hits.clear()
-    for (let i = 0; i < 20_000; i++) takeHit(`x${i}`, 1, 60, 0)
     takeHit('victim', 1, 60, 0)
-    // New keys while every window is live are refused — the victim's spent counter is not wiped.
-    expect(takeHit('new', 1, 60, 1000)).toBe(false)
-    expect(takeHit('victim', 1, 60, 1000)).toBe(false)
-    // After the windows expire, space frees up.
-    expect(takeHit('new', 1, 60, 61_000)).toBe(true)
+    takeHit('victim', 1, 60, 0)
+    for (let i = 0; i < 20_000; i++) takeHit(`x${i}`, 1, 60, 0)
+    // The new key is accepted; the oldest window (victim) made room, the recent ones are kept.
+    expect(hits.has('x19999')).toBe(true)
+    expect(takeHit('new', 1, 60, 1000)).toBe(true)
+    expect(hits.size).toBeLessThanOrEqual(20_000)
     hits.clear()
+  })
+  it('isLimited reads without counting', () => {
+    hits.clear()
+    takeHit('k', 2, 60, 0)
+    expect(isLimited('k', 2, 0)).toBe(false)
+    takeHit('k', 2, 60, 0)
+    expect(isLimited('k', 2, 0)).toBe(true)
+    expect(isLimited('k', 2, 60_000)).toBe(false)
+    hits.clear()
+  })
+  it('IPv6 addresses count per /64; IPv4 and mapped IPv4 as is', () => {
+    expect(ipBucket('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2::/64')
+    expect(ipBucket('2001:db8:1:2::5')).toBe('2001:db8:1:2::/64')
+    expect(ipBucket('2001:db8::1')).toBe('2001:db8:0:0::/64')
+    expect(ipBucket('::ffff:10.0.0.1')).toBe('10.0.0.1')
+    expect(clientIp('2001:db8:1:2::9', undefined)).toBe(clientIp('2001:db8:1:2::ffff', undefined))
   })
 })
 
@@ -221,5 +256,11 @@ describe('readJsonCapped', () => {
     expect(await readJsonCapped(new Response(JSON.stringify({ big: 'y'.repeat(300 * 1024) })))).toEqual({})
     expect(await readJsonCapped(new Response('[1]'))).toEqual({})
     expect(await readJsonCapped(new Response('not json'))).toEqual({})
+    const broken = new Response(new ReadableStream({
+      pull(c) {
+        c.error(new Error('timeout'))
+      }
+    }))
+    expect(await readJsonCapped(broken)).toEqual({})
   })
 })

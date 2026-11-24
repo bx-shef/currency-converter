@@ -42,7 +42,13 @@ export async function readJsonCapped(res: Response, max: number = MAX_ANSWER_BYT
   const chunks: Uint8Array[] = []
   let size = 0
   for (;;) {
-    const { done, value } = await reader.read()
+    let r: ReadableStreamReadResult<Uint8Array>
+    try {
+      r = await reader.read()
+    } catch {
+      return {}
+    }
+    const { done, value } = r
     if (done) break
     size += value.byteLength
     if (size > max) {

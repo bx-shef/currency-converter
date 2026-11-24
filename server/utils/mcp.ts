@@ -7,7 +7,7 @@ import { LoginError, PortalAuth } from '../lib/mcp/oauth'
 import { checkRequest, MCP_MAX_BODY, McpKeyError, McpKeys, McpReject, parseCall, takeNonce, type McpHeaders } from '../lib/mcp/protocol'
 import { RedisStore, StoreUnavailable } from '../lib/mcp/redisStore'
 import { AdminSessions } from '../lib/mcp/session'
-import { clientIp, takeHit } from '../lib/mcp/limits'
+import { clientIp, isLimited, takeHit } from '../lib/mcp/limits'
 import { MemoryStore, type KvStore } from '../lib/mcp/store'
 import { isToolName, MCP_TOOLS, McpTools, toolError } from '../lib/mcp/tools'
 
@@ -73,6 +73,7 @@ function storeDown(event: H3Event, extra: Record<string, unknown>) {
 
 /** Every rejection looks the same from outside: the reason (unknown member, signature, host…) is for the log only. */
 function reject(event: H3Event, e: McpReject, extra: Record<string, unknown>) {
+  if (e.status !== 429) takeHit(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP, 60)
   log({ ...extra, outcome: 'reject', status: e.status, reason: e.reason })
   setResponseStatus(event, e.status)
   return { error: e.status === 401 ? 'unauthorized' : e.reason }
@@ -84,7 +85,10 @@ const headersOf = (event: H3Event): McpHeaders => ({
   signature: (getRequestHeader(event, 'x-shef-signature') ?? '').toLowerCase()
 })
 
-/** Coarse limit before any key work: per client address, on every /api/mcp/* request. */
+/**
+ * Coarse limit per client address on /api/mcp/*, counting only REJECTED requests: every portal's calls come from
+ * the one shef.cowork server, so counting successful calls would make it a shared ceiling for the whole product.
+ */
 const UNSIGNED_PER_IP = 300
 /** Calls per portal and per employee, a minute. */
 const CALLS_PER_PORTAL = 300
@@ -111,7 +115,7 @@ export async function mcpManifest(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'manifest', member: h.member.slice(0, 64) }
   try {
-    if (!takeHit(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP, 60)) throw new McpReject(429, 'rate_limited')
+    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const host = await checkRequest(s.keys, h, '', nowSec())
     log({ ...base, portal: host, outcome: 'ok' })
     return { tools: MCP_TOOLS }
@@ -130,7 +134,7 @@ export async function mcpCall(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'call', member: h.member.slice(0, 64) }
   try {
-    if (!takeHit(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP, 60)) throw new McpReject(429, 'rate_limited')
+    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const raw = await boundedBody(event, MCP_MAX_BODY)
     const host = await checkRequest(s.keys, h, raw, nowSec())
     const c = parseCall(raw, h, host)

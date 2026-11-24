@@ -66,7 +66,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
   // nginx used to gzip; the Node server serves pre-compressed assets instead.
   nitro: {
-    compressPublicAssets: true
+    compressPublicAssets: true,
+    // The container's filesystem is read-only: Nitro's default `data` storage (./.data/kv on disk) would fail with
+    // EROFS on the first write. Nothing uses it; if something does, it must not silently write to disk.
+    storage: { data: { driver: 'memory' } }
   },
 
   vite: {

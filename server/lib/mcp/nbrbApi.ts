@@ -21,6 +21,12 @@ export const HISTORY_MAX_DAYS = 366
 /** First date with rates in BYN (redenomination 1:10 000). */
 export const FIRST_BYN_DATE = '2016-07-01'
 const CACHE_MAX = 400
+/**
+ * Requests to api.nbrb.by per minute from this server, all callers together. Cache misses are driven by the
+ * callers (new dates, new periods): without a ceiling a key holder could turn us into an amplifier and get our
+ * address blocked at НБ РБ for everybody. Over it — NbrbUnavailable («try again in a minute»).
+ */
+export const UPSTREAM_PER_MINUTE = 120
 /** `/currencies` changes rarely, but a mass Cur_ID reissue must not hide new segments for a whole day. */
 const TTL_CURRENCIES_MS = 6 * 3600_000
 
@@ -117,6 +123,7 @@ export class NbrbApi {
   private readonly cache = new Map<string, { at: number, value: unknown }>()
   /** Loads in flight by cache key: concurrent misses on one key share one request to НБ РБ. */
   private readonly inflight = new Map<string, Promise<unknown>>()
+  private window = { n: 0, until: 0 }
 
   constructor(
     private readonly fetchJson: FetchJson = defaultFetchJson,
@@ -194,6 +201,9 @@ export class NbrbApi {
   }
 
   private async get(url: string): Promise<unknown> {
+    const now = this.now()
+    if (this.window.until <= now) this.window = { n: 0, until: now + 60_000 }
+    if (++this.window.n > UPSTREAM_PER_MINUTE) throw new NbrbUnavailable('upstream limit')
     const ctl = new AbortController()
     const t = setTimeout(() => ctl.abort(), TIMEOUT_MS)
     try {

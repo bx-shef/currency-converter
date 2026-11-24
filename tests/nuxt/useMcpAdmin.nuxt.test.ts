@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // portal gave the frame, later ones a fresh one), the key calls with the session, one re-login on an expired
 // session — never a loop.
 const frame = vi.hoisted(() => ({
+  isAdmin: true,
   getAuthData: vi.fn(() => ({ refresh_token: 'initial-refresh' }) as unknown),
   refreshAuth: vi.fn(async () => ({ refresh_token: 'fresh-refresh' }))
 }))
@@ -50,7 +51,19 @@ describe('useMcpAdmin', () => {
     expect(calls[1]).toMatchObject({ url: '/api/app/mcp-key', opts: { method: 'GET', headers: { Authorization: 'Bearer tok-1' } } })
   })
 
-  it('not an admin: no token kept, admin false', async () => {
+  it('the portal says «not an admin»: no refresh spent, no request at all', async () => {
+    frame.isAdmin = false
+    try {
+      const a = await fresh()
+      expect(await a.login()).toEqual({ state: 'ready', admin: false })
+      expect(calls).toEqual([])
+      expect(frame.getAuthData).not.toHaveBeenCalled()
+    } finally {
+      frame.isAdmin = true
+    }
+  })
+
+  it('not an admin by the server: no token kept, admin false', async () => {
     answer = () => ({ admin: false })
     const a = await fresh()
     expect(await a.login()).toEqual({ state: 'ready', admin: false })

@@ -291,8 +291,9 @@ pnpm screenshots                # в другом
 
 ### 4.0. Переход на Node-сервер (#200) — порядок выкладки
 
-**Новый образ нельзя пускать через Watchtower со старым compose:** Watchtower пересоздаёт контейнер с прежними
-настройками — без Redis, без сети `backend`, без секретов. Порядок:
+**Новый образ не выкатывать Watchtower'ом со старым compose:** Watchtower пересоздаёт контейнер с прежними настройками —
+без Redis, без сети `backend`, без секретов. Если это всё же случится между шагами 4 и 5, вреда нет: сайт и виджет
+работают (Redis им не нужен), инструменты shef.cowork отвечают `503 not_configured` до `make prod-redeploy`. Порядок:
 
 1. **Записать точку отката:** `docker inspect currency-converter --format '{{.Config.Image}}'`, найти в GHCR её тег
    `sha-<коммит>`; сохранить копии `docker-compose.prod.yml`, `Makefile`, `.env.prod` как `.bak`.
