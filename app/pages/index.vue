@@ -461,6 +461,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+    <!-- Portal admin only, inside the portal frame: connection key for the shef.cowork AI agent (docs/MCP.md). -->
+    <McpKeyCard
+      v-if="isB24"
+      class="mt-6"
+    />
     <ConverterPromo />
   </div>
 </template>

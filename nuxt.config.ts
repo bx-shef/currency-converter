@@ -1,12 +1,13 @@
 import { contentLocales } from './i18n/i18n'
 import { isValidCounterId } from './app/utils/metrika'
+import { SECURITY_HEADERS } from './server/lib/security'
 
 const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   ? process.env.NUXT_ALLOWED_HOSTS.split(',').map((h: string) => h.trim())
   : []
 
 // Fail-fast on a malformed analytics counter id (issue #46). The id is baked into
-// the SSG bundle at `nuxt generate`, so a typo would silently ship a broken
+// the client bundle at `nuxt build`, so a typo would silently ship a broken
 // Metrika init. Empty/unset is fine (analytics simply off). Validates the RAW env
 // value (the same one Nuxt bakes into runtimeConfig.public) with the shared
 // isValidCounterId — so a value that passes here is exactly one default.vue will
@@ -54,17 +55,21 @@ export default defineNuxtConfig({
     }
   },
 
-  compatibilityDate: '2025-01-15',
+  // Node server (#200): pages are rendered per request so every HTML response gets its CSP from the render hook
+  // (server/plugins/csp.ts); a prerendered page would be served by the static handler first,
+  // without it. The other security headers go on every response — static files included — via routeRules,
+  // which run before the static handler.
+  routeRules: {
+    '/**': { headers: SECURITY_HEADERS }
+  },
 
-  // `/install` and `/widget/converter` are loaded directly by Bitrix24 in an
-  // iframe and are not linked from `/`, so the generate crawler would skip them.
-  // List them explicitly so `nuxt generate` emits real HTML for each. Client-side
-  // B24 detection + i18n still run at hydration on top of the prerendered HTML.
+  compatibilityDate: '2025-01-15',
+  // nginx used to gzip; the Node server serves pre-compressed assets instead.
   nitro: {
-    prerender: {
-      crawlLinks: true,
-      routes: ['/install', '/widget/converter']
-    }
+    compressPublicAssets: true,
+    // The container's filesystem is read-only: Nitro's default `data` storage (./.data/kv on disk) would fail with
+    // EROFS on the first write. Nothing uses it; if something does, it must not silently write to disk.
+    storage: { data: { driver: 'memory' } }
   },
 
   vite: {

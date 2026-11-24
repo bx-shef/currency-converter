@@ -12,7 +12,7 @@ hold LICENSE                          # юридический документ
 2 tools/review-tier.*
 2 .github/*
 2 package.json|pnpm-lock.yaml
-2 Dockerfile|docker-compose*.yml|.dockerignore|nginx.conf|Makefile
+2 Dockerfile|docker-compose*.yml|.dockerignore|Makefile
 2 nuxt.config.ts|vitest.config.ts|eslint.config.mjs|tsconfig.json
 2 scripts/*
 2 .env.example|.env.prod.example
@@ -52,8 +52,7 @@ case 2 package.json
 case 2 pnpm-lock.yaml
 case 2 .github/workflows/ci.yml
 case 2 Dockerfile
-case 2 nginx.conf
-case 2 scripts/csp-hashes.mjs
+case 2 server/lib/security.ts
 case 2 nuxt.config.ts
 case 2 app/pages/install.vue
 case 2 app/composables/useB24.ts

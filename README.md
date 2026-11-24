@@ -19,7 +19,7 @@
 - Резервная копия курсов (`public/rates-fallback.json`): если API НБ РБ недоступен при первой
   загрузке, показываются последние сохранённые курсы с пометкой «резервная копия» (issue #80)
 - Светлая и тёмная тема — кнопка в шапке (по умолчанию системная тема, переключение запоминается)
-- Статическое приложение (без серверной части)
+- Node-сервер (Nuxt/Nitro): страницы рендерятся на сервере; он же отдаёт инструменты для AI-агента shef.cowork
 - Mobile-first дизайн
 - Встройка в Битрикс24 — виджет `IM_TEXTAREA` в панели чата с вставкой суммы прописью в сообщение
   (в мобильном приложении Б24 — крупнее контролы, копирование и вставка скрыты)
@@ -106,11 +106,12 @@ app/
   components/              — SiteFooter, ConverterPromo (промо-карточки), CopyAnnouncer
                              (озвучка копирования для скринридеров) и др.
   plugins/webVitals.client.ts — Core Web Vitals (LCP/CLS/INP) → цели Метрики (только standalone)
+server/                    — Nitro: заголовки безопасности и CSP (lib/security.ts), /health, инструменты shef.cowork
+                             (lib/mcp/, api/mcp/, api/app/) — см. docs/MCP.md
 public/metrika.js          — статический бутстрап Яндекс.Метрики (CSP без inline-скриптов)
 public/rates-fallback.json — снапшот «последних известных курсов» (fallback при сбое API, #80)
 public/og.png              — готовый рендер OG-картинки (закоммичен; регенерация pnpm og:snapshot)
 scripts/og.svg             — исходник OG-картинки (→ public/og.png через scripts/gen-og.mjs)
-scripts/csp-hashes.mjs     — подстановка sha256-хэшей inline-скриптов в CSP при сборке
 scripts/gen-og.mjs         — генератор OG-картинки из og.svg (Chromium; pnpm og:snapshot)
 scripts/gen-rates-fallback.mjs — генератор снапшота курсов (pnpm rates:snapshot)
 scripts/screenshots.mjs    — скриншоты роут × вьюпорт × тема (pnpm screenshots)
@@ -128,7 +129,7 @@ tests/                     — vitest: *.test.ts (node) + nuxt/ (@nuxt/test-util
 
 ## Технологии
 
-- [Nuxt 4](https://nuxt.com/) + статическая генерация
+- [Nuxt 4](https://nuxt.com/) — Node-сервер Nitro, Redis для инструментов shef.cowork
 - [Bitrix24 UI](https://bitrix24.github.io/b24ui/)
 - [Tailwind CSS v4](https://tailwindcss.com/)
 
@@ -144,10 +145,11 @@ pnpm dev
 ```bash
 pnpm lint        # ESLint (в т.ч. @intlify/vue-i18n/no-unused-keys — осиротевшие ключи локалей)
 pnpm typecheck   # vue-tsc (приложение и server/)
-pnpm test        # Vitest
+pnpm test        # Vitest (unit + nuxt)
+pnpm build && pnpm test:e2e   # собранный сервер против подставного Битрикс24
 ```
 
-Одной командой все гейты (install + lint + typecheck + test + generate) — запусти
+Одной командой все гейты (install + lint + typecheck + test + сборка) — запусти
 и пришли вывод:
 
 ```bash
@@ -170,6 +172,10 @@ Push в `main` → GitHub Actions собирает образ → выклады
 обновляет контейнер за ~5 минут, за общим nginx-proxy с сертификатом Let's Encrypt.
 
 > Автовыкладка сейчас выключена владельцем (переход на Node-сервер): мерж в `main` на сервер не попадает.
+
+> Прод — контейнер приложения (Node, порт 8080) и Redis из `docker-compose.prod.yml`; секреты инструментов shef.cowork
+> (`B24_CLIENT_ID`, `B24_CLIENT_SECRET`, `ENCRYPTION_KEY`, `REDIS_PASSWORD`) — в `.env.prod`, образец — `.env.prod.example`.
+> Без них сайт и виджет работают, а инструменты shef.cowork отвечают «не настроено» ([`docs/MCP.md`](docs/MCP.md)).
 
 > Настройка сервера, переменные, команды `make`, откат и разбор инцидентов —
 > [`docs/PROCESS.md`](docs/PROCESS.md) §0.3, §4 и §7.

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MAX_AMOUNT } from '../app/config/currencies'
 import { formatAmount, toKopecks } from '../app/utils/formatters'
-import { minskToday, NbrbApi, NbrbUnavailable, type FetchJson } from '../server/lib/mcp/nbrbApi'
+import { minskToday, NbrbApi, NbrbUnavailable, UPSTREAM_PER_CALLER_MINUTE, UPSTREAM_PER_MINUTE, type FetchJson } from '../server/lib/mcp/nbrbApi'
 import { MCP_TOOLS, McpTools } from '../server/lib/mcp/tools'
 
 // 2026-11-20 12:00 Minsk = 09:00 UTC.
@@ -294,5 +294,55 @@ describe('NbrbApi cache', () => {
     await expect(api.ratesOn('2026-11-20')).rejects.toBeInstanceOf(NbrbUnavailable)
     down = false
     expect((await api.ratesOn('2026-11-20')).rates.get('USD')?.bynRate).toBe(2.9943)
+  })
+})
+
+describe('NbrbApi upstream ceiling', () => {
+  it('no more than UPSTREAM_PER_MINUTE requests to НБ РБ a minute, then «unavailable»', async () => {
+    let n = 0
+    let now = NOW
+    const api = new NbrbApi(async (url) => {
+      n++
+      return url.includes('periodicity=1') ? [] : daily('2026-11-01')
+    }, () => now)
+    const dates = Array.from({ length: 100 }, (_, i) => `2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + Math.floor(i / 12)).padStart(2, '0')}`)
+    const results = await Promise.allSettled(dates.map(d => api.ratesOn(d)))
+    expect(n).toBeLessThanOrEqual(UPSTREAM_PER_MINUTE)
+    expect(results.some(r => r.status === 'rejected' && r.reason instanceof NbrbUnavailable)).toBe(true)
+    now += 60_001
+    await expect(api.ratesOn('2024-01-02')).resolves.toBeTruthy()
+  })
+})
+
+describe('NbrbApi share per portal (security review, Н5)', () => {
+  it('one portal spending its share does not take НБ РБ away from another', async () => {
+    const api = new NbrbApi(async url => (url.includes('periodicity=1') ? [] : daily('2026-11-01')), () => NOW)
+    const tools = new McpTools(api, () => NOW)
+    const who = (m: string) => ({ memberId: m, userId: 1, host: 'p.example.by' })
+    const codes: (string | undefined)[] = []
+    for (let i = 0; i < 30; i++) {
+      const date = `2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + Math.floor(i / 12)).padStart(2, '0')}`
+      codes.push((await tools.run({ tool: 'rates', args: { date }, who: who('aaaaaaaaaaaaaaaa') }))._meta?.code)
+    }
+    expect(codes.filter(c => c === 'rates_unavailable').length).toBeGreaterThan(0)
+    expect(UPSTREAM_PER_CALLER_MINUTE).toBeLessThan(UPSTREAM_PER_MINUTE)
+    const other = await tools.run({ tool: 'rates', args: { date: '2024-05-05' }, who: who('bbbbbbbbbbbbbbbb') })
+    expect(other._meta?.code).toBeUndefined()
+  })
+})
+
+describe('NbrbApi share: both daily feeds or none', () => {
+  it('on the last unit of the share a day is refused whole, never answered without the monthly feed', async () => {
+    let n = 0
+    const api = new NbrbApi(async (url) => {
+      n++
+      return url.includes('periodicity=1') ? monthly('2026-11-01') : daily('2026-11-01')
+    }, () => NOW)
+    for (let i = 0; i < 9; i++) await api.ratesOn(`2025-0${1 + (i % 9)}-1${i}`, 'p')
+    const before = n
+    // 2 units left: one more day fits, then the share is spent.
+    await expect(api.ratesOn('2025-10-10', 'p')).resolves.toMatchObject({ complete: true })
+    await expect(api.ratesOn('2025-10-11', 'p')).rejects.toBeInstanceOf(NbrbUnavailable)
+    expect(n - before).toBe(2)
   })
 })

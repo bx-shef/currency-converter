@@ -41,7 +41,15 @@
       "copyFailed": "Couldn't copy",
       "copyWords": "Copy amount in words",
       "decrease": "Decrease",
-      "increase": "Increase"
+      "increase": "Increase",
+      "chart": {
+        "show": "30-day chart",
+        "hide": "Hide chart",
+        "loading": "Loading rates…",
+        "failed": "Could not load the rate history — try again later",
+        "empty": "No rates for the last 30 days",
+        "label": "{code} over 30 days: {min} to {max} BYN per {units} {code}, change {change}%"
+      }
     },
     "install": {
       "seo": { "title": "Application installation" },

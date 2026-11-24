@@ -2,8 +2,8 @@
 
 > Last reviewed: 2026-11-24
 
-Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG); в проде серверной части нет.
-`server/lib/mcp/` — ядро инструментов для AI-агента shef.cowork, ни откуда не подключено (см. «Инструменты для shef.cowork»).
+Конвертер валют по официальному курсу НБ РБ. Node-сервер Nitro (`nuxt build`): страницы рендерятся на каждый запрос,
+рядом Redis. Тот же сервер отдаёт инструменты AI-агента shef.cowork (`server/lib/mcp/`, см. «Инструменты для shef.cowork»).
 
 > Точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md); рабочий процесс
 > (ветки/PR/ревью/CI/мерж) — [`docs/PROCESS.md`](docs/PROCESS.md). Этот файл — архитектура и
@@ -11,11 +11,11 @@
 
 ## Стек
 
-- **Nuxt 4** (статическая генерация, `nuxt generate`)
+- **Nuxt 4** (Node-сервер Nitro, `nuxt build`; страницы рендерятся сервером на каждый запрос)
 - **Vue 3** — `<script setup lang="ts">`
 - **TypeScript** (строгий), **Tailwind CSS v4**, **Bitrix24 UI** (`b24ui`)
 - **Bitrix24 JS SDK** (`@bitrix24/b24jssdk`) — встройка в портал (issue #31), **i18n** (`@nuxtjs/i18n`)
-- **Vitest** — два проекта: `unit` (node, чистые функции) и `nuxt`
+- **Vitest** — три проекта: `unit` (node, чистые функции), `e2e` (собранный сервер, `pnpm test:e2e`) и `nuxt`
   (`@nuxt/test-utils` + happy-dom, composables и компоненты)
 
 ## Команды
@@ -24,9 +24,10 @@
 pnpm dev            # дев-сервер
 pnpm lint           # ESLint
 pnpm typecheck      # vue-tsc: приложение + server/ (.nuxt/tsconfig.server.json — нужен nuxt prepare)
-pnpm test           # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
-pnpm generate       # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
-pnpm preview        # посмотреть собранную статику локально (для pnpm screenshots)
+pnpm test           # Vitest (проекты unit + nuxt; быстрый прогон node: pnpm test --project unit)
+pnpm build          # сборка Node-сервера (nuxt build → .output/server/index.mjs) — то же гоняют CI и Dockerfile
+pnpm test:e2e       # собранный сервер против подставного Битрикс24 (нужен pnpm build; в pnpm test не входит)
+pnpm preview        # запустить собранный сервер локально (для pnpm screenshots)
 pnpm check          # алиас: lint && typecheck && test (прогон перед пушем)
 pnpm screenshots    # скриншот-харнесс (роут×вьюпорт×тема) — см. docs/PROCESS.md §2.2
 pnpm og:snapshot    # регенерация public/og.png из scripts/og.svg (Chromium, issue #81)
@@ -34,7 +35,7 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
 ```
 
 Перед пушем прогоняй `pnpm check` (алиас `lint && typecheck && test`) — те же проверки гоняет CI
-(в CI шаги идут отдельными джоб-степами: lint → test → typecheck → generate).
+(в CI шаги идут отдельными джоб-степами: lint → test → typecheck → build → e2e).
 
 > В web/agent-сессиях Claude Code репозиторий готовит SessionStart-хук
 > `.claude/hooks/session-start.sh` (гейт `CLAUDE_CODE_REMOTE`): ставит зависимости и
@@ -62,7 +63,7 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
   lock: так было 2026-11-13 с `follow-redirects` и `node-forge` — оба поднялись обычным
   `pnpm update`, и заведённые сгоряча планки пришлось снимать. Планка, которую никому не
   нужно снимать, сама становится долгом.
-- **Сначала выяснить, доезжает ли пакет до браузера.** Проверка: `pnpm generate`,
+- **Сначала выяснить, доезжает ли пакет до браузера.** Проверка: `pnpm build`,
   затем поиск отпечатка пакета в `.output/public/_nuxt/*.js` (для axios —
   `AxiosError`; для `form-data` — `_boundary`/`combined-stream`, их там нет).
   Что доезжает — чиним в первую очередь.
@@ -73,7 +74,7 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
 - Планка — **временная мера**: когда «родитель» подтянет исправленную версию,
   строку из `overrides` надо убрать.
 - После правки `overrides` — обязательно `pnpm install && pnpm audit` **и** полный
-  гейт (`pnpm check` + `pnpm generate`): планки затрагивают сборочный конвейер.
+  гейт (`pnpm check` + `pnpm build` + `pnpm test:e2e`): планки затрагивают сборочный конвейер.
 - **Если планка меняет версию внутри HTTP-слоя SDK (`axios`) — одного гейта мало.**
   Автотесты сюда не дотягиваются: `useB24` в них замокан (`tests/nuxt/helpers/mockB24.ts`),
   и ни один тест не поднимает настоящий `B24Frame`. А `init()` ходит в портал по-настоящему
@@ -192,7 +193,7 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json (рез�
 - Тема — нативный colorMode b24ui (`B24ColorModeButton` в шапке, vueuse, ключ `vueuse-color-scheme`).
   Включается в `app/app.config.ts` (`colorMode: true`, `colorModeInitialValue: 'auto'`) — **модуль
   b24ui сам эти top-level ключи в appConfig не кладёт**, без них `useColorMode()` = no-op stub
-  (кнопка молча не работает). inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки (FOUC при SSG).
+  (кнопка молча не работает). inline-скрипт `theme-init` в `app.vue` ставит класс до отрисовки (FOUC при серверном рендере).
 - `app/utils/converter.ts` — конвертация и адаптивный шаг (чистые функции).
 - `app/utils/formatters.ts` — формат чисел (`ru-RU`, decimal), формула `FORMULA_FACTOR = 0.16`,
   `formatPlainAmount` («чистое» число с точкой для буфера) и `quarterOfDate`/`quarterLabel`
@@ -250,7 +251,11 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 **`member_id` + хост портала** — `member_id` не уникален среди коробок-копий, toolsai-mcp #243/#304; подпись
 HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (курсы НБ РБ на дату и история, кеш), `tools.ts`
 (`rates`, `history`, `convert`, `sum_in_words` — только чтение; суммы — через `app/utils/*`, копейки — только
-`toKopecks`). Маршрутов пока нет — сборка и прод не меняются. Подробно — [`docs/MCP.md`](docs/MCP.md).
+`toKopecks`). Подключение к серверу: `server/utils/mcp.ts` (сервисы и маршруты), `server/lib/mcp/{config,oauth,session,redisStore}.ts`
+(настройки из env, вход администратора из фрейма портала, сессии, хранилище на Redis), маршруты `server/api/mcp/{manifest,call}`
+и `server/api/app/{session,mcp-key/*}`; во фрейме портала — `app/components/McpKeyCard.vue` и `app/composables/useMcpAdmin.ts`.
+Без `PUBLIC_URL`, `B24_CLIENT_ID`, `B24_CLIENT_SECRET`, `ENCRYPTION_KEY` инструменты и экран ключа отвечают 503 «не настроено»,
+сайт и виджет работают. Сквозная проверка на собранном сервере — `tests/e2e/mcp.e2e.test.ts`. Подробно — [`docs/MCP.md`](docs/MCP.md).
 `pnpm typecheck` проверяет и `server/` (`.nuxt/tsconfig.server.json`): корневой конфиг его не видит.
 
 ## Встройка в Bitrix24 (issue #31)
@@ -306,21 +311,32 @@ HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (
   ключи, этот — пропущенные в одной из полных локалей). А `tests/i18nUsedKeys.test.ts` ловит
   обратное слепое пятно: ключ, используемый в коде через `t()`, но отсутствующий в `en` (опечатка/
   удаление из обеих локалей) — собирает все статические `t('...')` из `app/` и сверяет с `en.json`.
-- `nuxt.config.ts` — `nitro.prerender.routes` явно перечисляет `/install` и `/widget/converter`
-  (на них нет ссылок, иначе краулер их пропустит). `runtimeConfig.public`: `siteUrl`, `authorName`,
-  `authorUrl`, `commitSha` (коммит сборки — подвал), `marketplaceUrl` (Маркет Б24 — промо-блок)
-  — все через build-args (см. Dockerfile/ci). Значения запекаются в SSG-бандл на `generate`,
-  поэтому build-arg должен присутствовать до сборки.
-- `nginx.conf` — CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24
-  (`*.bitrix24.<tld>`, ровно 22 зоны — issue #88), иначе iframe-встройка и REST-вызовы install падают.
-  Список **зеркалится** между двумя директивами (инвариант + точный набор проверяет
-  `tests/nginxCsp.test.ts`); международные зоны — из сабпроцессор-доки Б24, плюс CIS-зоны
-  (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется **вручную** (best-effort — Б24
-  добавляет регионы; self-hosted на своём домене добавляют сами). `frame-ancestors` намеренно НЕ
-  сужается по location: `/` — dual-mode (Application URL, открывается в портале), поэтому ему нужен
-  тот же allow-list, что `/install`/`/widget`.
-  Security-заголовки повторены в `location /_nuxt/` (`nosniff`+HSTS), т.к. nginx не наследует
-  `add_header` в location со своим `add_header` (issue #46).
+- `nuxt.config.ts` — **без prerender**: все страницы рендерит сервер на каждый запрос (иначе статический
+  обработчик Nitro отдал бы prerender-страницу в обход хука рендера с CSP). `/install` и `/widget/converter`
+  открываются порталом напрямую, и **POST портала на страницы работает штатно** (отдельного обхода не нужно).
+  `runtimeConfig.public`: `siteUrl`, `authorName`, `authorUrl`, `commitSha` (коммит сборки — подвал),
+  `marketplaceUrl` (Маркет Б24 — промо-блок) — все через build-args (см. Dockerfile/ci); build-arg должен
+  присутствовать до `pnpm build`. `routeRules['/**'].headers` — заголовки безопасности на **всех** ответах,
+  включая статику (routeRules срабатывают раньше статического обработчика).
+- `server/lib/security.ts` + `server/plugins/csp.ts` — CSP и заголовки безопасности сервера.
+  CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24 (`*.bitrix24.<tld>`, ровно 22 зоны —
+  issue #88), иначе iframe-встройка и REST-вызовы install падают. Список (`BITRIX24_ZONES`) **зеркалится**
+  между двумя директивами (инвариант + точный набор проверяет `tests/securityHeaders.test.ts`); международные
+  зоны — из сабпроцессор-доки Б24, плюс CIS-зоны (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется
+  **вручную** (best-effort — Б24 добавляет регионы; self-hosted на своём домене добавляют сами).
+  `frame-ancestors` намеренно НЕ сужается по странице: `/` — dual-mode (Application URL, открывается в портале),
+  поэтому ему нужен тот же allow-list, что `/install`/`/widget`. Хук рендера (`server/plugins/csp.ts`) ставит CSP на
+  каждый отрендеренный HTML-ответ и разрешает по хэшу **только известные** inline-скрипты этого ответа
+  (`allowedInlineScriptHashes`: `theme-init` из `app/utils/themeInit.ts`, importmap Nuxt, последний `__NUXT__.config`,
+  скрипт «назад» страницы 404) — внедрённый в разметку скрипт хэша не получает. **Новый свой inline-скрипт** —
+  только через белый список в `server/lib/security.ts` (лучше — файл в `public/`). Остальные заголовки (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  HSTS, `X-XSS-Protection: 0`) — `SECURITY_HEADERS` через routeRules (issue #46).
+- `server/routes/health.get.ts` — `/health` для healthcheck образа и `make prod-smoke`.
+- `app/components/RateTrend.vue` + `app/utils/rateHistory.ts` — в виджете чата под строками: курс валюты, которую
+  вводили последней (мелкие — за 100/1000 единиц, `quoteUnits`), и по кнопке — график за 30 дней
+  (`/exrates/rates/{code}?parammode=2` → `Cur_ID`, затем `/exrates/rates/dynamics`); история грузится только по
+  нажатию, кеш по коду валюты на время страницы, поздний ответ старой валюты не перетирает новую.
+  Тесты — `tests/rateHistory.test.ts`, `tests/nuxt/rateTrend.nuxt.test.ts`.
 
 Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
 без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика
@@ -351,7 +367,7 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 |---|---|---|---|
 | 0 | документы, карта проекта, тесты без кода приложения, версия, `.gitattributes`, картинки | без ревью: `pnpm check` | правка главы `docs/`, строка в README, подъём версии, новый тест |
 | 1 | мелкое поведение: всё, что не 0 и не 2 | `/code-review medium --max-findings 5`; уровень `max` запрещён | правка одного компонента, текст интерфейса и локали, новая настройка без денег и прав |
-| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и nginx, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `nginx.conf`, `package.json`, `.github/*`, `server/*` |
+| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и заголовки безопасности сервера, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `server/lib/security.ts`, `package.json`, `.github/*`, `server/*` |
 
 - **Ручной уровень** главнее автоматического: `bash tools/review-tier.sh --level N` или
   `REVIEW_TIER=N`; его же задаёт слово владельца («уровень 2», «панель», «без ревью») или строка
@@ -365,7 +381,7 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
   `numberToWords.ts` подняты до уровня 2 сознательно. Расхождение на копейку между экраном,
   буфером и прописью — единственный дефект высокой критичности аудита #169, и живёт он ровно тут.
 - Панель: все пять ролей (Документация, Инженер, QA, Безопасность, CTO) — Sonnet, среднее усилие;
-  максимум усилия — никогда. Панель проверяет и выкладку: образ, nginx, CSP, порты, откат.
+  максимум усилия — никогда. Панель проверяет и выкладку: образ, заголовки и CSP сервера, порты, Redis, откат.
 - Повтор: после правок перепроверяет только нашедший замечание; полная панель заново — только если
   PR переписан; серия связанных PR — одна панель на общий дифф.
 - Находки чинятся в том же PR; отклонённая находка — с доводом и замером, а не молча. Отчёт —
@@ -393,26 +409,28 @@ Sonnet — механика (ветки, тексты, снимки, чек-ли
 
 ## Деплой
 
-GHCR + Watchtower за nginx-proxy. Настройка, деплой, эксплуатация, «грабли» и гейты
+GHCR + Watchtower за общим nginx-proxy (внешний TLS-прокси хоста; свой nginx в образе не нужен). Автовыкладка выключена
+владельцем (24.11.2026, [`docs/PROCESS.md`](docs/PROCESS.md) §4). Настройка, деплой, эксплуатация, «грабли» и гейты
 публикации в Маркет — в [`docs/PROCESS.md`](docs/PROCESS.md) (§0, §4, §6–§8);
 пользовательская инструкция — в [`README.md`](README.md). Инфраструктурный долг: **issue #52
 закрыт**, несделанный остаток (brotli/HTTP2, SSH-деплой вместо Watchtower, digest-пин базовых
 образов) описан в [`docs/FUTURE.md`](docs/FUTURE.md) — если берём в работу, нужен новый issue.
 
-Прод-образ — `nginx/nginx-unprivileged` (non-root, слушает `:8080`). CSP отдаётся
-**без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt в `index.html` (FOUC-гард
-`theme-init` и `window.__NUXT__.config` с меняющимся `buildId`) разрешаются по sha256-хэшам,
-которые `scripts/csp-hashes.mjs` вычисляет из собранного HTML и подставляет в `nginx.conf`
-(плейсхолдер `__CSP_SCRIPT_HASHES__`) на этапе сборки. Яндекс.Метрика грузится из статического
-`public/metrika.js` (id — через `<meta>`), поэтому inline-скриптов под неё нет. Dockerfile валит
-сборку (в CI-джобе `docker-build`), если плейсхолдер `__CSP_SCRIPT_HASHES__` не подставлен или
-`nginx -t` не проходит — ловит битый конфиг/сломанный `csp-hashes.mjs` до старта контейнера.
-Прочие security-заголовки в `nginx.conf`: `X-Content-Type-Options`, `Referrer-Policy`,
-`Permissions-Policy`, HSTS и `X-XSS-Protection: 0` (issue #46 — легаси-аудитор явно выключен,
-защита от XSS — на CSP). `X-Frame-Options` намеренно нет (нужна встройка в iframe Б24 — покрыто
-`frame-ancestors`). `nuxt.config.ts` при сборке fail-fast, если `NUXT_PUBLIC_YANDEX_COUNTER_ID`
-задан, но не число (issue #46) — чтобы битый id не запёкся в SSG-бандл. Runtime-валидация ответа
-НБ РБ отдельным zod не заводится: `isUsableRate` (`utils/nbrb.ts`) уже отбрасывает записи с
+Прод-образ — `node:22-alpine`, запуск `node .output/server/index.mjs` не от root (пользователь `node`), порт `:8080`
+(`VIRTUAL_PORT` nginx-proxy не меняется), healthcheck — `GET /health`. Рядом в `docker-compose.prod.yml` — Redis
+(`redis:7.4.6-alpine`, порт не опубликован, сеть `backend` внутренняя, пароль `REDIS_PASSWORD`); приложение —
+в `proxy-net` и `backend`, файловая система только для чтения. Секреты — в `.env.prod` на сервере: `B24_CLIENT_ID`,
+`B24_CLIENT_SECRET`, `ENCRYPTION_KEY`, `REDIS_PASSWORD` (образец — `.env.prod.example`); `PUBLIC_URL` compose
+собирает как `https://DOMAIN`. Пока не заданы `B24_CLIENT_ID`/`B24_CLIENT_SECRET`/`ENCRYPTION_KEY`, инструменты
+shef.cowork и экран ключа отвечают 503 «не настроено», сайт и виджет работают (без `REDIS_PASSWORD` compose не стартует).
+CSP отдаётся **без** `script-src 'unsafe-inline'`: два inline-скрипта Nuxt (FOUC-гард `theme-init` и
+`window.__NUXT__.config` с меняющимся `buildId`) разрешаются по sha256-хэшам, которые сервер берёт из собственного
+рендера (см. `server/lib/security.ts`, выше). Яндекс.Метрика грузится из статического `public/metrika.js`
+(id — через `<meta>`), поэтому inline-скриптов под неё нет. Dockerfile валит сборку, если после `pnpm build` нет
+`.output/public/og.png` или `.output/server/index.mjs`; сборку образа проверяет CI-джоб `docker-build` на PR.
+`X-Frame-Options` намеренно нет (нужна встройка в iframe Б24 — покрыто `frame-ancestors`). `nuxt.config.ts` при сборке
+fail-fast, если `NUXT_PUBLIC_YANDEX_COUNTER_ID` задан, но не число (issue #46) — чтобы битый id не запёкся в бандл.
+Runtime-валидация ответа НБ РБ отдельным zod не заводится: `isUsableRate` (`utils/nbrb.ts`) уже отбрасывает записи с
 не-финитными/непозитивными `Cur_Scale`/`Cur_OfficialRate`, а пустой результат роняет `fetchError`.
 
 ## Отчётность (reporting-kit)

@@ -29,7 +29,7 @@ Step "install"   "pnpm install --frozen-lockfile"
 Step "lint"      "pnpm lint"
 Step "typecheck" "pnpm typecheck"
 Step "test"      "pnpm test"
-Step "generate"  "pnpm generate"
+Step "build"     "pnpm build"
 
 Write-Host ""
 Write-Host "=== summary ==="

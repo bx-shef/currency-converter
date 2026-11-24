@@ -53,9 +53,10 @@
 
 ### 0.2. Переменные приложения
 
-Все публичные переменные **запекаются в бандл при сборке** (у нас статика), поэтому
-передаются аргументами сборки Docker, а **не** через `environment:` в compose — иначе они
-просто не доедут до готовой страницы.
+Публичные переменные `NUXT_PUBLIC_*` **запекаются в бандл при сборке**, поэтому передаются
+аргументами сборки Docker (так их ставит CI), а не через `environment:` в compose. Серверные
+секреты инструментов shef.cowork — наоборот, **только через `environment:`** из `.env.prod` на сервере
+(в образ не попадают, см. [§0.2а](#02а-секреты-сервера-для-shefcowork)).
 
 | Переменная | Зачем | Обязательна |
 |---|---|---|
@@ -73,13 +74,27 @@
 Сборка **падает специально**, если `NUXT_PUBLIC_YANDEX_COUNTER_ID` задан, но это не число —
 чтобы битый счётчик не запёкся в бандл.
 
+### 0.2а. Секреты сервера для shef.cowork
+
+Читаются сервером при старте из окружения контейнера (`.env.prod` → `docker-compose.prod.yml`); образец —
+`.env.prod.example`. Подробности и поведение при пустых значениях — [`MCP.md`](MCP.md).
+
+| Переменная | Зачем | Без неё |
+|---|---|---|
+| `B24_CLIENT_ID`, `B24_CLIENT_SECRET` | `client_id` и `client_secret` приложения из кабинета партнёра Битрикс24: сервер обменивает refresh-токен фрейма на OAuth-сервере | инструменты shef.cowork и экран ключа отвечают 503 «не настроено» |
+| `ENCRYPTION_KEY` | ключ шифрования ключей подключения и токенов сессий (32 байта, base64 или hex; `openssl rand -base64 32`). Сменили — администраторам порталов выпускать ключи заново | то же |
+| `REDIS_PASSWORD` | пароль Redis из `docker-compose.prod.yml` | **compose не стартует** (`:?` в файле) |
+| `PUBLIC_URL` | адрес приложения для shef.cowork; compose собирает его как `https://DOMAIN` | то же, что без `ENCRYPTION_KEY` |
+
+Сайт и виджет работают и без этих секретов.
+
 ### 0.3. Сервер
 
 ```
 /home/<user>/<project>/
-├── docker-compose.prod.yml
+├── docker-compose.prod.yml          # приложение (Node, :8080) + Redis (сеть backend, пароль)
 ├── docker-compose.nginxproxy.yml   # только если nginx-proxy ещё не развёрнут
-├── .env.prod                        # НЕ в git: DOMAIN, LETSENCRYPT_EMAIL
+├── .env.prod                        # НЕ в git: DOMAIN, LETSENCRYPT_EMAIL, B24_CLIENT_ID, B24_CLIENT_SECRET, ENCRYPTION_KEY, REDIS_PASSWORD
 └── Makefile
 ```
 
@@ -89,7 +104,7 @@
 mkdir -p /home/<user>/<project> && cd $_
 BASE="https://raw.githubusercontent.com/bx-shef/currency-converter/main"
 for f in docker-compose.prod.yml Makefile .env.prod.example; do curl -fsSLO "$BASE/$f"; done
-cp .env.prod.example .env.prod && nano .env.prod   # заполнить DOMAIN и LETSENCRYPT_EMAIL
+cp .env.prod.example .env.prod && nano .env.prod   # DOMAIN, LETSENCRYPT_EMAIL, REDIS_PASSWORD; секреты shef.cowork — по §0.2а
 ```
 
 Обновление файлов на сервере — тем же `curl -fsSLO`, без `git pull`.
@@ -102,7 +117,7 @@ cp .env.prod.example .env.prod && nano .env.prod   # заполнить DOMAIN �
       Имя историческое и на разных серверах разное. Если сети нет — `make init-network`
 - [ ] nginx-proxy запущен (`docker ps | grep nginx-proxy`). **Если он уже стоит — второй раз
       не поднимать**, см. предупреждение ниже. Если его правда нет — `make init-nginxproxy`
-- [ ] `.env.prod` заполнен
+- [ ] `.env.prod` заполнен (`REDIS_PASSWORD` обязателен; секреты shef.cowork — когда подключаем агента)
 - [ ] `make prod-up` отработал; `docker ps` показывает приложение; общий Watchtower хоста
       (`docker ps | grep watchtower`) запущен — свой проект его не поднимает
 - [ ] `curl -I https://<домен>` → `200`, TLS валиден
@@ -138,9 +153,10 @@ cp .env.prod.example .env.prod && nano .env.prod   # заполнить DOMAIN �
 ```bash
 pnpm dev            # дев-сервер
 pnpm check          # lint + typecheck + test — гонять перед пушем
-pnpm test           # только тесты (быстро: pnpm test --project unit)
-pnpm generate       # сборка статики (то же гоняют CI и Dockerfile)
-pnpm preview        # посмотреть собранную статику локально
+pnpm test           # unit + nuxt (быстро: pnpm test --project unit)
+pnpm build          # сборка Node-сервера (то же гоняют CI и Dockerfile)
+pnpm test:e2e       # после pnpm build: собранный сервер против подставного Битрикс24 (tests/e2e)
+pnpm preview        # запустить собранный сервер локально
 pnpm screenshots    # скриншоты роут × вьюпорт × тема (см. §2.2)
 pnpm og:snapshot    # регенерация public/og.png из scripts/og.svg
 pnpm rates:snapshot # регенерация public/rates-fallback.json
@@ -164,10 +180,10 @@ pnpm rates:snapshot # регенерация public/rates-fallback.json
 уже установленным Chromium. Эталонов и сравнения нет — это «свериться глазами», поэтому
 **в CI не гоняется** и прод не трогает. Результат — в `screenshots/` (в git не попадает).
 
-**Снимать нужно собранную статику, а не дев-сервер** — именно она уезжает в прод:
+**Снимать нужно собранный сервер, а не дев-сервер** — именно он уезжает в прод:
 
 ```bash
-pnpm generate && pnpm preview   # в одном терминале
+pnpm build && pnpm preview      # в одном терминале
 pnpm screenshots                # в другом
 ```
 
@@ -271,7 +287,29 @@ pnpm screenshots                # в другом
 > ⚠ **Автовыкладка выключена** (решение владельца 24.11.2026): job `deploy` в `ci.yml` стоит с `if: false && …` —
 > мерж в `main` образ в GHCR не публикует, Watchtower ничего не получает, на проде остаётся последний опубликованный
 > `latest`; `main` ≠ прод. Причина — переход со статики на Node-сервер (#200). Включить — убрать `false &&`,
-> но сначала проверить, что образ собирается под новую схему (сервер Node, порт, nginx).
+> но сначала проверить, что образ собирается и стартует под новую схему (сервер Node, порт 8080, Redis, `.env.prod` на сервере).
+
+### 4.0. Переход на Node-сервер (#200) — порядок выкладки
+
+**Новый образ не выкатывать Watchtower'ом со старым compose:** Watchtower пересоздаёт контейнер с прежними настройками —
+без Redis, без сети `backend`, без секретов. Если это всё же случится между шагами 4 и 5, вреда нет: сайт и виджет
+работают (Redis им не нужен), инструменты shef.cowork отвечают `503 not_configured` до `make prod-redeploy`. Порядок:
+
+1. **Записать точку отката:** `docker inspect currency-converter --format '{{.Config.Image}}'`, найти в GHCR её тег
+   `sha-<коммит>`; сохранить копии `docker-compose.prod.yml`, `Makefile`, `.env.prod` как `.bak`.
+   (`make prod-redeploy` чистит старые образы — для отката тег перекачается из GHCR.)
+2. **Секреты** в `.env.prod` (образец — `.env.prod.example`): `B24_CLIENT_ID`, `B24_CLIENT_SECRET` (кабинет партнёра,
+   приложение «Конвертер валют»), `ENCRYPTION_KEY` (`openssl rand -base64 32`, копию — в менеджер паролей),
+   `REDIS_PASSWORD` (`openssl rand -hex 24`).
+3. **Файлы на сервере** — новые `docker-compose.prod.yml` и `Makefile` из `main`.
+4. Влить PR, включить job `deploy` (убрать `false &&`), дождаться образа в GHCR.
+5. **`make prod-redeploy`** (не ждать Watchtower): поднимет app и Redis с новым compose; затем `make prod-smoke`.
+6. Проверка: `docker ps` (app healthy, `currency-converter-redis`); в `docker logs currency-converter` нет
+   `outcome: disabled`; `curl -sI https://<домен>/` и `curl -sI -X POST https://<домен>/install` — 200 и
+   `Content-Security-Policy`; приложение в портале у сотрудника и администратора; вставка в чат; карточка
+   «Ключ для shef.cowork» → «Проверить» в shef.cowork → вызов из окна AI.
+7. **Откат:** `make prod-rollback TAG=sha-<записанный>` — сайт и виджет снова со статического образа; Redis и
+   `.env.prod` остаются, выданные ключи переживут возврат вперёд (если не менялись `ENCRYPTION_KEY` и том Redis).
 
 ```
 push в main
@@ -282,7 +320,7 @@ push в main
 ```
 
 - **CI** (`.github/workflows/ci.yml`): job `ci` (install → `nuxi prepare` → lint → test →
-  typecheck → `nuxt generate`) на push и PR; job `docker-build` на PR (собирает прод-образ
+  typecheck → `nuxt build` → e2e на собранном сервере, `pnpm test:e2e`) на push и PR; job `docker-build` на PR (собирает прод-образ
   **без** push — ловит поломку Dockerfile до прода, работает и на Dependabot-PR). Кэш сборки
   на PR — только на чтение, чтобы PR-сборки не вытесняли кэш основной ветки.
 - **Красный `ci` блокирует деплой** — образ не попадёт в реестр.
@@ -292,17 +330,17 @@ push в main
 
 ### Что собирается в образ
 
-Прод-образ — `nginx/nginx-unprivileged` (работает не от root, слушает `:8080`). Сборка
-**валится**, если что-то из этого не сошлось:
+Прод-образ — `node:22-alpine`, запуск `node .output/server/index.mjs` от пользователя `node` (не root), порт `:8080`,
+healthcheck — `GET /health`. Сборка **валится**, если после `pnpm build` в выводе нет `public/og.png` или
+`server/index.mjs`; сам образ на PR собирает job `docker-build`. Рядом в `docker-compose.prod.yml` — Redis
+(порт не опубликован, сеть `backend` внутренняя, пароль `REDIS_PASSWORD`, `noeviction`).
 
-- хэши безопасности не подставлены (плейсхолдер `__CSP_SCRIPT_HASHES__` остался в `nginx.conf`);
-- `nginx -t` не проходит;
-- `public/og.png` не попал в вывод.
-
-Правила безопасности отдаются **без** разрешения встроенных скриптов: два служебных скрипта
-Nuxt разрешаются по их хэшам, которые `scripts/csp-hashes.mjs` считает из собранного HTML.
-**Любой новый встроенный скрипт сломает страницу** — выносить в `public/*.js` (как сделано
-с Яндекс.Метрикой).
+Страницы рендерит сервер на каждый запрос. Правила безопасности отдаются **без** разрешения встроенных скриптов:
+встроенные скрипты разрешаются по хэшам, которые хук рендера (`server/plugins/csp.ts`) считает по HTML **каждого**
+ответа. Остальные заголовки безопасности ставят `routeRules` в `nuxt.config.ts` — на всех ответах, включая статику.
+Скрипт, вставленный в страницу не рендером (например, расширением), CSP заблокирует — свои скрипты держим в
+`public/*.js` (как Яндекс.Метрику). Список зон и проверка заголовков —
+`server/lib/security.ts` и `tests/securityHeaders.test.ts`; на собранном сервере — `tests/e2e/mcp.e2e.test.ts`.
 
 ---
 
@@ -310,9 +348,9 @@ Nuxt разрешаются по их хэшам, которые `scripts/csp-ha
 
 Приложение работает в двух режимах: обычный сайт и iframe внутри портала.
 
-1. Портал открывает `/install` **методом POST**, поэтому в nginx стоит
-   `error_page 405 =200 $uri;` — без него статика отвечает «405 Not Allowed» и пользователь
-   видит белый экран.
+1. Портал открывает `/install` (и обработчик виджета, и `/`) **методом POST**; сервер Nitro принимает POST на страницы
+   штатно и отдаёт отрисованную страницу — контекст портала приходит другим путём. Это держит
+   `tests/e2e/mcp.e2e.test.ts` («GET and POST as the portal opens them»).
 2. `/install`: подключение к порталу → чистка старых привязок → регистрация плейсмента
    `IM_TEXTAREA` (панель над полем ввода чата) на обработчик `/widget/converter` →
    завершение установки. Имя виджета берётся из `app.title` **всех** локалей в момент
@@ -320,9 +358,9 @@ Nuxt разрешаются по их хэшам, которые `scripts/csp-ha
 3. Дальше пользователь открывает виджет в чате и жмёт «Вставить в чат» — пропись уходит
    в поле ввода.
 
-Требования к правилам безопасности: `frame-ancestors` и `connect-src` в `nginx.conf` должны
+Требования к правилам безопасности: `frame-ancestors` и `connect-src` в `server/lib/security.ts` должны
 разрешать облачные домены Б24 (`*.bitrix24.<зона>`, ровно 22 зоны). Список **зеркалится**
-между двумя директивами, точный набор проверяет `tests/nginxCsp.test.ts`. Синхронизируется
+между двумя директивами, точный набор проверяет `tests/securityHeaders.test.ts`. Синхронизируется
 вручную — Б24 добавляет регионы; **порталы на собственном домене добавляют себя сами**,
 иначе iframe и REST-вызовы не работают.
 
@@ -345,7 +383,7 @@ Nuxt разрешаются по их хэшам, которые `scripts/csp-ha
 | 5 | Версия сборки | в подвале «сборка `<sha>`» ведёт на актуальный коммит | |
 | 6 | `MARKETPLACE_URL` актуален | указывает на опубликованный листинг | |
 | 7 | Имя приложения на всех языках | `app.title` во всех `i18n/locales/*.json` | |
-| 8 | Правила безопасности разрешают облако Б24 | `frame-ancestors`/`connect-src` в `nginx.conf` | |
+| 8 | Правила безопасности разрешают облако Б24 | `frame-ancestors`/`connect-src` в `server/lib/security.ts` | |
 | 9 | Приватность актуальна | [`PROJECT_MAP.md`](PROJECT_MAP.md) §4 — для карточки Маркета и вопросов о данных | |
 
 **Порядок:** смержить в `main` → дождаться авто-деплоя (~5 мин) или `make prod-redeploy` →
@@ -408,7 +446,9 @@ TLS продлевается автоматически; руками вмеши
 | Симптом | Первая гипотеза | Что делать |
 |---|---|---|
 | `502` от nginx-proxy | контейнер не в той docker-сети, либо прокси шлёт не на тот порт | Различить две причины — командами ниже |
-| Белый экран в портале, `405` или смешанный контент | пропал `error_page 405 =200 $uri;` или `absolute_redirect off;` | проверить `nginx.conf` в образе, пересобрать |
+| Белый экран в портале, `405` или смешанный контент | заголовки безопасности не доезжают или страница отдана без CSP | `curl -sI` страницы: `Content-Security-Policy` на HTML, `frame-ancestors` с зонами Б24; логи контейнера; `pnpm build && pnpm test:e2e` |
+| shef.cowork или экран ключа отвечают `503 not_configured` | не заданы `B24_CLIENT_ID`/`B24_CLIENT_SECRET`/`ENCRYPTION_KEY`/`PUBLIC_URL` (в логе старта — `kind: mcp`, `action: config`, `missing`) | заполнить `.env.prod`, `make prod-redeploy`; сайт и виджет при этом работают |
+| Инструменты shef.cowork и экран ключа падают, в логе контейнера ошибки Redis | Redis недоступен или неверный `REDIS_PASSWORD` | `docker logs currency-converter-redis`; пароль в `.env.prod` один и для app, и для Redis (сайт и виджет Redis не используют) |
 | TLS не выдан или не продлён | DNS не резолвится или сработало ограничение Let's Encrypt | `docker logs <acme-companion>`; `dig +short $DOMAIN`; проверить `LETSENCRYPT_EMAIL` |
 | Watchtower не обновляет | автовыкладка выключена (§4) — штатное состояние; иначе общий Watchtower не запущен, нет `DOCKER_API_VERSION` или метки на контейнере | `docker logs watchtower`; метка `com.centurylinklabs.watchtower.enable=true`; общий Watchtower — `bx-shef/toolsai`, `site/deploy/watchtower.compose.yml` |
 | Курсы не грузятся у всех | `api.nbrb.by` недоступен | Внешняя проблема НБ РБ. Первую загрузку спасает `public/rates-fallback.json` (бейдж «резервная копия»), вернувшихся — кэш браузера. Копия статична, обновляется `pnpm rates:snapshot` |
@@ -423,7 +463,7 @@ docker inspect <контейнер-приложения> | grep -A3 Networks
 
 # 2) на какой порт прокси реально шлёт? Строки "using port" / "server <IP>:<порт>"
 docker exec <контейнер-прокси> grep -A6 '<домен>' /etc/nginx/conf.d/default.conf
-# должно совпадать с `listen` в nginx.conf образа — у нас 8080
+# должно совпадать с портом сервера приложения (`PORT`) — у нас 8080
 ```
 
 Частая первопричина второго случая — **устаревший `docker-compose.prod.yml` на сервере**:
@@ -460,16 +500,16 @@ docker exec <контейнер-прокси> grep -A6 '<домен>' /etc/nginx
 | 4 | Безымянные контейнеры | Задавать `container_name` каждому сервису, включая watchtower и nginx-proxy — иначе `docker logs <имя>` из этой инструкции не работает |
 | 5 | Watchtower по умолчанию обновляет **все** контейнеры хоста | `--label-enable` + метка на нашем сервисе |
 | 6 | Watchtower молча не работает | Нужен `DOCKER_API_VERSION=1.47`: по умолчанию он говорит на старой версии API, которую свежий Docker уже не принимает |
-| 7 | Публичные переменные Nuxt через `environment:` в compose | Не сработают — они запекаются при сборке, нужны аргументы сборки ([§0.2](#02-переменные-приложения)) |
+| 7 | Публичные переменные Nuxt через `environment:` в compose | Для `NUXT_PUBLIC_*` не полагаться: их ставят аргументами сборки ([§0.2](#02-переменные-приложения)); серверные секреты, наоборот, только через `environment:` |
 | 8 | `docker compose up`/`pull` без `--env-file .env.prod` | Переменные не подхватятся. В Makefile это прописано, при ручном запуске — помнить |
 | 9 | Выкладка образа падает с отказом в доступе | Workflow нужны права `packages: write`; отдельный токен не требуется |
 | 10 | Приватный репозиторий → образ тоже приватный | Понадобится вход в реестр на сервере (токен с правом чтения пакетов) либо файл авторизации для Watchtower. Сейчас репозиторий публичный, вход не нужен |
 | 11 | Права CI шире необходимого | Прописывать `permissions: { contents: read }` явно даже на проверочных задачах |
-| 12 | Заголовки безопасности только на внешнем прокси | Дублировать их **внутри образа** — на случай мисконфигурации внешнего слоя |
-| 13 | non-root nginx не может слушать `:80` | `listen 8080` + `VIRTUAL_PORT: 8080`; иначе 502 |
-| 14 | За TLS-прокси внутренний nginx строит редиректы со своим портом | `absolute_redirect off;` — иначе браузер получает адрес с внутренним портом и по http, а в HTTPS-iframe портала это смешанный контент, и виджет молча не грузится |
-| 15 | Б24 открывает обработчик методом POST, статика отвечает `405` | `error_page 405 =200 $uri;` — странице не нужно тело запроса, контекст портала приходит другим путём |
-| 16 | Правила безопасности ломаются на любом новом встроенном скрипте | Выносить скрипты в `public/*.js`; хэши считает `scripts/csp-hashes.mjs`, проверка в Dockerfile валит сборку |
+| 12 | Заголовки безопасности только на внешнем прокси | Ставить их **внутри образа** (сервер приложения) — на случай мисконфигурации внешнего слоя |
+| 13 | non-root процесс не может слушать `:80` | `PORT=8080` + `VIRTUAL_PORT: 8080`; иначе 502 |
+| 14 | За TLS-прокси редирект с внутренним портом или по http | В HTTPS-iframe портала это смешанный контент, и виджет молча не грузится. Сервер редиректов с портом не строит; при появлении редиректов — проверять `Location` за прокси |
+| 15 | Б24 открывает обработчик методом POST | Nitro принимает POST на страницы штатно (статического `405` нет); регресс ловит e2e-тест страниц |
+| 16 | Правила безопасности ломаются на любом новом встроенном скрипте | Выносить скрипты в `public/*.js`; хэши inline-скриптов сервер берёт из собственного рендера, не из файла |
 | 17 | Логи контейнеров без лимита забивают диск | `max-size: 10m`, `max-file: 3` |
 | 18 | Мажорный бамп Node ломает сборку | Node 25+ выкинул corepack из образов — держим базу на LTS `node:22-alpine`, Dependabot на мажоры Node не прыгает |
 | 19 | Нет lockfile → кэш зависимостей в CI падает | `pnpm-lock.yaml` закоммичен до включения кэша |

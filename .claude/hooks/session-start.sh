@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# In Claude Code web/agent sessions, prepare the repo so lint/typecheck/test/generate
+# In Claude Code web/agent sessions, prepare the repo so lint/typecheck/test/build
 # work from the first turn (mirrors ai-price-import / client-bank-alfa-by).
 set -euo pipefail
 
