@@ -1,38 +1,77 @@
 # Продакшн — разместить на сервере в /home/bitrix/currency-converter/
-# Требует: docker network proxy-net (создаётся nginx-proxy setup)
+# Требует: docker network proxy-net (создаётся nginx-proxy setup) и .env.prod (образец — .env.prod.example).
+# Приложение — Node-сервер (#200): сайт, виджет и инструменты для shef.cowork; Redis — ключи подключения
+# shef.cowork, сессии администраторов и одноразовые номера запросов.
 
 services:
   app:
-    # Обычно `latest` (авто-обновляет общий Watchtower хоста по метке ниже — свой не поднимаем:
-    # он один на все сайты сервера, со входом в ghcr для приватных образов). Для отката задать конкретный
-    # immutable-тег: `make prod-rollback TAG=sha-<коммит>` (issue #52 P1).
+    # Обычно `latest` (авто-обновляет общий Watchtower хоста по метке ниже). Для отката — конкретный
+    # immutable-тег: `make prod-rollback TAG=sha-<коммит>` (issue #52 P1). Автовыкладка из CI сейчас
+    # выключена (docs/PROCESS.md §4): новый образ в реестр не попадает, пока владелец её не включит.
     image: ghcr.io/bx-shef/currency-converter:${APP_IMAGE_TAG:-latest}
     container_name: currency-converter
-    # 8080: the image runs nginx unprivileged (non-root) on 8080.
     expose:
       - "8080"
     environment:
       VIRTUAL_HOST: ${DOMAIN}
       VIRTUAL_PORT: 8080
       LETSENCRYPT_HOST: ${DOMAIN}
+      # Инструменты для shef.cowork (docs/MCP.md). Пусто хоть одно — инструменты и экран ключа отвечают
+      # «не настроено», сайт и виджет работают.
+      PUBLIC_URL: https://${DOMAIN}
+      B24_CLIENT_ID: ${B24_CLIENT_ID:-}
+      B24_CLIENT_SECRET: ${B24_CLIENT_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Задайте REDIS_PASSWORD в .env.prod}@redis:6379
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    depends_on: [redis]
     networks:
       - proxy-net
+      - backend
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    # Cap nginx access logs so json-file doesn't fill the disk over time.
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
+  redis:
+    image: redis:7.4.6-alpine
+    container_name: currency-converter-redis
+    # Порт не опубликован; Redis виден только приложению в сети backend. Пароль — чтобы соседний
+    # контейнер не прочёл ключи. noeviction: переполнение — отказ записи, а не потеря ключей.
+    command: ["sh", "-c", "exec redis-server --appendonly yes --save '' --protected-mode no --maxmemory 64mb --maxmemory-policy noeviction --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Задайте REDIS_PASSWORD в .env.prod}
+    user: "999:999"
+    volumes:
+      - redis:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    restart: unless-stopped
+    networks:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
 networks:
   proxy-net:
     external: true
+  backend:
+    internal: true
+
+volumes:
+  redis:

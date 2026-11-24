@@ -52,8 +52,13 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
-      - name: Build (nuxt generate)
-        run: pnpm generate
+      - name: Build (nuxt build — Node server)
+        run: pnpm build
+
+      # The built server end to end: admin login against a fake Bitrix24, connection key, signed MCP calls,
+      # security headers on GET/POST pages (tests/e2e).
+      - name: E2E (built server)
+        run: pnpm test:e2e
 
       # Tripwire against re-accumulating vulnerable transitive deps (issue #174:
       # 29 findings had piled up unnoticed, incl. axios shipping to the browser).

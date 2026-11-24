@@ -40,7 +40,7 @@ prod-redeploy:
 ## Опрашивает контейнер ~15 c (переживает start_period healthcheck).
 prod-smoke:
 	@for i in 1 2 3 4 5; do \
-		docker compose -f docker-compose.prod.yml exec -T app wget -qO- http://localhost:8080/ >/dev/null 2>&1 \
+		docker compose -f docker-compose.prod.yml exec -T app wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 \
 			&& { echo "✓ smoke OK — приложение отвечает"; exit 0; }; \
 		echo "…ждём приложение ($$i/5)"; sleep 3; \
 	done; \

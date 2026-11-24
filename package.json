@@ -22,13 +22,14 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run --project unit --project nuxt",
     "typecheck": "vue-tsc --noEmit && vue-tsc --noEmit -p .nuxt/tsconfig.server.json",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "screenshots": "node scripts/screenshots.mjs",
     "og:snapshot": "node scripts/gen-og.mjs",
     "rates:snapshot": "node scripts/gen-rates-fallback.mjs",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test:e2e": "vitest run --project e2e"
   },
   "dependencies": {
     "@bitrix24/b24icons-vue": "^2.0.8",
@@ -38,6 +39,7 @@
     "@nuxtjs/i18n": "^10.6.0",
     "@vueuse/core": "^15.1.0",
     "@vueuse/nuxt": "^15.1.0",
+    "ioredis": "^5.11.1",
     "nuxt": "^4.7.0",
     "qrcode": "^1.5.4",
     "tailwindcss": "^4.3.3",

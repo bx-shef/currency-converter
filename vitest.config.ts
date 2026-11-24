@@ -17,7 +17,18 @@ export default defineConfig(async () => ({
           name: 'unit',
           environment: 'node',
           include: ['tests/**/*.test.ts'],
-          exclude: ['tests/nuxt/**']
+          exclude: ['tests/nuxt/**', 'tests/e2e/**']
+        }
+      },
+      {
+        resolve: { alias },
+        test: {
+          // The built server (.output) end to end — `pnpm build && pnpm test:e2e`; not part of `pnpm test`.
+          name: 'e2e',
+          environment: 'node',
+          include: ['tests/e2e/**/*.test.ts'],
+          testTimeout: 30_000,
+          hookTimeout: 60_000
         }
       },
       await defineVitestProject({

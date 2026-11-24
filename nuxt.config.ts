@@ -1,5 +1,6 @@
 import { contentLocales } from './i18n/i18n'
 import { isValidCounterId } from './app/utils/metrika'
+import { SECURITY_HEADERS } from './server/lib/security'
 
 const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   ? process.env.NUXT_ALLOWED_HOSTS.split(',').map((h: string) => h.trim())
@@ -54,18 +55,19 @@ export default defineNuxtConfig({
     }
   },
 
-  compatibilityDate: '2025-01-15',
-
   // `/install` and `/widget/converter` are loaded directly by Bitrix24 in an
   // iframe and are not linked from `/`, so the generate crawler would skip them.
   // List them explicitly so `nuxt generate` emits real HTML for each. Client-side
   // B24 detection + i18n still run at hydration on top of the prerendered HTML.
-  nitro: {
-    prerender: {
-      crawlLinks: true,
-      routes: ['/install', '/widget/converter']
-    }
+  // Node server (#200): pages are rendered per request so every HTML response passes the CSP middleware
+  // (server/middleware/00.security.ts); a prerendered page would be served by the static handler first,
+  // without it. The other security headers go on every response — static files included — via routeRules,
+  // which run before the static handler.
+  routeRules: {
+    '/**': { headers: SECURITY_HEADERS }
   },
+
+  compatibilityDate: '2025-01-15',
 
   vite: {
     server: {

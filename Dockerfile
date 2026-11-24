@@ -25,34 +25,30 @@ ENV NUXT_PUBLIC_AUTHOR_NAME=$NUXT_PUBLIC_AUTHOR_NAME
 ARG NUXT_PUBLIC_AUTHOR_URL
 ENV NUXT_PUBLIC_AUTHOR_URL=$NUXT_PUBLIC_AUTHOR_URL
 # Git commit of this build — the footer links to it. CI passes ${{ github.sha }}.
-# Baked into the SSG output at `pnpm generate`, so it must be set before it runs.
+# Baked into the client bundle at `pnpm build`, so it must be set before it runs.
 ARG NUXT_PUBLIC_COMMIT_SHA
 ENV NUXT_PUBLIC_COMMIT_SHA=$NUXT_PUBLIC_COMMIT_SHA
 # Optional override for the «app in Bitrix24» card URL. Empty (the usual case) →
 # the app falls back to the published MARKETPLACE_URL constant in code, so the
-# card still shows. Baked at generate time like the other public config.
+# card still shows. Baked at build time like the other public config.
 ARG NUXT_PUBLIC_MARKETPLACE_URL
 ENV NUXT_PUBLIC_MARKETPLACE_URL=$NUXT_PUBLIC_MARKETPLACE_URL
 # OG image (public/og.png) is committed to the repo and copied in with the source
-# above — no build-time render, so the heavy inkscape system dependency is gone
-# (issue #81). Regenerate from scripts/og.svg with `pnpm og:snapshot` on a redesign.
-RUN pnpm generate
-# Inject per-build sha256 CSP hashes for Nuxt's inline scripts into nginx.conf,
-# so the served CSP needs no `script-src 'unsafe-inline'`. Writes in place.
-RUN node scripts/csp-hashes.mjs .output/public nginx.conf nginx.conf
+# above — no build-time render (issue #81). Regenerate with `pnpm og:snapshot`.
+# Node server (#200): pages are rendered per request by Nitro; security headers and the CSP (with hashes of
+# Nuxt's inline scripts, taken from the server's own render) are set by the server — server/lib/security.ts.
+RUN pnpm build
 
-# nginx-unprivileged runs as the non-root `nginx` user and listens on :8080.
-FROM nginx/nginx-unprivileged:1.31.9-alpine AS runner
-COPY --from=builder /app/.output/public /usr/share/nginx/html
-COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
-# Fail the build if the committed OG image didn't make it into the output (issue
-# #81) — e.g. if a future .dockerignore rule accidentally excludes public/*.png.
-RUN test -f /usr/share/nginx/html/og.png || { echo 'og.png missing from build output'; exit 1; }
-# Fail the build on a bad nginx.conf or an un-substituted CSP-hash placeholder —
-# catches config syntax errors and a broken csp-hashes.mjs run at CI (docker-build
-# job), not at container start.
-RUN grep -q '__CSP_SCRIPT_HASHES__' /etc/nginx/conf.d/default.conf \
-      && { echo 'CSP hash placeholder not substituted'; exit 1; } \
-      || nginx -t
+FROM node:22-alpine AS runner
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
+WORKDIR /app
+COPY --from=builder /app/.output ./.output
+# Fail the build if the committed OG image or the server entry didn't make it into the output (issue #81).
+RUN test -f .output/public/og.png || { echo 'og.png missing from build output'; exit 1; }
+RUN test -f .output/server/index.mjs || { echo 'server entry missing from build output'; exit 1; }
+# Non-root (uid 1000 of the node image). 8080 keeps the nginx-proxy VIRTUAL_PORT unchanged.
+USER node
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
+CMD ["node", ".output/server/index.mjs"]
