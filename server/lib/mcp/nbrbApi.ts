@@ -27,6 +27,8 @@ const CACHE_MAX = 400
  * address blocked at НБ РБ for everybody. Over it — NbrbUnavailable («try again in a minute»).
  */
 export const UPSTREAM_PER_MINUTE = 120
+/** …and per caller (portal): one key holder can't spend everybody's budget (security review of #207, Н5). */
+export const UPSTREAM_PER_CALLER_MINUTE = 20
 /** `/currencies` changes rarely, but a mass Cur_ID reissue must not hide new segments for a whole day. */
 const TTL_CURRENCIES_MS = 6 * 3600_000
 
@@ -124,6 +126,7 @@ export class NbrbApi {
   /** Loads in flight by cache key: concurrent misses on one key share one request to НБ РБ. */
   private readonly inflight = new Map<string, Promise<unknown>>()
   private window = { n: 0, until: 0 }
+  private readonly callers = new Map<string, { n: number, until: number }>()
 
   constructor(
     private readonly fetchJson: FetchJson = defaultFetchJson,
@@ -135,11 +138,11 @@ export class NbrbApi {
    * daily feed fails, NotPublished when НБ РБ has no rates for that date yet. A result without the monthly feed
    * is not cached, so the next call retries it.
    */
-  async ratesOn(date: string): Promise<RatesOnDate> {
+  async ratesOn(date: string, caller?: string): Promise<RatesOnDate> {
     return this.cached(`rates:${date}`, date, async () => {
       const [daily, monthly] = await Promise.allSettled([
-        this.get(`${API}/rates?ondate=${date}&periodicity=0`),
-        this.get(`${API}/rates?ondate=${date}&periodicity=1`)
+        this.get(`${API}/rates?ondate=${date}&periodicity=0`, caller),
+        this.get(`${API}/rates?ondate=${date}&periodicity=1`, caller)
       ])
       if (daily.status === 'rejected') throw daily.reason
       if (!Array.isArray(daily.value)) throw new NbrbUnavailable('bad daily feed')
@@ -169,9 +172,9 @@ export class NbrbApi {
    * Official rate of one currency over [from, to] (from ≥ FIRST_BYN_DATE), stitched across its ids. Throws
    * RangeError for a currency НБ РБ does not rate, NbrbUnavailable on failures.
    */
-  async history(code: string, from: string, to: string): Promise<History> {
+  async history(code: string, from: string, to: string, caller?: string): Promise<History> {
     const all = await this.cached('currencies', '0000-01-01', async () => {
-      const data = await this.get(`${API}/currencies`)
+      const data = await this.get(`${API}/currencies`, caller)
       if (!Array.isArray(data)) throw new NbrbUnavailable('bad currencies')
       return data.map(c => (c && typeof c === 'object' ? toSegment(c as Record<string, unknown>) : null)).filter((s): s is Segment => s !== null)
     })
@@ -183,7 +186,7 @@ export class NbrbApi {
     const parts = await Promise.all(segments.map(async (s) => {
       const a = maxDate(from, s.start)
       const b = minDate(to, s.end)
-      const data = await this.cached(`dyn:${s.id}:${a}:${b}`, b, () => this.get(`${API}/rates/dynamics/${s.id}?startdate=${a}&enddate=${b}`))
+      const data = await this.cached(`dyn:${s.id}:${a}:${b}`, b, () => this.get(`${API}/rates/dynamics/${s.id}?startdate=${a}&enddate=${b}`, caller))
       if (!Array.isArray(data)) throw new NbrbUnavailable('bad dynamics')
       return (data as { Date?: unknown, Cur_OfficialRate?: unknown }[])
         .filter((p): p is { Date: string, Cur_OfficialRate: number } => !!p && typeof p.Date === 'string'
@@ -200,8 +203,19 @@ export class NbrbApi {
     }
   }
 
-  private async get(url: string): Promise<unknown> {
+  /** One request to НБ РБ: within the caller's share and the total ceiling, otherwise NbrbUnavailable. */
+  private async get(url: string, caller?: string): Promise<unknown> {
     const now = this.now()
+    if (caller) {
+      let w = this.callers.get(caller)
+      if (!w || w.until <= now) {
+        if (this.callers.size > 5000) for (const [k, v] of this.callers) if (v.until <= now) this.callers.delete(k)
+        w = { n: 0, until: now + 60_000 }
+        this.callers.set(caller, w)
+      }
+      if (w.n >= UPSTREAM_PER_CALLER_MINUTE) throw new NbrbUnavailable('caller limit')
+      w.n++
+    }
     if (this.window.until <= now) this.window = { n: 0, until: now + 60_000 }
     if (++this.window.n > UPSTREAM_PER_MINUTE) throw new NbrbUnavailable('upstream limit')
     const ctl = new AbortController()

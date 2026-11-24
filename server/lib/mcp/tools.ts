@@ -129,12 +129,14 @@ const rateLine = (r: OfficialRate) => `${r.scale} ${r.code} = ${r.officialRate} 
 export class McpTools {
   constructor(private readonly nbrb: NbrbApi, private readonly now: () => number = () => Date.now()) {}
 
-  async run(c: Pick<McpCall, 'tool' | 'args'>): Promise<ToolResult> {
+  /** `who` — the signed caller; its portal gets its own share of requests to НБ РБ. */
+  async run(c: Pick<McpCall, 'tool' | 'args'> & { who?: McpCall['who'] }): Promise<ToolResult> {
+    const caller = c.who ? `${c.who.memberId}:${c.who.host}` : undefined
     try {
       switch (c.tool) {
-        case 'rates': return ok(await this.rates(c.args))
-        case 'history': return ok(await this.history(c.args))
-        case 'convert': return ok(await this.convert(c.args))
+        case 'rates': return ok(await this.rates(c.args, caller))
+        case 'history': return ok(await this.history(c.args, caller))
+        case 'convert': return ok(await this.convert(c.args, caller))
         case 'sum_in_words': return ok(this.sumInWords(c.args))
         default: return toolError('unknown_tool', 'Нет такого инструмента')
       }
@@ -149,10 +151,10 @@ export class McpTools {
   private today() { return minskToday(this.now()) }
   private latest() { return addDays(this.today(), 1) }
 
-  private async rates(a: Record<string, unknown>) {
+  private async rates(a: Record<string, unknown>, caller?: string) {
     const on = date(a.date, 'date', this.today(), this.latest())
     const asked = Array.isArray(a.codes) && a.codes.length ? a.codes.slice(0, MAX_CODES).map((v, i) => code(v, `codes[${i}]`)) : DEFAULT_CODES
-    const on2 = await this.nbrb.ratesOn(on)
+    const on2 = await this.nbrb.ratesOn(on, caller)
     const rates = [...new Set(asked)].filter(c => c !== 'BYN').map((c) => {
       const r = on2.rates.get(c)
       if (r) return { code: r.code, name: r.name, scale: r.scale, officialRate: r.officialRate, bynPerUnit: r.bynRate, date: r.date, periodicity: r.periodicity }
@@ -161,7 +163,7 @@ export class McpTools {
     return { source: SOURCE, date: on, rates, say: 'Называй курс вместе с датой и масштабом (например, «100 RUB = 3,52 BYN»). Курс с periodicity monthly установлен на месяц.' }
   }
 
-  private async history(a: Record<string, unknown>) {
+  private async history(a: Record<string, unknown>, caller?: string) {
     const c = code(a.code, 'code')
     if (c === 'BYN') throw new ArgError('code: история курса — для иностранной валюты; BYN — базовая валюта')
     const to = date(a.to, 'to', this.today(), this.latest())
@@ -171,7 +173,7 @@ export class McpTools {
     if (daysBetween(from, to) + 1 > HISTORY_MAX_DAYS) throw new ArgError(`Период не длиннее ${HISTORY_MAX_DAYS} дней — разбейте на части`)
     let res
     try {
-      res = await this.nbrb.history(c, from, to)
+      res = await this.nbrb.history(c, from, to, caller)
     } catch (e) {
       if (e instanceof RangeError) throw new ArgError(`Нет официального курса ${c}: НБ РБ не устанавливает курс этой валюты.`)
       throw e
@@ -197,12 +199,12 @@ export class McpTools {
     }
   }
 
-  private async convert(a: Record<string, unknown>) {
+  private async convert(a: Record<string, unknown>, caller?: string) {
     const sum = amount(a.amount)
     const from = code(a.from, 'from')
     const to = code(a.to, 'to')
     const on = date(a.date, 'date', this.today(), this.latest())
-    const on2 = from === 'BYN' && to === 'BYN' ? { rates: new Map<string, OfficialRate>(), complete: true } : await this.nbrb.ratesOn(on)
+    const on2 = from === 'BYN' && to === 'BYN' ? { rates: new Map<string, OfficialRate>(), complete: true } : await this.nbrb.ratesOn(on, caller)
     const rf = rateOf(on2, from, on)
     const rt = rateOf(on2, to, on)
     // Same path as the converter screen (convert → 4-decimal grid → toKopecks): the tool and the page agree to the

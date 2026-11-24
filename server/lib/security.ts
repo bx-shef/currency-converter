@@ -87,6 +87,9 @@ function isNuxtImportMap(body: string): boolean {
 }
 
 /**
+ * ⚠ Do not add inline scripts at the end of <body> (`useHead` with `tagPosition: 'bodyClose'`) that carry request
+ * data: the `__NUXT__.config` rule trusts the LAST such script, and an injection placed after it would win.
+ *
  * Hashes of the KNOWN executable inline scripts of one rendered page — never «every inline script»: a `<script>`
  * injected into the markup (a future v-html, an error reflection) must stay blocked by the CSP.
  * - `theme-init` — exactly THEME_INIT_SCRIPT;

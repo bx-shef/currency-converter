@@ -73,7 +73,9 @@ function storeDown(event: H3Event, extra: Record<string, unknown>) {
 
 /** Every rejection looks the same from outside: the reason (unknown member, signature, host…) is for the log only. */
 function reject(event: H3Event, e: McpReject, extra: Record<string, unknown>) {
-  if (e.status !== 429) takeHit(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP, 60)
+  // Signature failures of a known-format request count per (address, portal): one portal with a stale key in
+  // shef.cowork must not lock the shared shef.cowork address out for every portal.
+  if (e.status !== 429) takeHit(`mcpip:${ipOf(event)}${e.status === 401 && typeof extra.member === 'string' && extra.member ? `:${extra.member}` : ''}`, UNSIGNED_PER_IP, 60)
   log({ ...extra, outcome: 'reject', status: e.status, reason: e.reason })
   setResponseStatus(event, e.status)
   return { error: e.status === 401 ? 'unauthorized' : e.reason }
@@ -94,6 +96,8 @@ const UNSIGNED_PER_IP = 300
 const CALLS_PER_PORTAL = 300
 const CALLS_PER_USER = 60
 const LOGINS_PER_IP = 20
+/** All logins together, a minute: each one costs up to two OAuth exchanges with our client_secret. */
+const LOGINS_TOTAL = 200
 
 const ipOf = (event: H3Event) => clientIp(getRequestHeader(event, 'x-forwarded-for'), event.node.req.socket?.remoteAddress)
 
@@ -115,7 +119,7 @@ export async function mcpManifest(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'manifest', member: h.member.slice(0, 64) }
   try {
-    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
+    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP) || isLimited(`mcpip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const host = await checkRequest(s.keys, h, '', nowSec())
     log({ ...base, portal: host, outcome: 'ok' })
     return { tools: MCP_TOOLS }
@@ -134,7 +138,7 @@ export async function mcpCall(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'call', member: h.member.slice(0, 64) }
   try {
-    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
+    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP) || isLimited(`mcpip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const raw = await boundedBody(event, MCP_MAX_BODY)
     const host = await checkRequest(s.keys, h, raw, nowSec())
     const c = parseCall(raw, h, host)
@@ -177,7 +181,7 @@ export async function appSession(event: H3Event) {
     if (e instanceof McpReject) throw createError({ statusCode: e.status, statusMessage: 'Неверный запрос' })
     throw e
   }
-  if (!takeHit(`login:${ipOf(event)}`, LOGINS_PER_IP, 60)) throw createError({ statusCode: 429, statusMessage: 'Слишком много входов — подождите минуту' })
+  if (!takeHit('login:all', LOGINS_TOTAL, 60) || !takeHit(`login:${ipOf(event)}`, LOGINS_PER_IP, 60)) throw createError({ statusCode: 429, statusMessage: 'Слишком много входов — подождите минуту' })
   let refresh: unknown
   try {
     refresh = (JSON.parse(raw.toString('utf8')) as { refresh?: unknown })?.refresh

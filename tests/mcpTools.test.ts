@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MAX_AMOUNT } from '../app/config/currencies'
 import { formatAmount, toKopecks } from '../app/utils/formatters'
-import { minskToday, NbrbApi, NbrbUnavailable, UPSTREAM_PER_MINUTE, type FetchJson } from '../server/lib/mcp/nbrbApi'
+import { minskToday, NbrbApi, NbrbUnavailable, UPSTREAM_PER_CALLER_MINUTE, UPSTREAM_PER_MINUTE, type FetchJson } from '../server/lib/mcp/nbrbApi'
 import { MCP_TOOLS, McpTools } from '../server/lib/mcp/tools'
 
 // 2026-11-20 12:00 Minsk = 09:00 UTC.
@@ -311,5 +311,22 @@ describe('NbrbApi upstream ceiling', () => {
     expect(results.some(r => r.status === 'rejected' && r.reason instanceof NbrbUnavailable)).toBe(true)
     now += 60_001
     await expect(api.ratesOn('2024-01-02')).resolves.toBeTruthy()
+  })
+})
+
+describe('NbrbApi share per portal (security review, Н5)', () => {
+  it('one portal spending its share does not take НБ РБ away from another', async () => {
+    const api = new NbrbApi(async url => (url.includes('periodicity=1') ? [] : daily('2026-11-01')), () => NOW)
+    const tools = new McpTools(api, () => NOW)
+    const who = (m: string) => ({ memberId: m, userId: 1, host: 'p.example.by' })
+    const codes: (string | undefined)[] = []
+    for (let i = 0; i < 30; i++) {
+      const date = `2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + Math.floor(i / 12)).padStart(2, '0')}`
+      codes.push((await tools.run({ tool: 'rates', args: { date }, who: who('aaaaaaaaaaaaaaaa') }))._meta?.code)
+    }
+    expect(codes.filter(c => c === 'rates_unavailable').length).toBeGreaterThan(0)
+    expect(UPSTREAM_PER_CALLER_MINUTE).toBeLessThan(UPSTREAM_PER_MINUTE)
+    const other = await tools.run({ tool: 'rates', args: { date: '2024-05-05' }, who: who('bbbbbbbbbbbbbbbb') })
+    expect(other._meta?.code).toBeUndefined()
   })
 })
