@@ -143,7 +143,7 @@ pnpm dev
 
 ```bash
 pnpm lint        # ESLint (в т.ч. @intlify/vue-i18n/no-unused-keys — осиротевшие ключи локалей)
-pnpm typecheck   # vue-tsc
+pnpm typecheck   # vue-tsc (приложение и server/)
 pnpm test        # Vitest
 ```
 

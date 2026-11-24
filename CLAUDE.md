@@ -1,8 +1,9 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-11-13
+> Last reviewed: 2026-11-24
 
-Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
+Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG); в проде серверной части нет.
+`server/lib/mcp/` — ядро инструментов для AI-агента shef.cowork, ни откуда не подключено (см. «Инструменты для shef.cowork»).
 
 > Точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md); рабочий процесс
 > (ветки/PR/ревью/CI/мерж) — [`docs/PROCESS.md`](docs/PROCESS.md). Этот файл — архитектура и
@@ -22,7 +23,7 @@
 ```bash
 pnpm dev            # дев-сервер
 pnpm lint           # ESLint
-pnpm typecheck      # vue-tsc --noEmit
+pnpm typecheck      # vue-tsc: приложение + server/ (.nuxt/tsconfig.server.json — нужен nuxt prepare)
 pnpm test           # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate       # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm preview        # посмотреть собранную статику локально (для pnpm screenshots)
@@ -243,6 +244,15 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
   роут × вьюпорт × тема (12 PNG) с предустановленного Chromium через `playwright-core`. **Не в CI**
   (нет baseline/diff — только «глазами свериться»), прод не трогает. Детали — `docs/PROCESS.md` §2.2.
 
+## Инструменты для shef.cowork (MCP, issue #200)
+
+Ядро — `server/lib/mcp/` (чистая логика, без автоимпортов Nuxt): `protocol.ts` (ключ подключения по паре
+**`member_id` + хост портала** — `member_id` не уникален среди коробок-копий, toolsai-mcp #243/#304; подпись
+HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (курсы НБ РБ на дату и история, кеш), `tools.ts`
+(`rates`, `history`, `convert`, `sum_in_words` — только чтение; суммы — через `app/utils/*`, копейки — только
+`toKopecks`). Маршрутов пока нет — сборка и прод не меняются. Подробно — [`docs/MCP.md`](docs/MCP.md).
+`pnpm typecheck` проверяет и `server/` (`.nuxt/tsconfig.server.json`): корневой конфиг его не видит.
+
 ## Встройка в Bitrix24 (issue #31)
 
 Приложение работает в двух режимах: standalone (обычный сайт) и как iframe-приложение
@@ -341,7 +351,7 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 |---|---|---|---|
 | 0 | документы, карта проекта, тесты без кода приложения, версия, `.gitattributes`, картинки | без ревью: `pnpm check` | правка главы `docs/`, строка в README, подъём версии, новый тест |
 | 1 | мелкое поведение: всё, что не 0 и не 2 | `/code-review medium --max-findings 5`; уровень `max` запрещён | правка одного компонента, текст интерфейса и локали, новая настройка без денег и прав |
-| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и nginx, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `nginx.conf`, `package.json`, `.github/*` |
+| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и nginx, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `nginx.conf`, `package.json`, `.github/*`, `server/*` |
 
 - **Ручной уровень** главнее автоматического: `bash tools/review-tier.sh --level N` или
   `REVIEW_TIER=N`; его же задаёт слово владельца («уровень 2», «панель», «без ревью») или строка
