@@ -1,35 +1,64 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { NbrbApi, NbrbUnavailable, type FetchJson } from '../server/lib/mcp/nbrbApi'
+import { MAX_AMOUNT } from '../app/config/currencies'
+import { formatAmount, toKopecks } from '../app/utils/formatters'
+import { minskToday, NbrbApi, NbrbUnavailable, type FetchJson } from '../server/lib/mcp/nbrbApi'
 import { MCP_TOOLS, McpTools } from '../server/lib/mcp/tools'
 
 // 2026-11-20 12:00 Minsk = 09:00 UTC.
 const NOW = Date.parse('2026-11-20T09:00:00Z')
 
+const rec = (id: number, code: string, scale: number, rate: number, date: string, name = code) =>
+  ({ Cur_ID: id, Date: `${date}T00:00:00`, Cur_Abbreviation: code, Cur_Scale: scale, Cur_Name: name, Cur_OfficialRate: rate })
 const daily = (date: string) => [
-  { Cur_ID: 431, Date: `${date}T00:00:00`, Cur_Abbreviation: 'USD', Cur_Scale: 1, Cur_Name: 'Доллар США', Cur_OfficialRate: 2.9943 },
-  { Cur_ID: 451, Date: `${date}T00:00:00`, Cur_Abbreviation: 'EUR', Cur_Scale: 1, Cur_Name: 'Евро', Cur_OfficialRate: 3.4521 },
-  { Cur_ID: 456, Date: `${date}T00:00:00`, Cur_Abbreviation: 'RUB', Cur_Scale: 100, Cur_Name: 'Российских рублей', Cur_OfficialRate: 3.7123 }
+  rec(431, 'USD', 1, 2.9943, date, 'Доллар США'),
+  rec(451, 'EUR', 1, 3.4521, date, 'Евро'),
+  rec(456, 'RUB', 100, 3.7123, date, 'Российских рублей'),
+  rec(459, 'KZT', 1000, 5.9, date)
 ]
-const monthly = [{ Cur_ID: 500, Date: '2026-11-01T00:00:00', Cur_Abbreviation: 'RSD', Cur_Scale: 100, Cur_Name: 'Сербских динаров', Cur_OfficialRate: 2.9 }]
+const monthly = (date: string) => [rec(496, 'RSD', 100, 2.9, date)]
+// `/currencies`: each currency is a chain of ids under one Cur_ParentID (real ids, api.nbrb.by).
+const seg = (id: number, parent: number, code: string, scale: number, per: number, start: string, end: string) =>
+  ({ Cur_ID: id, Cur_ParentID: parent, Cur_Abbreviation: code, Cur_Name: code, Cur_Scale: scale, Cur_Periodicity: per, Cur_DateStart: `${start}T00:00:00`, Cur_DateEnd: `${end}T00:00:00` })
+const CURRENCIES = [
+  seg(145, 145, 'USD', 1, 0, '1991-01-01', '2021-07-08'), seg(431, 145, 'USD', 1, 0, '2021-07-09', '2050-01-01'),
+  seg(222, 174, 'KZT', 1, 0, '2007-12-01', '2016-06-30'), seg(301, 174, 'KZT', 1000, 0, '2016-07-01', '2021-07-08'),
+  seg(459, 174, 'KZT', 1000, 0, '2021-07-09', '2050-01-01'),
+  seg(496, 245, 'RSD', 100, 1, '2021-07-09', '2050-01-01')
+]
+const DYNAMICS: Record<number, [string, number][]> = {
+  145: [['2021-07-07', 2.51], ['2021-07-08', 2.52]],
+  431: [['2026-11-20', 2.9943], ['2021-07-09', 2.53], ['2026-11-18', 2.9987], ['2026-11-19', 2.995]],
+  301: [['2021-07-08', 6.0]],
+  459: [['2021-07-09', 6.1]],
+  496: [['2026-11-02', 2.88]]
+}
 
-function fakeApi(opts: { down?: boolean } = {}) {
+function fakeApi(opts: { down?: boolean, monthlyDown?: boolean } = {}) {
   const urls: string[] = []
   const fetchJson: FetchJson = async (url) => {
     urls.push(url)
-    if (opts.down) throw new NbrbUnavailable('down')
-    const date = /ondate=(\d{4}-\d{2}-\d{2})/.exec(url)?.[1] ?? '2026-11-20'
-    if (url.includes('periodicity=1')) return monthly
-    if (url.includes('/dynamics/431')) return [
-      { Cur_ID: 431, Date: '2026-11-18T00:00:00', Cur_OfficialRate: 2.9987 },
-      { Cur_ID: 431, Date: '2026-11-19T00:00:00', Cur_OfficialRate: 2.995 },
-      { Cur_ID: 431, Date: '2026-11-20T00:00:00', Cur_OfficialRate: 2.9943 }
-    ]
+    if (opts.down) throw new TypeError('fetch failed')
+    if (url.endsWith('/currencies')) return CURRENCIES
+    const dyn = /dynamics\/(\d+)\?startdate=([\d-]+)&enddate=([\d-]+)/.exec(url)
+    if (dyn) {
+      const [, id, a, b] = dyn
+      return (DYNAMICS[Number(id)] ?? []).filter(([d]) => d >= a! && d <= b!).map(([d, r]) => ({ Cur_ID: Number(id), Date: `${d}T00:00:00`, Cur_OfficialRate: r }))
+    }
+    const date = /ondate=(\d{4}-\d{2}-\d{2})/.exec(url)![1]!
+    if (date > minskToday(NOW)) return [] // not published yet — НБ РБ answers 200 []
+    if (url.includes('periodicity=1')) {
+      if (opts.monthlyDown) throw new NbrbUnavailable('HTTP 503')
+      return monthly(date)
+    }
     return daily(date)
   }
   return { urls, tools: new McpTools(new NbrbApi(fetchJson, () => NOW), () => NOW) }
 }
 
 const data = (r: { content: { text: string }[] }) => JSON.parse(r.content[0]!.text)
+const codeOf = async (p: Promise<{ _meta?: { code: string } }>) => (await p)._meta?.code
 
 describe('manifest follows the shef.cowork rules', () => {
   type Node = { properties?: Record<string, Node>, items?: Node, type?: string, enum?: unknown, const?: unknown, maxLength?: number }
@@ -44,17 +73,26 @@ describe('manifest follows the shef.cowork rules', () => {
     expect(t.description.length).toBeLessThanOrEqual(1000)
     expect(['read', 'write', 'delete']).toContain(t.kind)
     expect(JSON.stringify(t.input).length).toBeLessThanOrEqual(8000)
-    walk(t.input, (n) => {
+    walk(t.input as Node, (n) => {
       expect(n).not.toHaveProperty('pattern')
       expect(n).not.toHaveProperty('patternProperties')
       expect(n).not.toHaveProperty('$ref')
       if (n.type === 'string' && !n.enum && !n.const) expect(n.maxLength).toBeGreaterThan(0)
     })
-    const names = JSON.stringify(t.input).toLowerCase()
-    for (const banned of ['auth', 'member_id', 'portal', 'domain', 'token', 'asuser', 'runas', 'onbehalfof']) expect(names).not.toContain(`"${banned}"`)
+    const names = Object.keys((t.input as Node).properties ?? {}).map(k => k.toLowerCase().replace(/[-_.\s]/g, ''))
+    for (const banned of ['auth', 'memberid', 'portal', 'domain', 'token', 'asuser', 'runas', 'onbehalfof']) expect(names).not.toContain(banned)
   })
   it('read-only tools only', () => {
     expect(MCP_TOOLS.every(t => t.kind === 'read')).toBe(true)
+  })
+})
+
+describe('app/utils used by the server stay framework-free', () => {
+  it('only relative imports in modules the server imports (no vue, #imports, ~)', () => {
+    for (const f of ['converter.ts', 'formatters.ts', 'numberToWords.ts', 'nbrb.ts']) {
+      const src = readFileSync(join(process.cwd(), 'app/utils', f), 'utf8')
+      for (const m of src.matchAll(/from\s+'([^']+)'/g)) expect(m[1], `${f}: ${m[1]}`).toMatch(/^\.\.?\//)
+    }
   })
 })
 
@@ -70,6 +108,22 @@ describe('convert', () => {
     // 100 × 2.9943 / (3.7123 / 100) = 8065.8893… → 8065.89
     expect(r.result).toBe(8065.89)
   })
+  it('result, resultText and say agree, all through toKopecks', async () => {
+    for (const amount of [0.005, 1.005, 2.675, 8.165, 123456.789]) {
+      const r = data(await fakeApi().tools.run({ tool: 'convert', args: { amount, from: 'EUR', to: 'KZT' } }))
+      expect(r.result).toBe(toKopecks(r.result) / 100)
+      expect(r.resultText).toBe(`${formatAmount(r.result)} KZT`)
+      expect(r.say).toContain(formatAmount(r.result))
+    }
+  })
+  it('0 and MAX_AMOUNT', async () => {
+    const { tools } = fakeApi()
+    expect(data(await tools.run({ tool: 'convert', args: { amount: 0, from: 'USD', to: 'BYN' } })).result).toBe(0)
+    expect(data(await tools.run({ tool: 'convert', args: { amount: MAX_AMOUNT, from: 'BYN', to: 'BYN' } })).result).toBe(MAX_AMOUNT)
+  })
+  it('a result beyond exact kopecks is refused, not rounded silently', async () => {
+    expect(await codeOf(fakeApi().tools.run({ tool: 'convert', args: { amount: MAX_AMOUNT, from: 'USD', to: 'KZT' } }))).toBe('bad_args')
+  })
   it('asks НБ РБ for the requested date', async () => {
     const api = fakeApi()
     const r = data(await api.tools.run({ tool: 'convert', args: { amount: 1, from: 'EUR', to: 'BYN', date: '2026-11-19' } }))
@@ -81,6 +135,13 @@ describe('convert', () => {
     expect(r.result).toBe(2.9)
     expect(r.rates[0].periodicity).toBe('monthly')
   })
+  it('monthly feed down: a monthly-only currency is "unavailable", not "unknown"; nothing cached', async () => {
+    const api = fakeApi({ monthlyDown: true })
+    expect(await codeOf(api.tools.run({ tool: 'convert', args: { amount: 100, from: 'RSD', to: 'BYN' } }))).toBe('rates_unavailable')
+    const before = api.urls.length
+    await api.tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN' } })
+    expect(api.urls.length).toBeGreaterThan(before)
+  })
   it('BYN → BYN needs no network', async () => {
     const api = fakeApi()
     expect(data(await api.tools.run({ tool: 'convert', args: { amount: 10, from: 'BYN', to: 'BYN' } })).result).toBe(10)
@@ -90,47 +151,91 @@ describe('convert', () => {
     const { tools } = fakeApi()
     for (const args of [
       { amount: -1, from: 'USD', to: 'BYN' },
+      { amount: MAX_AMOUNT + 1, from: 'USD', to: 'BYN' },
+      { amount: Number.NaN, from: 'USD', to: 'BYN' },
+      { amount: '100', from: 'USD', to: 'BYN' },
       { amount: 1, from: 'US', to: 'BYN' },
-      { amount: 1, from: 'XXX', to: 'BYN' },
-      { amount: 1, from: 'USD', to: 'BYN', date: '2026-11-25' },
-      { amount: 1, from: 'USD', to: 'BYN', date: '20.11.2026' }
-    ]) {
-      const r = await tools.run({ tool: 'convert', args })
-      expect(r.isError).toBe(true)
-      expect(r._meta?.code).toBe('bad_args')
-    }
+      { amount: 1, from: 'ZZZ', to: 'BYN' },
+      { amount: 1, from: 'USD', to: 'BYN', date: '2026-11-22' },
+      { amount: 1, from: 'USD', to: 'BYN', date: '20.11.2026' },
+      { amount: 1, from: 'USD', to: 'BYN', date: '2026-02-30' }
+    ]) expect(await codeOf(tools.run({ tool: 'convert', args })), JSON.stringify(args)).toBe('bad_args')
   })
-  it('tomorrow’s rate is allowed (НБ РБ publishes it in the afternoon)', async () => {
+  it('rates before the 2016 redenomination (BYR) are never served as BYN', async () => {
+    const api = fakeApi()
+    const r = await api.tools.run({ tool: 'convert', args: { amount: 100, from: 'USD', to: 'BYN', date: '2015-06-01' } })
+    expect(r._meta?.code).toBe('bad_args')
+    expect(r.content[0]!.text).toContain('BYR')
+    expect(api.urls).toEqual([])
+    expect(await codeOf(api.tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN', date: '2016-07-01' } }))).toBeUndefined()
+  })
+  it('tomorrow before publication is "not published yet", not an outage', async () => {
     const r = await fakeApi().tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN', date: '2026-11-21' } })
-    expect(r.isError).toBeUndefined()
+    expect(r._meta?.code).toBe('not_published')
+    expect(r.content[0]!.text).toContain('21.11.2026')
   })
   it('НБ РБ down → rates_unavailable, never a made-up rate', async () => {
-    const r = await fakeApi({ down: true }).tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN' } })
-    expect(r._meta?.code).toBe('rates_unavailable')
+    expect(await codeOf(fakeApi({ down: true }).tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN' } }))).toBe('rates_unavailable')
   })
 })
 
 describe('rates', () => {
-  it('default set, with scale; unknown codes are marked, not invented', async () => {
-    const r = data(await fakeApi().tools.run({ tool: 'rates', args: { codes: ['USD', 'RUB', 'ZZZ'] } }))
-    expect(r.rates[0]).toMatchObject({ code: 'USD', scale: 1, officialRate: 2.9943 })
+  it('chosen codes with scale; duplicates, BYN dropped; unknown codes marked, not invented', async () => {
+    const r = data(await fakeApi().tools.run({ tool: 'rates', args: { codes: ['USD', 'RUB', 'usd', 'ZZZ', 'BYN'] } }))
+    expect(r.rates.map((x: { code: string }) => x.code)).toEqual(['USD', 'RUB', 'ZZZ'])
     expect(r.rates[1]).toMatchObject({ code: 'RUB', scale: 100, officialRate: 3.7123 })
     expect(r.rates[2]).toMatchObject({ code: 'ZZZ', missing: expect.any(String) })
+  })
+  it('no codes → the default set', async () => {
+    for (const args of [{}, { codes: [] }]) {
+      const r = data(await fakeApi().tools.run({ tool: 'rates', args }))
+      expect(r.rates.map((x: { code: string }) => x.code)).toEqual(['USD', 'EUR', 'RUB', 'CNY', 'KZT', 'PLN'])
+    }
+  })
+  it('a non-string code is bad_args', async () => {
+    expect(await codeOf(fakeApi().tools.run({ tool: 'rates', args: { codes: ['USD', 5] } }))).toBe('bad_args')
   })
 })
 
 describe('history', () => {
-  it('points, change, min and max', async () => {
+  it('points sorted by date, per-unit change, min and max', async () => {
     const r = data(await fakeApi().tools.run({ tool: 'history', args: { code: 'USD', from: '2026-11-18', to: '2026-11-20' } }))
-    expect(r.points).toHaveLength(3)
-    expect(r.change).toBe(-0.0044)
-    expect(r.min).toBe(2.9943)
-    expect(r.max).toBe(2.9987)
+    expect(r.points.map((p: { date: string }) => p.date)).toEqual(['2026-11-18', '2026-11-19', '2026-11-20'])
+    expect(r.changePerUnit).toBe(-0.0044)
+    expect(r.minPerUnit).toBe(2.9943)
+    expect(r.maxPerUnit).toBe(2.9987)
   })
-  it('range is capped and ordered', async () => {
+  it('is stitched across a Cur_ID change (USD 145 → 431 on 2021-07-09)', async () => {
+    const r = data(await fakeApi().tools.run({ tool: 'history', args: { code: 'USD', from: '2021-07-01', to: '2021-07-31' } }))
+    expect(r.points.map((p: { date: string }) => p.date)).toEqual(['2021-07-07', '2021-07-08', '2021-07-09'])
+  })
+  it('uses each segment’s own scale (KZT 1000 after 2016)', async () => {
+    const r = data(await fakeApi().tools.run({ tool: 'history', args: { code: 'KZT', from: '2021-07-01', to: '2021-07-31' } }))
+    expect(r.points).toEqual([
+      { date: '2021-07-08', scale: 1000, officialRate: 6, bynPerUnit: 0.006 },
+      { date: '2021-07-09', scale: 1000, officialRate: 6.1, bynPerUnit: 0.0061 }
+    ])
+  })
+  it('a period that starts before the first point says so', async () => {
+    const r = data(await fakeApi().tools.run({ tool: 'history', args: { code: 'USD', from: '2026-11-15', to: '2026-11-20' } }))
+    expect(r.say).toContain('18.11.2026')
+  })
+  it('monthly-only currency: empty inside a month, explained', async () => {
+    const r = data(await fakeApi().tools.run({ tool: 'history', args: { code: 'RSD', from: '2026-11-10', to: '2026-11-20' } }))
+    expect(r.points).toEqual([])
+    expect(r).not.toHaveProperty('changePerUnit')
+    expect(r.say).toContain('раз в месяц')
+  })
+  it('range, order, from, BYN, BYR and unknown codes are validated', async () => {
     const { tools } = fakeApi()
-    expect((await tools.run({ tool: 'history', args: { code: 'USD', from: '2025-01-01', to: '2026-11-20' } }))._meta?.code).toBe('bad_args')
-    expect((await tools.run({ tool: 'history', args: { code: 'USD', from: '2026-11-20', to: '2026-11-18' } }))._meta?.code).toBe('bad_args')
+    for (const args of [
+      { code: 'USD', from: '2025-01-01', to: '2026-11-20' },
+      { code: 'USD', from: '2026-11-20', to: '2026-11-18' },
+      { code: 'USD', to: '2026-11-20' },
+      { code: 'BYN', from: '2026-11-01' },
+      { code: 'USD', from: '2016-06-01', to: '2016-07-31' },
+      { code: 'ZZZ', from: '2026-11-01' }
+    ]) expect(await codeOf(tools.run({ tool: 'history', args })), JSON.stringify(args)).toBe('bad_args')
   })
 })
 
@@ -144,7 +249,39 @@ describe('sum_in_words', () => {
     expect(r.amount).toBe(8.17)
     expect(r.words).toBe('Восемь рублей 17 копеек')
   })
-  it('only BYN and RUB', async () => {
-    expect((await fakeApi().tools.run({ tool: 'sum_in_words', args: { amount: 1, currency: 'USD' } }))._meta?.code).toBe('bad_args')
+  it('zero', async () => {
+    expect(data(await fakeApi().tools.run({ tool: 'sum_in_words', args: { amount: 0, currency: 'BYN' } })).words).toBe('Ноль рублей 00 копеек')
+  })
+  it('only BYN and RUB, upper case', async () => {
+    for (const currency of ['USD', 'byn']) expect(await codeOf(fakeApi().tools.run({ tool: 'sum_in_words', args: { amount: 1, currency } }))).toBe('bad_args')
+  })
+})
+
+describe('run', () => {
+  it('unknown tool', async () => {
+    expect(await codeOf(fakeApi().tools.run({ tool: 'nope', args: {} }))).toBe('unknown_tool')
+  })
+  it('Minsk calendar: 20:59 UTC is still today, 21:00 UTC is tomorrow', () => {
+    expect(minskToday(Date.parse('2026-11-20T20:59:59Z'))).toBe('2026-11-20')
+    expect(minskToday(Date.parse('2026-11-20T21:00:00Z'))).toBe('2026-11-21')
+  })
+})
+
+describe('NbrbApi cache', () => {
+  it('one request per date; concurrent misses share it', async () => {
+    const api = fakeApi()
+    await Promise.all([1, 2, 3].map(() => api.tools.run({ tool: 'convert', args: { amount: 1, from: 'USD', to: 'BYN' } })))
+    await api.tools.run({ tool: 'convert', args: { amount: 2, from: 'EUR', to: 'BYN' } })
+    expect(api.urls.filter(u => u.includes('periodicity=0'))).toHaveLength(1)
+  })
+  it('a failure is not cached', async () => {
+    let down = true
+    const api = new NbrbApi(async (url) => {
+      if (down) throw new TypeError('x')
+      return url.includes('periodicity=1') ? [] : daily('2026-11-20')
+    }, () => NOW)
+    await expect(api.ratesOn('2026-11-20')).rejects.toBeInstanceOf(NbrbUnavailable)
+    down = false
+    expect((await api.ratesOn('2026-11-20')).rates.get('USD')?.bynRate).toBe(2.9943)
   })
 })

@@ -2,7 +2,8 @@
 
 > Last reviewed: 2026-11-24
 
-Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
+Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG); в проде серверной части нет.
+`server/lib/mcp/` — ядро инструментов для AI-агента shef.cowork, ни откуда не подключено (см. «Инструменты для shef.cowork»).
 
 > Точка входа и статус проекта — [`docs/PROJECT_MAP.md`](docs/PROJECT_MAP.md); рабочий процесс
 > (ветки/PR/ревью/CI/мерж) — [`docs/PROCESS.md`](docs/PROCESS.md). Этот файл — архитектура и
@@ -22,7 +23,7 @@
 ```bash
 pnpm dev            # дев-сервер
 pnpm lint           # ESLint
-pnpm typecheck      # vue-tsc --noEmit
+pnpm typecheck      # vue-tsc: приложение + server/ (.nuxt/tsconfig.server.json — нужен nuxt prepare)
 pnpm test           # Vitest (оба проекта; быстрый прогон node: pnpm test --project unit)
 pnpm generate       # сборка статики (nuxt generate, SSG) — то же гоняют CI и Dockerfile
 pnpm preview        # посмотреть собранную статику локально (для pnpm screenshots)
@@ -350,7 +351,7 @@ standalone-ветка install (редирект на `/` вне фрейма, `t
 |---|---|---|---|
 | 0 | документы, карта проекта, тесты без кода приложения, версия, `.gitattributes`, картинки | без ревью: `pnpm check` | правка главы `docs/`, строка в README, подъём версии, новый тест |
 | 1 | мелкое поведение: всё, что не 0 и не 2 | `/code-review medium --max-findings 5`; уровень `max` запрещён | правка одного компонента, текст интерфейса и локали, новая настройка без денег и прав |
-| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и nginx, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `nginx.conf`, `package.json`, `.github/*` |
+| 2 | деньги, безопасность, установщик и контракт с порталом, сборка, CI, Dockerfile и nginx, вендорный бандл | панель из пяти параллельно; `/code-review` при панели не зовём | `toKopecks` и пропись, `nbrb.ts`, `useB24.ts`, `install.vue`, `nginx.conf`, `package.json`, `.github/*`, `server/*` |
 
 - **Ручной уровень** главнее автоматического: `bash tools/review-tier.sh --level N` или
   `REVIEW_TIER=N`; его же задаёт слово владельца («уровень 2», «панель», «без ревью») или строка

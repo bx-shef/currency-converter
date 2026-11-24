@@ -4,6 +4,8 @@
 export interface KvStore {
   get<T>(key: string): Promise<T | null>
   put<T>(key: string, value: T, ttlSec: number): Promise<void>
+  /** Atomic set-if-absent with expiry (Redis: SET key value NX EX ttl). True when the key was set. */
+  putIfAbsent<T>(key: string, value: T, ttlSec: number): Promise<boolean>
   del(key: string): Promise<void>
 }
 
@@ -23,6 +25,14 @@ export class MemoryStore implements KvStore {
 
   async put<T>(key: string, value: T, ttlSec: number): Promise<void> {
     this.m.set(key, { v: value, exp: this.now() + ttlSec * 1000 })
+  }
+
+  async putIfAbsent<T>(key: string, value: T, ttlSec: number): Promise<boolean> {
+    // Atomic within one process: the check and the set run synchronously, with no await in between.
+    const b = this.m.get(key)
+    if (b && b.exp > this.now()) return false
+    this.m.set(key, { v: value, exp: this.now() + ttlSec * 1000 })
+    return true
   }
 
   async del(key: string): Promise<void> {

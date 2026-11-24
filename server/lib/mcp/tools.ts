@@ -2,7 +2,7 @@ import { convert } from '../../../app/utils/converter'
 import { capitalizeFirst, formatAmount, toKopecks } from '../../../app/utils/formatters'
 import { rublesAmountInWords } from '../../../app/utils/numberToWords'
 import { MAX_AMOUNT } from '../../../app/config/currencies'
-import { addDays, daysBetween, HISTORY_MAX_DAYS, isIsoDate, minskToday, NbrbUnavailable, type NbrbApi, type OfficialRate } from './nbrbApi'
+import { addDays, daysBetween, FIRST_BYN_DATE, HISTORY_MAX_DAYS, isIsoDate, minskToday, NbrbUnavailable, NotPublished, type NbrbApi, type OfficialRate, type RatesOnDate } from './nbrbApi'
 import type { McpCall } from './protocol'
 
 // MCP tools for shef.cowork (currency-converter #200): official НБ РБ rates on a date, rate history,
@@ -97,7 +97,8 @@ function date(v: unknown, field: string, fallback: string, latest: string): stri
   if (v === undefined || v === null || v === '') return fallback
   if (!isIsoDate(v)) throw new ArgError(`${field}: нужна дата в виде ГГГГ-ММ-ДД`)
   if (v > latest) throw new ArgError(`${field}: курс на ${v} ещё не опубликован — НБ РБ публикует курс не дальше чем на завтра`)
-  if (v < '1995-01-01') throw new ArgError(`${field}: курсы есть с 1995 года`)
+  // Earlier rates are in BYR (10 000 BYR = 1 BYN), not BYN — never mix them in (nbrbApi.ts).
+  if (v < FIRST_BYN_DATE) throw new ArgError(`${field}: курсы в BYN — с ${ruDate(FIRST_BYN_DATE)} (деноминация 2016 года); раньше курсы в старых рублях (BYR), этим инструментом не выдаются`)
   return v
 }
 
@@ -106,15 +107,21 @@ function amount(v: unknown): number {
   return v
 }
 
-/** Rate of `c` on the rates map, BYN included; ArgError when НБ РБ has no rate for it on that date. */
-function rateOf(map: Map<string, OfficialRate>, c: string, onDate: string): OfficialRate {
+/**
+ * Rate of `c` on that date, BYN included. Missing with a complete feed — ArgError (НБ РБ does not rate it);
+ * missing while the monthly feed failed — NbrbUnavailable (it may be a monthly-only currency).
+ */
+function rateOf(r: RatesOnDate, c: string, onDate: string): OfficialRate {
   if (c === 'BYN') return { ...BYN, date: onDate }
-  const r = map.get(c)
-  if (!r) throw new ArgError(`Нет официального курса ${c} на ${onDate}: НБ РБ не устанавливает курс этой валюты. Проверьте код (ISO 4217).`)
-  return r
+  const found = r.rates.get(c)
+  if (found) return found
+  if (!r.complete) throw new NbrbUnavailable('monthly feed failed')
+  throw new ArgError(`Нет официального курса ${c} на ${onDate}: НБ РБ не устанавливает курс этой валюты. Проверьте код (ISO 4217).`)
 }
 
-const ruDate = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
+function ruDate(iso: string) {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
+}
 const rateLine = (r: OfficialRate) => `${r.scale} ${r.code} = ${r.officialRate} BYN`
 
 export class McpTools {
@@ -131,6 +138,7 @@ export class McpTools {
       }
     } catch (e) {
       if (e instanceof ArgError) return toolError('bad_args', e.message)
+      if (e instanceof NotPublished) return toolError('not_published', `Курс на ${ruDate(e.message)} НБ РБ ещё не установил: курс на завтра публикуется днём. Назовите курс на сегодня или повторите позже.`)
       if (e instanceof NbrbUnavailable) return toolError('rates_unavailable', 'НБ РБ сейчас не отвечает. Временная ошибка — повторите через минуту; курс из интернета не подставляйте.')
       throw e
     }
@@ -142,12 +150,11 @@ export class McpTools {
   private async rates(a: Record<string, unknown>) {
     const on = date(a.date, 'date', this.today(), this.latest())
     const asked = Array.isArray(a.codes) && a.codes.length ? a.codes.slice(0, MAX_CODES).map((v, i) => code(v, `codes[${i}]`)) : DEFAULT_CODES
-    const map = await this.nbrb.ratesOn(on)
+    const on2 = await this.nbrb.ratesOn(on)
     const rates = [...new Set(asked)].filter(c => c !== 'BYN').map((c) => {
-      const r = map.get(c)
-      return r
-        ? { code: r.code, name: r.name, scale: r.scale, officialRate: r.officialRate, bynPerUnit: r.bynRate, date: r.date, periodicity: r.periodicity }
-        : { code: c, missing: 'НБ РБ не устанавливает курс этой валюты' }
+      const r = on2.rates.get(c)
+      if (r) return { code: r.code, name: r.name, scale: r.scale, officialRate: r.officialRate, bynPerUnit: r.bynRate, date: r.date, periodicity: r.periodicity }
+      return { code: c, missing: on2.complete ? 'НБ РБ не устанавливает курс этой валюты' : 'Курс сейчас не получен (месячный курс НБ РБ не ответил) — повторите позже' }
     })
     return { source: SOURCE, date: on, rates, say: 'Называй курс вместе с датой и масштабом (например, «100 RUB = 3,52 BYN»). Курс с periodicity monthly установлен на месяц.' }
   }
@@ -156,6 +163,7 @@ export class McpTools {
     const c = code(a.code, 'code')
     if (c === 'BYN') throw new ArgError('code: история курса — для иностранной валюты; BYN — базовая валюта')
     const to = date(a.to, 'to', this.today(), this.latest())
+    if (a.from === undefined || a.from === null || a.from === '') throw new ArgError('from: нужно начало периода ГГГГ-ММ-ДД')
     const from = date(a.from, 'from', to, this.latest())
     if (from > to) throw new ArgError('from: начало периода позже конца')
     if (daysBetween(from, to) + 1 > HISTORY_MAX_DAYS) throw new ArgError(`Период не длиннее ${HISTORY_MAX_DAYS} дней — разбейте на части`)
@@ -169,11 +177,19 @@ export class McpTools {
     const pts = res.points
     const first = pts[0]
     const last = pts[pts.length - 1]
+    // Per-unit values: the scale may change inside the period (KZT 1 → 1000), published rates are not comparable.
+    const per = pts.map(p => p.bynRate)
+    const round = (v: number) => Math.round(v * 1e8) / 1e8
+    const notes: string[] = []
+    if (res.periodicity === 'monthly') notes.push('Курс этой валюты НБ РБ устанавливает раз в месяц — точки только на первые рабочие дни месяцев.')
+    if (!pts.length) notes.push('За период НБ РБ курсов не публиковал.')
+    else if (first!.date > from) notes.push(`Первый курс за период — на ${ruDate(first!.date)}.`)
+    if (new Set(pts.map(p => p.scale)).size > 1) notes.push('Масштаб курса менялся внутри периода — сравнивай bynPerUnit, а не officialRate.')
     return {
-      source: SOURCE, code: c, name: res.rate.name, scale: res.rate.scale, from, to,
-      points: pts.map(p => ({ date: p.date, officialRate: p.officialRate })),
-      ...(first && last ? { change: Math.round((last.officialRate - first.officialRate) * 10000) / 10000, min: Math.min(...pts.map(p => p.officialRate)), max: Math.max(...pts.map(p => p.officialRate)) } : {}),
-      say: `Курс — BYN за ${res.rate.scale} ${c}. Не перечисляй все дни без просьбы: начало, конец, изменение, минимум и максимум.`
+      source: SOURCE, code: c, name: res.name, periodicity: res.periodicity, from, to,
+      points: pts.map(p => ({ date: p.date, scale: p.scale, officialRate: p.officialRate, bynPerUnit: round(p.bynRate) })),
+      ...(first && last ? { changePerUnit: round(last.bynRate - first.bynRate), minPerUnit: round(Math.min(...per)), maxPerUnit: round(Math.max(...per)) } : {}),
+      say: [`Курс — BYN за scale единиц ${c}; bynPerUnit — за одну. Не перечисляй все дни без просьбы: начало, конец, изменение, минимум и максимум.`, ...notes].join(' ')
     }
   }
 
@@ -182,12 +198,15 @@ export class McpTools {
     const from = code(a.from, 'from')
     const to = code(a.to, 'to')
     const on = date(a.date, 'date', this.today(), this.latest())
-    const map = from === 'BYN' && to === 'BYN' ? new Map<string, OfficialRate>() : await this.nbrb.ratesOn(on)
-    const rf = rateOf(map, from, on)
-    const rt = rateOf(map, to, on)
+    const on2 = from === 'BYN' && to === 'BYN' ? { rates: new Map<string, OfficialRate>(), complete: true } : await this.nbrb.ratesOn(on)
+    const rf = rateOf(on2, from, on)
+    const rt = rateOf(on2, to, on)
+    // Same path as the converter screen (convert → 4-decimal grid → toKopecks): the tool and the page agree to the
+    // kopeck. Rounding the exact product directly would differ from the page by one kopeck on ~0.5% of sums.
     const raw = convert(sum, rf.bynRate, rt.bynRate)
-    if (raw === undefined) throw new ArgError('Не удалось пересчитать: проверьте сумму')
-    const result = toKopecks(raw) / 100
+    const kopecks = raw === undefined ? NaN : toKopecks(raw)
+    if (!Number.isSafeInteger(kopecks)) throw new ArgError('Сумма слишком велика для точного пересчёта до копеек — уменьшите её')
+    const result = kopecks / 100
     return {
       source: SOURCE,
       date: on,
