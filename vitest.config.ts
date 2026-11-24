@@ -6,7 +6,7 @@ const alias = {
   '~': fileURLToPath(new URL('./app', import.meta.url))
 }
 
-// Two projects (vitest 4): fast `unit` tests in node, and `nuxt` tests
+// Two projects (vitest 5): fast `unit` tests in node, and `nuxt` tests
 // (composables/components) under a real Nuxt runtime via @nuxt/test-utils.
 export default defineConfig(async () => ({
   test: {
