@@ -140,9 +140,12 @@ export class NbrbApi {
    */
   async ratesOn(date: string, caller?: string): Promise<RatesOnDate> {
     return this.cached(`rates:${date}`, date, async () => {
+      // Both feeds or none: on the last unit of the share the daily feed alone would answer without the
+      // monthly-only currencies (RSD).
+      if (caller) this.spend(caller, 2)
       const [daily, monthly] = await Promise.allSettled([
-        this.get(`${API}/rates?ondate=${date}&periodicity=0`, caller),
-        this.get(`${API}/rates?ondate=${date}&periodicity=1`, caller)
+        this.get(`${API}/rates?ondate=${date}&periodicity=0`),
+        this.get(`${API}/rates?ondate=${date}&periodicity=1`)
       ])
       if (daily.status === 'rejected') throw daily.reason
       if (!Array.isArray(daily.value)) throw new NbrbUnavailable('bad daily feed')
@@ -203,19 +206,23 @@ export class NbrbApi {
     }
   }
 
+  /** Take `n` requests from the caller's share for this minute — all or nothing (NbrbUnavailable). */
+  private spend(caller: string, n: number) {
+    const now = this.now()
+    let w = this.callers.get(caller)
+    if (!w || w.until <= now) {
+      if (this.callers.size > 5000) for (const [k, v] of this.callers) if (v.until <= now) this.callers.delete(k)
+      w = { n: 0, until: now + 60_000 }
+      this.callers.set(caller, w)
+    }
+    if (w.n + n > UPSTREAM_PER_CALLER_MINUTE) throw new NbrbUnavailable('caller limit')
+    w.n += n
+  }
+
   /** One request to НБ РБ: within the caller's share and the total ceiling, otherwise NbrbUnavailable. */
   private async get(url: string, caller?: string): Promise<unknown> {
     const now = this.now()
-    if (caller) {
-      let w = this.callers.get(caller)
-      if (!w || w.until <= now) {
-        if (this.callers.size > 5000) for (const [k, v] of this.callers) if (v.until <= now) this.callers.delete(k)
-        w = { n: 0, until: now + 60_000 }
-        this.callers.set(caller, w)
-      }
-      if (w.n >= UPSTREAM_PER_CALLER_MINUTE) throw new NbrbUnavailable('caller limit')
-      w.n++
-    }
+    if (caller) this.spend(caller, 1)
     if (this.window.until <= now) this.window = { n: 0, until: now + 60_000 }
     if (++this.window.n > UPSTREAM_PER_MINUTE) throw new NbrbUnavailable('upstream limit')
     const ctl = new AbortController()

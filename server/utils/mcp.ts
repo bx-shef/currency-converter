@@ -7,7 +7,7 @@ import { LoginError, PortalAuth } from '../lib/mcp/oauth'
 import { checkRequest, MCP_MAX_BODY, McpKeyError, McpKeys, McpReject, parseCall, takeNonce, type McpHeaders } from '../lib/mcp/protocol'
 import { RedisStore, StoreUnavailable } from '../lib/mcp/redisStore'
 import { AdminSessions } from '../lib/mcp/session'
-import { clientIp, isLimited, takeHit } from '../lib/mcp/limits'
+import { callLimiter, clientIp, loginLimiter, rejectLimiter } from '../lib/mcp/limits'
 import { MemoryStore, type KvStore } from '../lib/mcp/store'
 import { isToolName, MCP_TOOLS, McpTools, toolError } from '../lib/mcp/tools'
 
@@ -73,9 +73,13 @@ function storeDown(event: H3Event, extra: Record<string, unknown>) {
 
 /** Every rejection looks the same from outside: the reason (unknown member, signature, host…) is for the log only. */
 function reject(event: H3Event, e: McpReject, extra: Record<string, unknown>) {
-  // Signature failures of a known-format request count per (address, portal): one portal with a stale key in
-  // shef.cowork must not lock the shared shef.cowork address out for every portal.
-  if (e.status !== 429) takeHit(`mcpip:${ipOf(event)}${e.status === 401 && typeof extra.member === 'string' && extra.member ? `:${extra.member}` : ''}`, UNSIGNED_PER_IP, 60)
+  // A rejection of a KNOWN portal (it has a key, the signature or time is wrong) counts per (address, portal): one
+  // portal with a stale key in shef.cowork must not lock the shared shef.cowork address out for every portal. An
+  // unknown member_id or a malformed request counts per address — inventing member_ids buys nothing.
+  if (e.status !== 429) {
+    const known = (e.reason === 'bad_signature' || e.reason === 'stale_ts') && typeof extra.member === 'string'
+    rejectLimiter.take(known ? `ip:${ipOf(event)}:${extra.member}` : `ip:${ipOf(event)}`, UNSIGNED_PER_IP, 60)
+  }
   log({ ...extra, outcome: 'reject', status: e.status, reason: e.reason })
   setResponseStatus(event, e.status)
   return { error: e.status === 401 ? 'unauthorized' : e.reason }
@@ -119,7 +123,7 @@ export async function mcpManifest(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'manifest', member: h.member.slice(0, 64) }
   try {
-    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP) || isLimited(`mcpip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
+    if (rejectLimiter.isLimited(`ip:${ipOf(event)}`, UNSIGNED_PER_IP) || rejectLimiter.isLimited(`ip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const host = await checkRequest(s.keys, h, '', nowSec())
     log({ ...base, portal: host, outcome: 'ok' })
     return { tools: MCP_TOOLS }
@@ -138,17 +142,17 @@ export async function mcpCall(event: H3Event) {
   const h = headersOf(event)
   const base = { action: 'call', member: h.member.slice(0, 64) }
   try {
-    if (isLimited(`mcpip:${ipOf(event)}`, UNSIGNED_PER_IP) || isLimited(`mcpip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
+    if (rejectLimiter.isLimited(`ip:${ipOf(event)}`, UNSIGNED_PER_IP) || rejectLimiter.isLimited(`ip:${ipOf(event)}:${h.member.slice(0, 64)}`, UNSIGNED_PER_IP)) throw new McpReject(429, 'rate_limited')
     const raw = await boundedBody(event, MCP_MAX_BODY)
     const host = await checkRequest(s.keys, h, raw, nowSec())
     const c = parseCall(raw, h, host)
     if (!isToolName(c.tool)) throw new McpReject(404, 'unknown_tool')
     // The portal limit is checked before the nonce is stored: a flood of signed calls can't fill Redis.
     // user_id is signed by the key holder (the portal), so the per-user limit alone could be dodged.
-    if (!takeHit(`callp:${c.who.memberId}:${host}`, CALLS_PER_PORTAL, 60)) throw new McpReject(429, 'rate_limited')
+    if (!callLimiter.take(`p:${c.who.memberId}:${host}`, CALLS_PER_PORTAL, 60)) throw new McpReject(429, 'rate_limited')
     await takeNonce(s.store, c.who.memberId, c.nonce)
     const who = { ...base, portal: host, user: c.who.userId, tool: c.tool, args: Object.keys(c.args).slice(0, 20) }
-    if (!takeHit(`callu:${c.who.memberId}:${host}:${c.who.userId}`, CALLS_PER_USER, 60)) {
+    if (!callLimiter.take(`u:${c.who.memberId}:${host}:${c.who.userId}`, CALLS_PER_USER, 60)) {
       log({ ...who, outcome: 'fail', code: 'rate_limited' })
       return toolError('rate_limited', 'Слишком много запросов курсов — подождите минуту')
     }
@@ -181,7 +185,9 @@ export async function appSession(event: H3Event) {
     if (e instanceof McpReject) throw createError({ statusCode: e.status, statusMessage: 'Неверный запрос' })
     throw e
   }
-  if (!takeHit('login:all', LOGINS_TOTAL, 60) || !takeHit(`login:${ipOf(event)}`, LOGINS_PER_IP, 60)) throw createError({ statusCode: 429, statusMessage: 'Слишком много входов — подождите минуту' })
+  // Per address FIRST: requests refused by it must not be charged to the shared ceiling (one address could
+  // otherwise spend the whole product's logins, security review of #207, Н6).
+  if (!loginLimiter.take(`ip:${ipOf(event)}`, LOGINS_PER_IP, 60) || !loginLimiter.take('all', LOGINS_TOTAL, 60)) throw createError({ statusCode: 429, statusMessage: 'Слишком много входов — подождите минуту' })
   let refresh: unknown
   try {
     refresh = (JSON.parse(raw.toString('utf8')) as { refresh?: unknown })?.refresh

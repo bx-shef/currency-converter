@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { parseEncryptionKey, readConfig } from '../server/lib/mcp/config'
-import { clientIp, hits, ipBucket, isLimited, takeHit } from '../server/lib/mcp/limits'
+import { clientIp, ipBucket, Limiter } from '../server/lib/mcp/limits'
 import { isPrivateIp, LoginError, PortalAuth, readJsonCapped, restEndpoint, type Fetch } from '../server/lib/mcp/oauth'
 import { RedisStore, StoreUnavailable, type RedisLike } from '../server/lib/mcp/redisStore'
 import { AdminSessions } from '../server/lib/mcp/session'
@@ -216,29 +216,32 @@ describe('rate limits', () => {
     expect(clientIp('', undefined)).toBe('unknown')
   })
   it('fixed window per key', () => {
-    hits.clear()
-    expect([1, 2, 3].map(() => takeHit('k', 2, 60, 0))).toEqual([true, true, false])
-    expect(takeHit('k', 2, 60, 60_000)).toBe(true)
+    const l = new Limiter()
+    expect([1, 2, 3].map(() => l.take('k', 2, 60, 0))).toEqual([true, true, false])
+    expect(l.take('k', 2, 60, 60_000)).toBe(true)
+  })
+  it('limiters are separate: a flood in one never evicts another\'s windows (Н7)', () => {
+    const logins = new Limiter(100)
+    const rejects = new Limiter(100)
+    logins.take('all', 1, 60, 0)
+    for (let i = 0; i < 1000; i++) rejects.take(`ip:junk${i}`, 1, 60, 0)
+    expect(logins.take('all', 1, 60, 1000)).toBe(false)
   })
   it('a full table drops the oldest windows — never everybody\'s counters, never refusing new keys', () => {
-    hits.clear()
-    takeHit('victim', 1, 60, 0)
-    takeHit('victim', 1, 60, 0)
-    for (let i = 0; i < 20_000; i++) takeHit(`x${i}`, 1, 60, 0)
-    // The new key is accepted; the oldest window (victim) made room, the recent ones are kept.
-    expect(hits.has('x19999')).toBe(true)
-    expect(takeHit('new', 1, 60, 1000)).toBe(true)
-    expect(hits.size).toBeLessThanOrEqual(20_000)
-    hits.clear()
+    const l = new Limiter(1000)
+    l.take('victim', 1, 60, 0)
+    for (let i = 0; i < 1000; i++) l.take(`x${i}`, 1, 60, 0)
+    expect(l.hits.has('x999')).toBe(true)
+    expect(l.take('new', 1, 60, 1000)).toBe(true)
+    expect(l.hits.size).toBeLessThanOrEqual(1000)
   })
   it('isLimited reads without counting', () => {
-    hits.clear()
-    takeHit('k', 2, 60, 0)
-    expect(isLimited('k', 2, 0)).toBe(false)
-    takeHit('k', 2, 60, 0)
-    expect(isLimited('k', 2, 0)).toBe(true)
-    expect(isLimited('k', 2, 60_000)).toBe(false)
-    hits.clear()
+    const l = new Limiter()
+    l.take('k', 2, 60, 0)
+    expect(l.isLimited('k', 2, 0)).toBe(false)
+    l.take('k', 2, 60, 0)
+    expect(l.isLimited('k', 2, 0)).toBe(true)
+    expect(l.isLimited('k', 2, 60_000)).toBe(false)
   })
   it('IPv6 addresses count per /64; IPv4 and mapped IPv4 as is', () => {
     expect(ipBucket('2001:db8:1:2:aaaa:bbbb:cccc:dddd')).toBe('2001:db8:1:2::/64')

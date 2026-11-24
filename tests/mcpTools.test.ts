@@ -330,3 +330,19 @@ describe('NbrbApi share per portal (security review, Н5)', () => {
     expect(other._meta?.code).toBeUndefined()
   })
 })
+
+describe('NbrbApi share: both daily feeds or none', () => {
+  it('on the last unit of the share a day is refused whole, never answered without the monthly feed', async () => {
+    let n = 0
+    const api = new NbrbApi(async (url) => {
+      n++
+      return url.includes('periodicity=1') ? monthly('2026-11-01') : daily('2026-11-01')
+    }, () => NOW)
+    for (let i = 0; i < 9; i++) await api.ratesOn(`2025-0${1 + (i % 9)}-1${i}`, 'p')
+    const before = n
+    // 2 units left: one more day fits, then the share is spent.
+    await expect(api.ratesOn('2025-10-10', 'p')).resolves.toMatchObject({ complete: true })
+    await expect(api.ratesOn('2025-10-11', 'p')).rejects.toBeInstanceOf(NbrbUnavailable)
+    expect(n - before).toBe(2)
+  })
+})
