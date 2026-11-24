@@ -62,5 +62,5 @@ export function inlineScriptHashes(htmls: string[]): string[] {
   return [...out]
 }
 
-/** Pages Bitrix24 opens with a POST (install handler, placement, Application URL); served as their prerendered HTML. */
+/** Pages Bitrix24 opens with a POST (install handler, placement, Application URL); rendered by the server like any GET. */
 export const APP_PAGES = ['/', '/install', '/widget/converter'] as const

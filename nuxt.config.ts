@@ -7,7 +7,7 @@ const allowedHosts = process.env.NUXT_ALLOWED_HOSTS
   : []
 
 // Fail-fast on a malformed analytics counter id (issue #46). The id is baked into
-// the SSG bundle at `nuxt generate`, so a typo would silently ship a broken
+// the client bundle at `nuxt build`, so a typo would silently ship a broken
 // Metrika init. Empty/unset is fine (analytics simply off). Validates the RAW env
 // value (the same one Nuxt bakes into runtimeConfig.public) with the shared
 // isValidCounterId — so a value that passes here is exactly one default.vue will
@@ -55,10 +55,6 @@ export default defineNuxtConfig({
     }
   },
 
-  // `/install` and `/widget/converter` are loaded directly by Bitrix24 in an
-  // iframe and are not linked from `/`, so the generate crawler would skip them.
-  // List them explicitly so `nuxt generate` emits real HTML for each. Client-side
-  // B24 detection + i18n still run at hydration on top of the prerendered HTML.
   // Node server (#200): pages are rendered per request so every HTML response passes the CSP middleware
   // (server/middleware/00.security.ts); a prerendered page would be served by the static handler first,
   // without it. The other security headers go on every response — static files included — via routeRules,
