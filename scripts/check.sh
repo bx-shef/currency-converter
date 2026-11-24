@@ -29,7 +29,7 @@ step "install"   pnpm install --frozen-lockfile
 step "lint"      pnpm lint
 step "typecheck" pnpm typecheck
 step "test"      pnpm test
-step "generate"  pnpm generate
+step "build"     pnpm build
 
 echo ""
 echo "=== summary ==="

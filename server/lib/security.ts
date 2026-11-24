@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto'
 
 // Security headers of every response — the Node server's copy of what nginx.conf used to send (issue #46,
 // #88, #169). The CSP has no `script-src 'unsafe-inline'`: Nuxt's inline scripts (the FOUC theme-init guard and
-// `window.__NUXT__.config`, whose hash changes per build) are allowed by sha256 hashes taken from the
-// prerendered pages at server start (server/middleware/00.security.ts).
+// `window.__NUXT__.config`, whose hash changes per build) are allowed by sha256 hashes taken from the server's own
+// render of the app pages on the first HTML request (server/middleware/00.security.ts).
 //
 // frame-ancestors: who may embed us — Bitrix24 cloud zones + self. connect-src: where the page may fetch —
 // api.nbrb.by, Метрика and the same Bitrix24 zones (b24jssdk REST calls from /install). The two lists mirror

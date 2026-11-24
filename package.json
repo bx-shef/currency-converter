@@ -5,7 +5,7 @@
     "node": ">=22.12.0"
   },
   "private": true,
-  "description": "Конвертер валют по официальному курсу НБ РБ (Nuxt SSG)",
+  "description": "Конвертер валют по официальному курсу НБ РБ (Nuxt, Node-сервер) и инструменты для AI-агента shef.cowork",
   "license": "UNLICENSED",
   "author": "ООО «БэИксШефБай»",
   "homepage": "https://github.com/bx-shef/currency-converter#readme",
@@ -19,7 +19,6 @@
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
-    "generate": "nuxt generate",
     "preview": "nuxt preview",
     "lint": "eslint .",
     "test": "vitest run --project unit --project nuxt",

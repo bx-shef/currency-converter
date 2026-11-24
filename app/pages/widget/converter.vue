@@ -43,6 +43,9 @@ const {
 
 useHead({ title: t('page.widget.seo.title') })
 
+/** Row of the currency last edited — its rate and 30-day chart are shown under the rows. */
+const activeRow = computed(() => currencies.value.find(c => c.code === activeCurrency.value && c.bynRate > 0))
+
 const isBusy = ref(false)
 
 // b24ui detects the host from the User-Agent (`BitrixMobile/Version=…`). In the
@@ -294,6 +297,14 @@ async function insertIntoChat() {
         />
       </div>
     </div>
+
+    <!-- Rate of the currency last edited + a 30-day mini chart on demand (BYN itself has no rate). -->
+    <RateTrend
+      v-if="!loading && !fetchError && activeRow && activeRow.code !== 'BYN'"
+      :code="activeRow.code"
+      :per-unit="activeRow.bynRate"
+      :large="isBitrixMobile"
+    />
 
     <!-- Sum-in-words (BYN + RUB) + case toggle, then the insert button. -->
     <div class="flex flex-col gap-2 border-t border-(--ui-color-base-2) pt-2">
