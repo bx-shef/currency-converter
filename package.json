@@ -23,7 +23,7 @@
     "preview": "nuxt preview",
     "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit && vue-tsc --noEmit -p .nuxt/tsconfig.server.json",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "screenshots": "node scripts/screenshots.mjs",
     "og:snapshot": "node scripts/gen-og.mjs",

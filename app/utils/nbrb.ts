@@ -28,7 +28,7 @@ export interface RateEntry {
  * coerce, so string numbers like `"1"` and non-finite `Infinity`/`NaN` are
  * rejected rather than silently producing a `0` / `Infinity` rate downstream.
  */
-function isUsableRate(record: unknown): record is NbrbRate {
+export function isUsableRate(record: unknown): record is NbrbRate {
   if (typeof record !== 'object' || record === null) return false
   const r = record as Record<string, unknown>
   return typeof r.Cur_Abbreviation === 'string'

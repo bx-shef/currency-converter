@@ -27,6 +27,7 @@ hold LICENSE                          # юридический документ
 2 .claude/hooks/*|.claude/settings.json
 # вендорный бандл: правят в источнике, здесь только синхронизация
 2 reporting-kit/*
+2 server/*
 
 # --- уровень 0: без ревью, только pnpm check ---
 0 .gitattributes|.gitignore
@@ -36,6 +37,7 @@ hold LICENSE                          # юридический документ
 
 # --- таблица случаев для --self-test ---
 case 2 LICENSE
+case 2 server/lib/mcp/protocol.ts
 case 0 README.md
 case 0 docs/PROCESS.md
 case 0 tests/formatters.test.ts

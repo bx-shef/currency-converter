@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> Last reviewed: 2026-11-13
+> Last reviewed: 2026-11-24
 
 Конвертер валют по официальному курсу НБ РБ. Статическое приложение (SSG), без серверной части.
 
@@ -242,6 +242,15 @@ Vue-обёртки над ними. Сами composables и `index.vue` покр
 - `scripts/screenshots.mjs` — dev-харнесс визуальной проверки (`pnpm screenshots`): снимает
   роут × вьюпорт × тема (12 PNG) с предустановленного Chromium через `playwright-core`. **Не в CI**
   (нет baseline/diff — только «глазами свериться»), прод не трогает. Детали — `docs/PROCESS.md` §2.2.
+
+## Инструменты для shef.cowork (MCP, issue #200)
+
+Ядро — `server/lib/mcp/` (чистая логика, без автоимпортов Nuxt): `protocol.ts` (ключ подключения по паре
+**`member_id` + хост портала** — `member_id` не уникален среди коробок-копий, toolsai-mcp #243/#304; подпись
+HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (курсы НБ РБ на дату и история, кеш), `tools.ts`
+(`rates`, `history`, `convert`, `sum_in_words` — только чтение; суммы — через `app/utils/*`, копейки — только
+`toKopecks`). Маршрутов пока нет — сборка и прод не меняются. Подробно — [`docs/MCP.md`](docs/MCP.md).
+`pnpm typecheck` проверяет и `server/` (`.nuxt/tsconfig.server.json`): корневой конфиг его не видит.
 
 ## Встройка в Bitrix24 (issue #31)
 
