@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { parseEncryptionKey, readConfig } from '../server/lib/mcp/config'
-import { isPrivateIp, LoginError, PortalAuth, restEndpoint, type Fetch } from '../server/lib/mcp/oauth'
-import { RedisStore, type RedisLike } from '../server/lib/mcp/redisStore'
+import { clientIp, hits, takeHit } from '../server/lib/mcp/limits'
+import { isPrivateIp, LoginError, PortalAuth, readJsonCapped, restEndpoint, type Fetch } from '../server/lib/mcp/oauth'
+import { RedisStore, StoreUnavailable, type RedisLike } from '../server/lib/mcp/redisStore'
 import { AdminSessions } from '../server/lib/mcp/session'
 import { MemoryStore } from '../server/lib/mcp/store'
 
@@ -35,7 +36,8 @@ describe('readConfig', () => {
 describe('restEndpoint and private addresses', () => {
   it('https host names only; localhost only for a local server', () => {
     expect(restEndpoint('https://b24.example.by/rest')).toBe('https://b24.example.by/rest/')
-    for (const bad of ['http://b24.example.by/rest/', 'https://10.0.0.1/rest/', 'https://u:p@b24.by/rest/', 'https://localhost/rest/', 42]) expect(restEndpoint(bad)).toBeNull()
+    for (const bad of ['http://b24.example.by/rest/', 'https://10.0.0.1/rest/', 'https://u:p@b24.by/rest/', 'https://localhost/rest/', 'https://b24.example.by:8443/rest/', 42]) expect(restEndpoint(bad), String(bad)).toBeNull()
+    expect(restEndpoint('https://b24.example.by:443/rest/')).toBe('https://b24.example.by/rest/')
     expect(restEndpoint('http://127.0.0.1:9/rest/', true)).toBe('http://127.0.0.1:9/rest/')
   })
   it('private ranges', () => {
@@ -87,10 +89,20 @@ describe('PortalAuth.frameLogin', () => {
     await expect(new PortalAuth(CFG, fakeB24({ endpoint: 'http://crm.alpha.by/rest/' }).fetchFn, publicDns).frameLogin('refresh-token-1')).rejects.toMatchObject({ code: 'bad_token_response' })
     await expect(new PortalAuth(CFG, fakeB24({ grantOn: 'https://nowhere' }).fetchFn, publicDns).frameLogin('refresh-token-1')).rejects.toBeInstanceOf(LoginError)
   })
-  it('the client secret never appears in what is logged', async () => {
-    const b = fakeB24()
-    await new PortalAuth(CFG, b.fetchFn, publicDns).frameLogin('refresh-token-1')
-    expect(b.calls.join(' ')).not.toContain('s3cret')
+  it('the client secret never reaches the console or an error text', async () => {
+    const out: string[] = []
+    const record = (...a: unknown[]) => {
+      out.push(a.map(String).join(' '))
+    }
+    const spies = (['log', 'warn', 'error'] as const).map(k => vi.spyOn(console, k).mockImplementation(record))
+    try {
+      await new PortalAuth(CFG, fakeB24().fetchFn, publicDns).frameLogin('refresh-token-1')
+      const err = await new PortalAuth(CFG, fakeB24({ grantOn: 'https://nowhere' }).fetchFn, publicDns).frameLogin('refresh-token-1').catch((e: Error) => e)
+      out.push(String((err as Error).message), JSON.stringify(err))
+    } finally {
+      spies.forEach(s => s.mockRestore())
+    }
+    expect(out.join('\n')).not.toContain('s3cret')
   })
 })
 
@@ -160,5 +172,54 @@ describe('RedisStore', () => {
     expect(await s.putIfAbsent('n', 1, 601)).toBe(false)
     await s.del('a')
     expect(await s.get('a')).toBeNull()
+  })
+})
+
+describe('RedisStore failures', () => {
+  it('any Redis error becomes StoreUnavailable (routes answer 503, not 500)', async () => {
+    const down: RedisLike = {
+      get: async () => { throw new Error('Connection is closed') },
+      set: async () => { throw new Error('OOM command not allowed') },
+      del: async () => { throw new Error('x') }
+    }
+    const s = new RedisStore(down)
+    await expect(s.get('a')).rejects.toBeInstanceOf(StoreUnavailable)
+    await expect(s.putIfAbsent('n', 1, 601)).rejects.toBeInstanceOf(StoreUnavailable)
+    await expect(s.put('a', 1, 1)).rejects.toBeInstanceOf(StoreUnavailable)
+  })
+})
+
+describe('rate limits', () => {
+  it('client address: the LAST X-Forwarded-For entry (added by the proxy), else the socket', () => {
+    expect(clientIp('6.6.6.6, 10.0.0.9', '172.18.0.2')).toBe('10.0.0.9')
+    expect(clientIp(' 1.1.1.1 ', undefined)).toBe('1.1.1.1')
+    expect(clientIp(undefined, '172.18.0.2')).toBe('172.18.0.2')
+    expect(clientIp('', undefined)).toBe('unknown')
+  })
+  it('fixed window per key', () => {
+    hits.clear()
+    expect([1, 2, 3].map(() => takeHit('k', 2, 60, 0))).toEqual([true, true, false])
+    expect(takeHit('k', 2, 60, 60_000)).toBe(true)
+  })
+  it('a full table sweeps expired keys and never resets live counters', () => {
+    hits.clear()
+    for (let i = 0; i < 20_000; i++) takeHit(`x${i}`, 1, 60, 0)
+    takeHit('victim', 1, 60, 0)
+    // New keys while every window is live are refused — the victim's spent counter is not wiped.
+    expect(takeHit('new', 1, 60, 1000)).toBe(false)
+    expect(takeHit('victim', 1, 60, 1000)).toBe(false)
+    // After the windows expire, space frees up.
+    expect(takeHit('new', 1, 60, 61_000)).toBe(true)
+    hits.clear()
+  })
+})
+
+describe('readJsonCapped', () => {
+  it('reads small JSON, refuses bodies over the cap and non-objects', async () => {
+    expect(await readJsonCapped(Response.json({ a: 1 }))).toEqual({ a: 1 })
+    expect(await readJsonCapped(new Response('x'.repeat(300 * 1024)))).toEqual({})
+    expect(await readJsonCapped(new Response(JSON.stringify({ big: 'y'.repeat(300 * 1024) })))).toEqual({})
+    expect(await readJsonCapped(new Response('[1]'))).toEqual({})
+    expect(await readJsonCapped(new Response('not json'))).toEqual({})
   })
 })

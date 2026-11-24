@@ -36,12 +36,14 @@ async function copyKey() {
 
 onMounted(async () => {
   const r = await login()
-  if (r.state === 'off' || (r.state === 'ready' && !r.admin)) return
-  visible.value = true
+  // Only a confirmed admin sees the card. A failed login says nothing about who this is, so an employee
+  // must not get an error card about a screen they never use: the reason goes to the console.
   if (r.state === 'error') {
-    fail.value = r.message
+    console.warn('[mcp-key] login failed:', r.message)
     return
   }
+  if (r.state !== 'ready' || !r.admin) return
+  visible.value = true
   await run('status')
 })
 </script>

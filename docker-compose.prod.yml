@@ -29,6 +29,11 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
+    # One process: rate limits and locks live in its memory (docs/MCP.md) — do not scale to replicas.
+    mem_limit: ${APP_MEM_LIMIT:-512m}
+    memswap_limit: ${APP_MEM_LIMIT:-512m}
+    pids_limit: 128
+    cpus: ${APP_CPUS:-1}
     restart: unless-stopped
     depends_on: [redis]
     networks:

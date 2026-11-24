@@ -4,6 +4,12 @@
  * `GET /exrates/rates/dynamics/{Cur_ID}?startdate&enddate` the daily rates (without the scale).
  */
 
+/**
+ * Loaded histories by currency code for the page's lifetime: the chart component is re-created (v-if on rates
+ * reload, switching to BYN) and must not fetch the same history again.
+ */
+export const historyCache = new Map<string, RatePoint[]>()
+
 /** Days shown in the mini chart. */
 export const HISTORY_DAYS = 30
 

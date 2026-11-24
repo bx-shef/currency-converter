@@ -65,10 +65,26 @@ describe('McpKeyCard', () => {
     expect(m.key).toHaveBeenLastCalledWith('revoke')
   })
 
-  it('a server error is shown with role="alert"', async () => {
+  it('a failed login shows nothing (the employee may not be an admin); the reason goes to the console', async () => {
     m.login.mockResolvedValue({ state: 'error', message: 'Битрикс24 не подтвердил вход' })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const w = await mountSuspended(McpKeyCard)
     await flushPromises()
-    expect(w.get('[role="alert"]').text()).toContain('Битрикс24 не подтвердил вход')
+    expect(w.find('[data-testid="mcp-key-card"]').exists()).toBe(false)
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('an admin sees a key action error with role="alert"', async () => {
+    m.login.mockResolvedValue({ state: 'ready', admin: true })
+    m.key.mockImplementation(async (a) => {
+      if (a === 'issue') throw new Error('На этот member_id уже выданы ключи 8 порталам')
+      return { exists: false, url: URL_ }
+    })
+    const w = await mountSuspended(McpKeyCard)
+    await flushPromises()
+    await w.findAll('button').find(b => b.text() === 'Создать ключ')!.trigger('click')
+    await flushPromises()
+    expect(w.get('[role="alert"]').text()).toContain('8 порталам')
   })
 })

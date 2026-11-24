@@ -15,7 +15,7 @@
 - **Vue 3** — `<script setup lang="ts">`
 - **TypeScript** (строгий), **Tailwind CSS v4**, **Bitrix24 UI** (`b24ui`)
 - **Bitrix24 JS SDK** (`@bitrix24/b24jssdk`) — встройка в портал (issue #31), **i18n** (`@nuxtjs/i18n`)
-- **Vitest** — два проекта: `unit` (node, чистые функции) и `nuxt`
+- **Vitest** — три проекта: `unit` (node, чистые функции), `e2e` (собранный сервер, `pnpm test:e2e`) и `nuxt`
   (`@nuxt/test-utils` + happy-dom, composables и компоненты)
 
 ## Команды
@@ -312,26 +312,29 @@ HMAC-SHA256, окно 300 с, одноразовый номер), `nbrbApi.ts` (
   обратное слепое пятно: ключ, используемый в коде через `t()`, но отсутствующий в `en` (опечатка/
   удаление из обеих локалей) — собирает все статические `t('...')` из `app/` и сверяет с `en.json`.
 - `nuxt.config.ts` — **без prerender**: все страницы рендерит сервер на каждый запрос (иначе статический
-  обработчик Nitro отдал бы prerender-страницу в обход middleware с CSP). `/install` и `/widget/converter`
+  обработчик Nitro отдал бы prerender-страницу в обход хука рендера с CSP). `/install` и `/widget/converter`
   открываются порталом напрямую, и **POST портала на страницы работает штатно** (отдельного обхода не нужно).
   `runtimeConfig.public`: `siteUrl`, `authorName`, `authorUrl`, `commitSha` (коммит сборки — подвал),
   `marketplaceUrl` (Маркет Б24 — промо-блок) — все через build-args (см. Dockerfile/ci); build-arg должен
   присутствовать до `pnpm build`. `routeRules['/**'].headers` — заголовки безопасности на **всех** ответах,
   включая статику (routeRules срабатывают раньше статического обработчика).
-- `server/lib/security.ts` + `server/middleware/00.security.ts` — CSP и заголовки безопасности сервера.
+- `server/lib/security.ts` + `server/plugins/csp.ts` — CSP и заголовки безопасности сервера.
   CSP: `frame-ancestors` и `connect-src` разрешают облачные домены Б24 (`*.bitrix24.<tld>`, ровно 22 зоны —
   issue #88), иначе iframe-встройка и REST-вызовы install падают. Список (`BITRIX24_ZONES`) **зеркалится**
   между двумя директивами (инвариант + точный набор проверяет `tests/securityHeaders.test.ts`); международные
   зоны — из сабпроцессор-доки Б24, плюс CIS-зоны (`.ru/.by/.kz/.ua/.net`), которых там нет. Синхронизируется
   **вручную** (best-effort — Б24 добавляет регионы; self-hosted на своём домене добавляют сами).
   `frame-ancestors` намеренно НЕ сужается по странице: `/` — dual-mode (Application URL, открывается в портале),
-  поэтому ему нужен тот же allow-list, что `/install`/`/widget`. Middleware ставит CSP на HTML-страницы
-  (не на `/health`, `/api/*`, `/_nuxt/*` и файлы с расширением); хэши inline-скриптов берутся **из рендера самого
-  сервера** при первом запросе (`/`, `/install`, `/widget/converter`, внутренние запросы с заголовком
-  `x-cc-internal`), кешируются в процессе; нет ни одного хэша — CSP не отдаётся и запрос падает, а не уходит
-  с CSP, блокирующей страницу. Остальные заголовки (`X-Content-Type-Options`, `Referrer-Policy`,
-  `Permissions-Policy`, HSTS, `X-XSS-Protection: 0`) — `SECURITY_HEADERS` через routeRules (issue #46).
+  поэтому ему нужен тот же allow-list, что `/install`/`/widget`. Хук рендера (`server/plugins/csp.ts`) ставит CSP на
+  каждый отрендеренный HTML-ответ, с хэшами inline-скриптов **этого же ответа** — политика всегда совпадает со
+  страницей (и 404 тоже). Остальные заголовки (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  HSTS, `X-XSS-Protection: 0`) — `SECURITY_HEADERS` через routeRules (issue #46).
 - `server/routes/health.get.ts` — `/health` для healthcheck образа и `make prod-smoke`.
+- `app/components/RateTrend.vue` + `app/utils/rateHistory.ts` — в виджете чата под строками: курс валюты, которую
+  вводили последней (мелкие — за 100/1000 единиц, `quoteUnits`), и по кнопке — график за 30 дней
+  (`/exrates/rates/{code}?parammode=2` → `Cur_ID`, затем `/exrates/rates/dynamics`); история грузится только по
+  нажатию, кеш по коду валюты на время страницы, поздний ответ старой валюты не перетирает новую.
+  Тесты — `tests/rateHistory.test.ts`, `tests/nuxt/rateTrend.nuxt.test.ts`.
 
 Полную install-flow с реальным `placement.bind`/`installFinish` нельзя проверить автотестами
 без портала — визуально через `pnpm dev` (`/install`, `/widget/converter`). Но чистая логика

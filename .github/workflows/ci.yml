@@ -22,6 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     # 20m: the `nuxt` Vitest project boots a Nuxt runtime on top of lint/typecheck/build/e2e.
     timeout-minutes: 20
+    # Real Redis for the second e2e run (the store of connection keys, sessions and nonces in production).
+    services:
+      redis:
+        image: redis:7.4.6-alpine
+        ports:
+          - 6379:6379
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,8 +63,13 @@ jobs:
 
       # The built server end to end: admin login against a fake Bitrix24, connection key, signed MCP calls,
       # security headers on GET/POST pages (tests/e2e).
-      - name: E2E (built server)
+      - name: E2E (built server, in-memory store)
         run: pnpm test:e2e
+
+      - name: E2E (built server, Redis)
+        run: pnpm test:e2e
+        env:
+          E2E_REDIS_URL: redis://127.0.0.1:6379
 
       # Tripwire against re-accumulating vulnerable transitive deps (issue #174:
       # 29 findings had piled up unnoticed, incl. axios shipping to the browser).
@@ -91,9 +102,22 @@ jobs:
         with:
           context: .
           push: false
+          load: true
+          tags: currency-converter:ci
           # The analytics counter is irrelevant to a build smoke-test and
           # omitting the secret keeps this job working on Dependabot PRs.
           cache-from: type=gha
+
+      # The image must start as in production (read-only, no capabilities, non-root) and serve /health and a page.
+      - name: Smoke-run the image
+        run: |
+          docker run -d --name cc -p 8080:8080 --read-only --tmpfs /tmp:size=16m,mode=1777 --cap-drop ALL \
+            --security-opt no-new-privileges:true currency-converter:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && break; sleep 1; done
+          curl -fsS -o /dev/null -X POST -d AUTH_ID=x http://127.0.0.1:8080/install
+          curl -fsS -D - -o /dev/null http://127.0.0.1:8080/widget/converter | grep -qi '^content-security-policy:'
+          test "$(docker exec cc id -u)" != "0"
+          docker logs cc | tail -20
 
   deploy:
     name: Build & Push to GHCR

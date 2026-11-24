@@ -32,6 +32,32 @@ export class LoginError extends Error {
 
 const AUTH_ERRORS = new Set(['invalid_token', 'NO_AUTH_FOUND', 'invalid_grant', 'expired_token', 'invalid_client'])
 const TIMEOUT_MS = 15_000
+/** Answers of the OAuth server and the portal are small; a portal (on-premise: its owner) could stream megabytes. */
+export const MAX_ANSWER_BYTES = 256 * 1024
+
+/** JSON body read with a byte cap; over the cap or not JSON → {}. */
+export async function readJsonCapped(res: Response, max: number = MAX_ANSWER_BYTES): Promise<Record<string, unknown>> {
+  const reader = res.body?.getReader()
+  if (!reader) return {}
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > max) {
+      await reader.cancel().catch(() => {})
+      return {}
+    }
+    chunks.push(value)
+  }
+  try {
+    const v = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+    return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
+}
 
 const PRIVATE = new BlockList()
 for (const [net, bits] of [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.168.0.0', 16], ['198.18.0.0', 15], ['224.0.0.0', 3]] as const) PRIVATE.addSubnet(net, bits, 'ipv4')
@@ -53,7 +79,8 @@ export function restEndpoint(value: unknown, allowLocal = false): string | null 
   try {
     const u = new URL(value)
     if (allowLocal && LOCAL.has(u.hostname)) return `${u.origin}${u.pathname.replace(/\/*$/, '/')}`
-    if (u.protocol !== 'https:' || u.username || u.password || u.search || u.hash) return null
+    // https on the standard port only: a portal-chosen port would let the address point at any service.
+    if (u.protocol !== 'https:' || u.port || u.username || u.password || u.search || u.hash) return null
     if (isIP(u.hostname.replace(/^\[|\]$/g, '')) || !u.hostname.includes('.')) return null
     return `${u.origin}${u.pathname.replace(/\/*$/, '/')}`
   } catch {
@@ -122,9 +149,9 @@ export class PortalAuth {
     } catch {
       throw new LoginError(502, 'oauth_unreachable', 'Сервер авторизации Битрикс24 не ответил — попробуйте ещё раз')
     }
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>
+    const body = await readJsonCapped(res)
     if (!res.ok || typeof body.access_token !== 'string') {
-      const code = String(body.error || `http_${res.status}`)
+      const code = String(body.error || `http_${res.status}`).slice(0, 64)
       if (code === 'invalid_grant') throw new LoginError(401, 'invalid_grant', 'Битрикс24 не подтвердил вход')
       if (AUTH_ERRORS.has(code)) throw new LoginError(401, code, 'Битрикс24 не подтвердил вход — откройте приложение заново')
       throw new LoginError(502, 'oauth_error', 'Сервер авторизации Битрикс24 ответил ошибкой — попробуйте ещё раз')
@@ -146,8 +173,8 @@ export class PortalAuth {
     } catch {
       throw new LoginError(502, 'portal_unreachable', 'Портал Битрикс24 не ответил — попробуйте ещё раз')
     }
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>
-    if (!res.ok || body.error) throw new LoginError(AUTH_ERRORS.has(String(body.error)) ? 401 : 502, String(body.error || `http_${res.status}`), 'Портал Битрикс24 ответил ошибкой')
+    const body = await readJsonCapped(res)
+    if (!res.ok || body.error) throw new LoginError(AUTH_ERRORS.has(String(body.error)) ? 401 : 502, String(body.error || `http_${res.status}`).slice(0, 64), 'Портал Битрикс24 ответил ошибкой')
     return body.result
   }
 

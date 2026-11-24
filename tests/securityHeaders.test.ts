@@ -42,8 +42,11 @@ describe('CSP hardening directives (#169)', () => {
     expect(csp.match(/script-src [^;]*/)?.[0]).not.toContain('unsafe-inline')
     expect(csp).toContain('\'sha256-test\'')
   })
-  it('refuses to build a CSP without hashes (it would block the page)', () => {
-    expect(() => buildCsp([])).toThrow()
+  it('without inline scripts: same-origin scripts only, still no unsafe-inline', () => {
+    const none = buildCsp([])
+    expect(none).toContain('script-src \'self\' mc.yandex.ru;')
+    expect(none).not.toContain('__CSP_SCRIPT_HASHES__')
+    expect(none).not.toContain('unsafe-inline\' mc.yandex')
   })
 })
 

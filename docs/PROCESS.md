@@ -289,6 +289,27 @@ pnpm screenshots                # в другом
 > `latest`; `main` ≠ прод. Причина — переход со статики на Node-сервер (#200). Включить — убрать `false &&`,
 > но сначала проверить, что образ собирается и стартует под новую схему (сервер Node, порт 8080, Redis, `.env.prod` на сервере).
 
+### 4.0. Переход на Node-сервер (#200) — порядок выкладки
+
+**Новый образ нельзя пускать через Watchtower со старым compose:** Watchtower пересоздаёт контейнер с прежними
+настройками — без Redis, без сети `backend`, без секретов. Порядок:
+
+1. **Записать точку отката:** `docker inspect currency-converter --format '{{.Config.Image}}'`, найти в GHCR её тег
+   `sha-<коммит>`; сохранить копии `docker-compose.prod.yml`, `Makefile`, `.env.prod` как `.bak`.
+   (`make prod-redeploy` чистит старые образы — для отката тег перекачается из GHCR.)
+2. **Секреты** в `.env.prod` (образец — `.env.prod.example`): `B24_CLIENT_ID`, `B24_CLIENT_SECRET` (кабинет партнёра,
+   приложение «Конвертер валют»), `ENCRYPTION_KEY` (`openssl rand -base64 32`, копию — в менеджер паролей),
+   `REDIS_PASSWORD` (`openssl rand -hex 24`).
+3. **Файлы на сервере** — новые `docker-compose.prod.yml` и `Makefile` из `main`.
+4. Влить PR, включить job `deploy` (убрать `false &&`), дождаться образа в GHCR.
+5. **`make prod-redeploy`** (не ждать Watchtower): поднимет app и Redis с новым compose; затем `make prod-smoke`.
+6. Проверка: `docker ps` (app healthy, `currency-converter-redis`); в `docker logs currency-converter` нет
+   `outcome: disabled`; `curl -sI https://<домен>/` и `curl -sI -X POST https://<домен>/install` — 200 и
+   `Content-Security-Policy`; приложение в портале у сотрудника и администратора; вставка в чат; карточка
+   «Ключ для shef.cowork» → «Проверить» в shef.cowork → вызов из окна AI.
+7. **Откат:** `make prod-rollback TAG=sha-<записанный>` — сайт и виджет снова со статического образа; Redis и
+   `.env.prod` остаются, выданные ключи переживут возврат вперёд (если не менялись `ENCRYPTION_KEY` и том Redis).
+
 ```
 push в main
   └─ GitHub Actions job `ci` (зелёный?) → job `deploy`
@@ -314,10 +335,10 @@ healthcheck — `GET /health`. Сборка **валится**, если пос�
 (порт не опубликован, сеть `backend` внутренняя, пароль `REDIS_PASSWORD`, `noeviction`).
 
 Страницы рендерит сервер на каждый запрос. Правила безопасности отдаются **без** разрешения встроенных скриптов:
-два служебных скрипта Nuxt разрешаются по их хэшам, которые middleware (`server/middleware/00.security.ts`) берёт
-из рендера самого сервера при первом запросе и кеширует в процессе. Остальные заголовки безопасности ставят
-`routeRules` в `nuxt.config.ts` — на всех ответах, включая статику. **Любой новый встроенный скрипт сломает
-страницу** — выносить в `public/*.js` (как сделано с Яндекс.Метрикой). Список зон и проверка заголовков —
+встроенные скрипты разрешаются по хэшам, которые хук рендера (`server/plugins/csp.ts`) считает по HTML **каждого**
+ответа. Остальные заголовки безопасности ставят `routeRules` в `nuxt.config.ts` — на всех ответах, включая статику.
+Скрипт, вставленный в страницу не рендером (например, расширением), CSP заблокирует — свои скрипты держим в
+`public/*.js` (как Яндекс.Метрику). Список зон и проверка заголовков —
 `server/lib/security.ts` и `tests/securityHeaders.test.ts`; на собранном сервере — `tests/e2e/mcp.e2e.test.ts`.
 
 ---

@@ -55,8 +55,8 @@ export default defineNuxtConfig({
     }
   },
 
-  // Node server (#200): pages are rendered per request so every HTML response passes the CSP middleware
-  // (server/middleware/00.security.ts); a prerendered page would be served by the static handler first,
+  // Node server (#200): pages are rendered per request so every HTML response gets its CSP from the render hook
+  // (server/plugins/csp.ts); a prerendered page would be served by the static handler first,
   // without it. The other security headers go on every response — static files included — via routeRules,
   // which run before the static handler.
   routeRules: {
@@ -64,6 +64,10 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: '2025-01-15',
+  // nginx used to gzip; the Node server serves pre-compressed assets instead.
+  nitro: {
+    compressPublicAssets: true
+  },
 
   vite: {
     server: {

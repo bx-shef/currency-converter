@@ -114,7 +114,7 @@ Bitrix24 UI (`b24ui`), `@bitrix24/b24jssdk`, `@nuxtjs/i18n`, Vitest.
 | Сервер Node (образ `node:22-alpine`, не root, :8080, `/health`) и Redis (`docker-compose.prod.yml`: сеть `backend`, пароль) | ✅ сделано; вживую на сервере не проверено | `Dockerfile`, `docker-compose.prod.yml`, `.env.prod.example` |
 | Деплой: GHCR → Watchtower → nginx-proxy, TLS Let's Encrypt | ⏸ автовыкладка выключена владельцем 24.11.2026 ([`PROCESS.md`](PROCESS.md) §4, #200) | `Dockerfile`, `docker-compose.prod.yml` |
 | Откат на конкретный коммит + smoke-тесты (внутренний и внешний) | ✅ сделано | `Makefile` |
-| Правила безопасности без разрешения встроенных скриптов (хэши берутся из рендера самого сервера при первом запросе) | ✅ сделано | `server/middleware/00.security.ts`, `server/lib/security.ts` |
+| Правила безопасности без разрешения встроенных скриптов (хэши — по HTML каждого ответа) | ✅ сделано | `server/plugins/csp.ts`, `server/lib/security.ts` |
 | Заголовки безопасности на всех ответах, включая статику `/_nuxt/` | ✅ сделано | `nuxt.config.ts` (`routeRules`), `server/lib/security.ts` |
 | Сборка падает, если счётчик Метрики задан неверно | ✅ сделано | `nuxt.config.ts` |
 | Версии сторонних GitHub Actions зафиксированы по контрольной сумме; образы с доступом к управлению Docker (Watchtower, nginx-proxy, acme-companion) — на конкретных версиях | ✅ сделано | `ci.yml`, compose-файлы |

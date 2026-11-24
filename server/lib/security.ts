@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto'
 
 // Security headers of every response — the Node server's copy of what nginx.conf used to send (issue #46,
 // #88, #169). The CSP has no `script-src 'unsafe-inline'`: Nuxt's inline scripts (the FOUC theme-init guard and
-// `window.__NUXT__.config`, whose hash changes per build) are allowed by sha256 hashes taken from the server's own
-// render of the app pages on the first HTML request (server/middleware/00.security.ts).
+// `window.__NUXT__.config`, whose hash changes per build) are allowed by sha256 hashes of the inline scripts of each
+// rendered response (server/plugins/csp.ts).
 //
 // frame-ancestors: who may embed us — Bitrix24 cloud zones + self. connect-src: where the page may fetch —
 // api.nbrb.by, Метрика and the same Bitrix24 zones (b24jssdk REST calls from /install). The two lists mirror
@@ -34,9 +34,9 @@ export const CSP_TEMPLATE = [
   'base-uri \'self\''
 ].join('; ') + ';'
 
+/** CSP with the given `'sha256-…'` sources; none → only same-origin scripts (never 'unsafe-inline'). */
 export function buildCsp(hashes: string[]): string {
-  if (!hashes.length) throw new Error('no inline-script hashes — refusing to send a CSP that would block the page')
-  return CSP_TEMPLATE.replace('__CSP_SCRIPT_HASHES__', hashes.join(' '))
+  return CSP_TEMPLATE.replace(' __CSP_SCRIPT_HASHES__', hashes.length ? ` ${hashes.join(' ')}` : '')
 }
 
 /** Headers on every response (pages, assets, API). No X-Frame-Options: framing by portals is allowed via CSP. */
@@ -61,6 +61,3 @@ export function inlineScriptHashes(htmls: string[]): string[] {
   }
   return [...out]
 }
-
-/** Pages Bitrix24 opens with a POST (install handler, placement, Application URL); rendered by the server like any GET. */
-export const APP_PAGES = ['/', '/install', '/widget/converter'] as const

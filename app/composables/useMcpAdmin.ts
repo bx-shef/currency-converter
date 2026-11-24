@@ -31,9 +31,10 @@ export function useMcpAdmin() {
   /** Log in from the frame. `off` — the server has no shef.cowork settings (503): the card is not shown. */
   async function login(): Promise<McpLogin> {
     try {
-      const r = await $fetch<{ token: string, admin: boolean }>('/api/app/session', { method: 'POST', body: { refresh: await refreshToken() } })
-      token = r.token
-      return { state: 'ready', admin: r.admin }
+      const r = await $fetch<{ token?: string, admin: boolean }>('/api/app/session', { method: 'POST', body: { refresh: await refreshToken() } })
+      // A session exists only for a portal admin; anyone else gets { admin: false } and no token.
+      token = r.admin && r.token ? r.token : ''
+      return { state: 'ready', admin: !!token }
     } catch (e) {
       if ((e as { status?: number })?.status === 503) return { state: 'off' }
       return { state: 'error', message: messageOf(e) }

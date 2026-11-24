@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // Rate line and a 30-day mini chart for the currency last edited in the chat widget (case 31, issue #200).
 // The history is fetched from НБ РБ only when the chart is opened — opening the widget costs nothing extra.
-import { historyRange, parseDynamics, parseRateRef, quoteUnits, sparklinePath, summarize, type RatePoint } from '~/utils/rateHistory'
+import { historyCache, historyRange, parseDynamics, parseRateRef, quoteUnits, sparklinePath, summarize, type RatePoint } from '~/utils/rateHistory'
+
+const FETCH_TIMEOUT_MS = 8000
 
 const props = defineProps<{
   /** ISO code of the currency (not BYN). */
@@ -17,7 +19,6 @@ const open = ref(false)
 const loading = ref(false)
 const failed = ref(false)
 const points = ref<RatePoint[]>([])
-const cache = new Map<string, RatePoint[]>()
 
 const W = 240
 const H = 40
@@ -31,26 +32,34 @@ const chartLabel = computed(() => {
   return s ? t('page.widget.chart.label', { code: props.code, units: units.value, min: fmt(s.min * units.value), max: fmt(s.max * units.value), change: `${s.changePct > 0 ? '+' : ''}${s.changePct}` }) : ''
 })
 
+/** Latest load wins: a late answer for a previous currency must not overwrite the current one. */
+let seq = 0
+
 async function load(code: string) {
-  const hit = cache.get(code)
+  const my = ++seq
+  const hit = historyCache.get(code)
   if (hit) {
     points.value = hit
+    failed.value = false
+    loading.value = false
     return
   }
   loading.value = true
   failed.value = false
   try {
-    const ref_ = parseRateRef(await $fetch(`https://api.nbrb.by/exrates/rates/${encodeURIComponent(code)}?parammode=2`))
+    const ref_ = parseRateRef(await $fetch(`https://api.nbrb.by/exrates/rates/${encodeURIComponent(code)}?parammode=2`, { timeout: FETCH_TIMEOUT_MS }))
     if (!ref_) throw new Error('no rate')
     const { from, to } = historyRange(new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10))
-    const pts = parseDynamics(await $fetch(`https://api.nbrb.by/exrates/rates/dynamics/${ref_.id}?startdate=${from}&enddate=${to}`), ref_.scale)
-    cache.set(code, pts)
-    if (code === props.code) points.value = pts
+    const pts = parseDynamics(await $fetch(`https://api.nbrb.by/exrates/rates/dynamics/${ref_.id}?startdate=${from}&enddate=${to}`, { timeout: FETCH_TIMEOUT_MS }), ref_.scale)
+    historyCache.set(code, pts)
+    if (my === seq) points.value = pts
   } catch {
-    failed.value = true
-    points.value = []
+    if (my === seq) {
+      failed.value = true
+      points.value = []
+    }
   } finally {
-    loading.value = false
+    if (my === seq) loading.value = false
   }
 }
 
