@@ -119,6 +119,8 @@ function rateOf(r: RatesOnDate, c: string, onDate: string): OfficialRate {
   throw new ArgError(`Нет официального курса ${c} на ${onDate}: НБ РБ не устанавливает курс этой валюты. Проверьте код (ISO 4217).`)
 }
 
+const minDate = (a: string, b: string) => (a < b ? a : b)
+
 function ruDate(iso: string) {
   return `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`
 }
@@ -184,6 +186,8 @@ export class McpTools {
     if (res.periodicity === 'monthly') notes.push('Курс этой валюты НБ РБ устанавливает раз в месяц — точки только на первые рабочие дни месяцев.')
     if (!pts.length) notes.push('За период НБ РБ курсов не публиковал.')
     else if (first!.date > from) notes.push(`Первый курс за период — на ${ruDate(first!.date)}.`)
+    else if (last!.date < to && daysBetween(last!.date, minDate(to, this.today())) > 4 && res.periodicity === 'daily') notes.push(`Последний курс за период — на ${ruDate(last!.date)}.`)
+    if (res.mixedPeriodicity) notes.push('Внутри периода НБ РБ менял периодичность курса (месячный ↔ дневной).')
     if (new Set(pts.map(p => p.scale)).size > 1) notes.push('Масштаб курса менялся внутри периода — сравнивай bynPerUnit, а не officialRate.')
     return {
       source: SOURCE, code: c, name: res.name, periodicity: res.periodicity, from, to,

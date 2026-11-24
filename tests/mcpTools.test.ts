@@ -116,6 +116,17 @@ describe('convert', () => {
       expect(r.say).toContain(formatAmount(r.result))
     }
   })
+  it('kopeck goes the same path as the converter screen (deliberately, not the exact product)', async () => {
+    // 10 BYN → RUB at 3.7210 per 100: exact 268.74496… → 268.74, the screen path (4-decimal grid → toKopecks) gives
+    // 268.75. The tool must equal the screen; "fixing" it to the exact product would split page and agent by a kopeck.
+    const api = new NbrbApi(async url => (url.includes('periodicity=1') ? monthly('2026-11-20') : [rec(456, 'RUB', 100, 3.721, '2026-11-20')]), () => NOW)
+    const r = data(await new McpTools(api, () => NOW).run({ tool: 'convert', args: { amount: 10, from: 'BYN', to: 'RUB' } }))
+    expect(r.result).toBe(268.75)
+  })
+  it('an empty monthly feed is not complete: a monthly-only currency is unavailable, not unknown', async () => {
+    const api = new NbrbApi(async url => (url.includes('periodicity=1') ? [] : daily('2026-11-20')), () => NOW)
+    expect(await codeOf(new McpTools(api, () => NOW).run({ tool: 'convert', args: { amount: 1, from: 'RSD', to: 'BYN' } }))).toBe('rates_unavailable')
+  })
   it('0 and MAX_AMOUNT', async () => {
     const { tools } = fakeApi()
     expect(data(await tools.run({ tool: 'convert', args: { amount: 0, from: 'USD', to: 'BYN' } })).result).toBe(0)

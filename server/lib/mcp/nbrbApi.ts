@@ -21,6 +21,8 @@ export const HISTORY_MAX_DAYS = 366
 /** First date with rates in BYN (redenomination 1:10 000). */
 export const FIRST_BYN_DATE = '2016-07-01'
 const CACHE_MAX = 400
+/** `/currencies` changes rarely, but a mass Cur_ID reissue must not hide new segments for a whole day. */
+const TTL_CURRENCIES_MS = 6 * 3600_000
 
 export interface OfficialRate {
   code: string
@@ -50,6 +52,8 @@ export interface History {
   code: string
   name: string
   periodicity: 'daily' | 'monthly'
+  /** True when the periodicity changed inside the period (e.g. BRL monthly → daily on 2022-08-01). */
+  mixedPeriodicity: boolean
   points: HistoryPoint[]
 }
 
@@ -142,7 +146,8 @@ export class NbrbApi {
         if (date > minskToday(this.now())) throw new NotPublished(date)
         throw new NbrbUnavailable('daily feed empty')
       }
-      const complete = monthly.status === 'fulfilled' && Array.isArray(monthly.value)
+      // An empty monthly feed (e.g. not yet published on the 1st) is not "complete" either.
+      const complete = monthly.status === 'fulfilled' && Array.isArray(monthly.value) && monthly.value.length > 0
       if (complete) {
         for (const r of monthly.value as unknown[]) {
           const o = toOfficial(r as NbrbRate, 'monthly')
@@ -179,7 +184,13 @@ export class NbrbApi {
         .map((p): HistoryPoint => ({ date: p.Date.slice(0, 10), scale: s.scale, officialRate: p.Cur_OfficialRate, bynRate: p.Cur_OfficialRate / s.scale }))
     }))
     const points = parts.flat().sort((x, y) => x.date.localeCompare(y.date))
-    return { code: latest.code, name: latest.name, periodicity: latest.monthly ? 'monthly' : 'daily', points }
+    return {
+      code: latest.code,
+      name: latest.name,
+      periodicity: latest.monthly ? 'monthly' : 'daily',
+      mixedPeriodicity: new Set(segments.map(s => s.monthly)).size > 1,
+      points
+    }
   }
 
   private async get(url: string): Promise<unknown> {
@@ -197,7 +208,7 @@ export class NbrbApi {
   /** Cache by key; `date` picks the TTL (past — 24 h, recent — 30 min); `keep` decides whether a result is cached. */
   private async cached<T>(key: string, date: string, load: () => Promise<T>, keep: (v: T) => boolean = () => true): Promise<T> {
     const hit = this.cache.get(key)
-    const ttl = daysBetween(date, minskToday(this.now())) >= 1 ? TTL_PAST_MS : TTL_RECENT_MS
+    const ttl = key === 'currencies' ? TTL_CURRENCIES_MS : daysBetween(date, minskToday(this.now())) >= 1 ? TTL_PAST_MS : TTL_RECENT_MS
     if (hit && this.now() - hit.at < ttl) return hit.value as T
     const running = this.inflight.get(key)
     if (running) return running as Promise<T>
